@@ -7,8 +7,6 @@ import (
 	"time"
 
 	gorillamux "github.com/gorilla/mux"
-	commonv1 "github.com/goto/entropy/proto/gotocompany/common/v1"
-	entropyv1beta1 "github.com/goto/entropy/proto/gotocompany/entropy/v1beta1"
 	"github.com/goto/salt/mux"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
@@ -28,6 +26,8 @@ import (
 	resourcesv1 "github.com/goto/entropy/internal/server/v1/resources"
 	"github.com/goto/entropy/pkg/common"
 	"github.com/goto/entropy/pkg/version"
+	commonv1 "github.com/goto/entropy/proto/gotocompany/common/v1"
+	entropyv1beta1 "github.com/goto/entropy/proto/gotocompany/entropy/v1beta1"
 )
 
 const defaultGracePeriod = 5 * time.Second
