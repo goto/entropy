@@ -10,7 +10,6 @@ output:
 linters:
   enable-all: true
   disable:
-    - nosnakecase
     - exhaustruct
     - cyclop
     - exhaustive
