@@ -43,9 +43,9 @@ linters:
 linters-settings:
   decorder:
     dec-order:
-      - type
       - const
       - var
+      - type
       - func
     disable-dec-order-check: false
     disable-init-func-first-check: false
@@ -117,7 +117,6 @@ linters-settings:
     sections:
       - standard # Captures all standard packages if they do not match another section.
       - default # Contains all imports that could not be matched to another section type.
-      - prefix(github.com/goto/entropy) # Groups all imports with the specified Prefix.
   gocritic:
     disabled-checks:
       - ifElseChain
