@@ -258,7 +258,7 @@ func (m *firehoseDriver) planCreate(res module.ExpandedResource, act module.Acti
 
 	plan.Resource = r
 	if reqConf.StopTime != nil {
-		plan.ScheduleRunAt = *reqConf.StopTime
+		plan.ScheduleRunAt = reqConf.StopTime
 	}
 	plan.Reason = "firehose created"
 	return &plan, nil
@@ -285,7 +285,7 @@ func (m *firehoseDriver) planChange(res module.ExpandedResource, act module.Acti
 		conf = reqConf
 
 		if conf.StopTime != nil {
-			plan.ScheduleRunAt = *conf.StopTime
+			plan.ScheduleRunAt = conf.StopTime
 		}
 		plan.Reason = "firehose config updated"
 
