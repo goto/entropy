@@ -41,6 +41,10 @@ func readConfig(r resource.Resource, confJSON json.RawMessage) (*Config, error) 
 		return nil, errors.ErrInvalid.WithMsgf("invalid config json").WithCausef(err.Error())
 	}
 
+	if cfg.Replicas <= 0 {
+		cfg.Replicas = 1
+	}
+
 	if err := validateConfig(confJSON); err != nil {
 		return nil, err
 	}

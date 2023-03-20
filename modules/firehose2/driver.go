@@ -58,7 +58,7 @@ type Output struct {
 }
 
 type transientData struct {
-	PendingSteps  []string `json:"pending"`
+	PendingSteps  []string `json:"pending_steps"`
 	ResetOffsetTo string   `json:"reset_offset_to,omitempty"`
 }
 
@@ -66,7 +66,7 @@ func (fd *firehoseDriver) getHelmRelease(conf Config) *helm.ReleaseConfig {
 	const (
 		chartRepo = "https://odpf.github.io/charts/"
 		chartName = "firehose"
-		imageRepo = "gotocompany/firehose"
+		imageRepo = "odpf/firehose"
 	)
 
 	rc := helm.DefaultReleaseConfig()
@@ -101,7 +101,7 @@ func readOutputData(exr module.ExpandedResource) (*Output, error) {
 
 func readTransientData(exr module.ExpandedResource) (*transientData, error) {
 	var modData transientData
-	if err := json.Unmarshal(exr.Resource.State.Output, &modData); err != nil {
+	if err := json.Unmarshal(exr.Resource.State.ModuleData, &modData); err != nil {
 		return nil, errors.ErrInternal.WithMsgf("corrupted transient data").WithCausef(err.Error())
 	}
 	return &modData, nil

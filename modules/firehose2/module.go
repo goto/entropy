@@ -14,6 +14,9 @@ import (
 const (
 	keyKubeDependency = "kube_cluster"
 
+	ScaleAction   = "scale"
+	StartAction   = "start"
+	StopAction    = "stop"
 	ResetAction   = "reset"
 	UpgradeAction = "upgrade"
 )
@@ -35,6 +38,18 @@ var Module = module.Descriptor{
 		{
 			Name:        ResetAction,
 			Description: "Stop firehose, reset consumer group, restart",
+		},
+		{
+			Name:        StopAction,
+			Description: "Stop all replicas of this firehose.",
+		},
+		{
+			Name:        StartAction,
+			Description: "Start the firehose if it is currently stopped.",
+		},
+		{
+			Name:        ScaleAction,
+			Description: "Scale the number of replicas to given number.",
 		},
 		{
 			Name:        UpgradeAction,

@@ -14,6 +14,7 @@ import (
 	"github.com/goto/entropy/internal/store/postgres"
 	"github.com/goto/entropy/modules"
 	"github.com/goto/entropy/modules/firehose"
+	"github.com/goto/entropy/modules/firehose2"
 	"github.com/goto/entropy/modules/kubernetes"
 	"github.com/goto/entropy/pkg/logger"
 	"github.com/goto/entropy/pkg/telemetry"
@@ -99,6 +100,7 @@ func setupRegistry(logger *zap.Logger) module.Registry {
 	supported := []module.Descriptor{
 		kubernetes.Module,
 		firehose.Module,
+		firehose2.Module,
 	}
 
 	registry := &modules.Registry{}

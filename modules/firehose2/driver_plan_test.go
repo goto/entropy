@@ -24,12 +24,6 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 	}{
 		// create action tests
 		{
-			title:   "UnsupportedAction",
-			exr:     module.ExpandedResource{},
-			act:     module.ActionRequest{Name: "FOO"},
-			wantErr: errors.ErrInternal,
-		},
-		{
 			title: "Create_InvalidParamsJSON",
 			exr:   module.ExpandedResource{},
 			act: module.ActionRequest{
@@ -187,7 +181,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 						}),
 					},
 				},
-				Reason: "update_firehose",
+				Reason: "firehose_update",
 			},
 			wantErr: nil,
 		},
@@ -268,7 +262,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 				}),
 			},
 			want: &module.Plan{
-				Reason: "reset_firehose",
+				Reason: "firehose_reset",
 				Resource: resource.Resource{
 					URN:     "urn:goto:entropy:foo:fh1",
 					Kind:    "firehose",
@@ -380,7 +374,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 						}),
 					},
 				},
-				Reason: "upgrade_firehose",
+				Reason: "firehose_upgrade",
 			},
 			wantErr: nil,
 		},

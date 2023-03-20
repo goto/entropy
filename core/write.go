@@ -16,6 +16,7 @@ func (s *Service) CreateResource(ctx context.Context, res resource.Resource) (*r
 	act := module.ActionRequest{
 		Name:   module.CreateAction,
 		Params: res.Spec.Configs,
+		Labels: res.Labels,
 	}
 	res.Spec.Configs = nil
 
