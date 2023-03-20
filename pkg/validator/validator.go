@@ -41,12 +41,16 @@ func TaggedStruct(structVal any) error {
 	err := validator.New().Struct(structVal)
 	if err != nil {
 		var fields []string
-		for _, fieldError := range err.(validator.ValidationErrors) {
-			fields = append(fields, fmt.Sprintf("%s: %s", fieldError.Field(), fieldError.Tag()))
+
+		var valErr *validator.ValidationErrors
+		if errors.As(err, &valErr) {
+			for _, fieldError := range *valErr {
+				fields = append(fields, fmt.Sprintf("%s: %s", fieldError.Field(), fieldError.Tag()))
+			}
+			return errors.ErrInvalid.WithMsgf("invalid values for fields").WithCausef(strings.Join(fields, ", "))
+		} else {
+			return errors.ErrInvalid.WithCausef(err.Error())
 		}
-		return errors.ErrInvalid.
-			WithMsgf("invalid values for fields").
-			WithCausef(strings.Join(fields, ", "))
 	}
 	return nil
 }

@@ -81,6 +81,7 @@ func TestFirehoseDriver_Sync(t *testing.T) {
 				}),
 			}),
 			kubeGetPod: func(t *testing.T) kubeGetPodFn {
+				t.Helper()
 				return func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error) {
 					assert.Equal(t, ns, "firehose")
 					assert.Equal(t, labels["app"], "firehose-foo-fh1")
@@ -112,6 +113,7 @@ func TestFirehoseDriver_Sync(t *testing.T) {
 				Output: mustJSON(Output{}),
 			}),
 			kubeGetPod: func(t *testing.T) kubeGetPodFn {
+				t.Helper()
 				return func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error) {
 					return nil, errors.New("failed")
 				}
@@ -128,11 +130,13 @@ func TestFirehoseDriver_Sync(t *testing.T) {
 				}),
 			}),
 			kubeDeploy: func(t *testing.T) kubeDeployFn {
+				t.Helper()
 				return func(ctx context.Context, isCreate bool, conf kube.Config, hc helm.ReleaseConfig) error {
 					return errors.New("failed")
 				}
 			},
 			kubeGetPod: func(t *testing.T) kubeGetPodFn {
+				t.Helper()
 				return func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error) {
 					assert.Equal(t, ns, "firehose")
 					assert.Equal(t, labels["app"], "firehose-foo-fh1")
@@ -156,6 +160,7 @@ func TestFirehoseDriver_Sync(t *testing.T) {
 				}),
 			}),
 			kubeDeploy: func(t *testing.T) kubeDeployFn {
+				t.Helper()
 				return func(ctx context.Context, isCreate bool, conf kube.Config, hc helm.ReleaseConfig) error {
 					assert.True(t, isCreate)
 					assert.Equal(t, hc.Values["replicaCount"], 1)
@@ -163,6 +168,7 @@ func TestFirehoseDriver_Sync(t *testing.T) {
 				}
 			},
 			kubeGetPod: func(t *testing.T) kubeGetPodFn {
+				t.Helper()
 				return func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error) {
 					assert.Equal(t, ns, "firehose")
 					assert.Equal(t, labels["app"], "firehose-foo-fh1")
@@ -197,6 +203,7 @@ func TestFirehoseDriver_Sync(t *testing.T) {
 				}),
 			}),
 			kubeDeploy: func(t *testing.T) kubeDeployFn {
+				t.Helper()
 				return func(ctx context.Context, isCreate bool, conf kube.Config, hc helm.ReleaseConfig) error {
 					assert.False(t, isCreate)
 					assert.Equal(t, hc.Values["replicaCount"], 0)
@@ -204,6 +211,7 @@ func TestFirehoseDriver_Sync(t *testing.T) {
 				}
 			},
 			kubeGetPod: func(t *testing.T) kubeGetPodFn {
+				t.Helper()
 				return func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error) {
 					assert.Equal(t, ns, "firehose")
 					assert.Equal(t, labels["app"], "firehose-foo-fh1")

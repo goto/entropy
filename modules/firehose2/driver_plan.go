@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/pkg/errors"
+	"github.com/goto/entropy/pkg/kafka"
 )
 
 func (fd *firehoseDriver) Plan(_ context.Context, exr module.ExpandedResource, act module.ActionRequest) (*module.Plan, error) {
@@ -114,8 +114,8 @@ func (fd *firehoseDriver) planCreate(exr module.ExpandedResource, act module.Act
 	}, nil
 }
 
-func (fd *firehoseDriver) planReset(exr module.ExpandedResource, act module.ActionRequest) (*module.Plan, error) {
-	resetValue, err := prepResetValue(act.Params)
+func (*firehoseDriver) planReset(exr module.ExpandedResource, act module.ActionRequest) (*module.Plan, error) {
+	resetValue, err := kafka.ParseResetParams(act.Params)
 	if err != nil {
 		return nil, err
 	}
@@ -136,26 +136,4 @@ func (fd *firehoseDriver) planReset(exr module.ExpandedResource, act module.Acti
 		Reason:   "firehose_reset",
 		Resource: exr.Resource,
 	}, nil
-}
-
-func prepResetValue(params json.RawMessage) (string, error) {
-	var resetParams struct {
-		To       string `json:"to"`
-		Datetime string `json:"datetime"`
-	}
-	if err := json.Unmarshal(params, &resetParams); err != nil {
-		return "", errors.ErrInvalid.
-			WithMsgf("invalid params for reset action").
-			WithCausef(err.Error())
-	}
-
-	resetValue := strings.ToLower(resetParams.To)
-	if resetParams.To == "datetime" {
-		resetValue = resetParams.Datetime
-	} else if resetValue != "latest" && resetValue != "earliest" {
-		return "", errors.ErrInvalid.
-			WithMsgf("reset_value must be one of latest, earliest, datetime").
-			WithCausef("'%s' is not valid reset value", resetValue)
-	}
-	return resetValue, nil
 }

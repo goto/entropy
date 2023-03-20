@@ -12,6 +12,7 @@ import (
 	"github.com/goto/entropy/pkg/helm"
 	"github.com/goto/entropy/pkg/kafka"
 	"github.com/goto/entropy/pkg/kube"
+	"github.com/goto/entropy/pkg/validator"
 	"github.com/goto/entropy/pkg/worker"
 )
 
@@ -64,7 +65,7 @@ var Module = module.Descriptor{
 		conf := defaultDriverConf // clone the default value
 		if err := json.Unmarshal(confJSON, &conf); err != nil {
 			return nil, err
-		} else if err := validateStruct(conf); err != nil {
+		} else if err := validator.TaggedStruct(conf); err != nil {
 			return nil, err
 		}
 
@@ -73,13 +74,13 @@ var Module = module.Descriptor{
 			kubeDeploy: func(_ context.Context, isCreate bool, kubeConf kube.Config, hc helm.ReleaseConfig) error {
 				helmCl := helm.NewClient(&helm.Config{Kubernetes: kubeConf})
 
-				var helmErr error
+				var errHelm error
 				if isCreate {
-					_, helmErr = helmCl.Create(&hc)
+					_, errHelm = helmCl.Create(&hc)
 				} else {
-					_, helmErr = helmCl.Update(&hc)
+					_, errHelm = helmCl.Update(&hc)
 				}
-				return helmErr
+				return errHelm
 			},
 			kubeGetPod: func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error) {
 				kubeCl := kube.NewClient(conf)
@@ -101,34 +102,25 @@ func consumerReset(ctx context.Context, conf Config, out kubernetes.Output, rese
 		errKubeAPI = worker.RetryableError{RetryAfter: kubeAPIRetryBackoffDuration}
 	)
 
-	broker := conf.EnvVariables[confKeyKafkaBrokers]
+	brokerAddr := conf.EnvVariables[confKeyKafkaBrokers]
 	consumerID := conf.EnvVariables[confKeyConsumerID]
 
-	cgm := kafka.NewConsumerGroupManager(broker, kube.NewClient(out.Configs), conf.Namespace)
+	err := kafka.DoReset(ctx, kube.NewClient(out.Configs), conf.Namespace, brokerAddr, consumerID, resetTo)
+	if err != nil {
+		switch {
+		case errors.Is(err, kube.ErrJobCreationFailed):
+			return errNetwork.WithCause(err)
 
-	var err error
-	switch resetTo {
-	case "earliest":
-		err = cgm.ResetOffsetToEarliest(ctx, consumerID)
+		case errors.Is(err, kube.ErrJobNotFound):
+			return errKubeAPI.WithCause(err)
 
-	case "latest":
-		err = cgm.ResetOffsetToLatest(ctx, consumerID)
+		case errors.Is(err, kube.ErrJobExecutionFailed):
+			return errKubeAPI.WithCause(err)
 
-	default:
-		err = cgm.ResetOffsetToDatetime(ctx, consumerID, resetTo)
+		default:
+			return err
+		}
 	}
 
-	switch {
-	case errors.Is(err, kube.ErrJobCreationFailed):
-		return errNetwork.WithCause(err)
-
-	case errors.Is(err, kube.ErrJobNotFound):
-		return errKubeAPI.WithCause(err)
-
-	case errors.Is(err, kube.ErrJobExecutionFailed):
-		return errKubeAPI.WithCause(err)
-
-	default:
-		return err
-	}
+	return nil
 }

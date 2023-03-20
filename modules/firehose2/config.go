@@ -13,7 +13,6 @@ import (
 )
 
 const (
-	startSequence       = "0001"
 	confKeyConsumerID   = "SOURCE_KAFKA_CONSUMER_GROUP_ID"
 	confKeyKafkaBrokers = "SOURCE_KAFKA_BROKERS"
 )

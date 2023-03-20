@@ -75,6 +75,7 @@ func TestFirehoseDriver_Output(t *testing.T) {
 				Output: mustJSON(Output{}),
 			}),
 			kubeGetPod: func(t *testing.T) kubeGetPodFn {
+				t.Helper()
 				return func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error) {
 					assert.Equal(t, ns, "firehose")
 					assert.Equal(t, labels["app"], "firehose-foo-fh1")
@@ -94,6 +95,7 @@ func TestFirehoseDriver_Output(t *testing.T) {
 				}),
 			}),
 			kubeGetPod: func(t *testing.T) kubeGetPodFn {
+				t.Helper()
 				return func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error) {
 					assert.Equal(t, ns, "firehose")
 					assert.Equal(t, labels["app"], "firehose-foo-fh1")

@@ -395,18 +395,15 @@ func (*firehoseDriver) consumerReset(ctx context.Context, conf Config, r resourc
 		return err
 	}
 
-	cgm := kafka.NewConsumerGroupManager(conf.Firehose.KafkaBrokerAddress, kube.NewClient(out.Configs), releaseConfig.Namespace)
+	resetErr := kafka.DoReset(ctx,
+		kube.NewClient(out.Configs),
+		releaseConfig.Namespace,
+		conf.Firehose.KafkaBrokerAddress,
+		conf.Firehose.KafkaConsumerID,
+		resetTo,
+	)
 
-	switch resetTo {
-	case ResetToEarliest:
-		err = cgm.ResetOffsetToEarliest(ctx, conf.Firehose.KafkaConsumerID)
-	case ResetToLatest:
-		err = cgm.ResetOffsetToLatest(ctx, conf.Firehose.KafkaConsumerID)
-	default:
-		err = cgm.ResetOffsetToDatetime(ctx, conf.Firehose.KafkaConsumerID, resetTo)
-	}
-
-	return handleErr(err)
+	return handleErr(resetErr)
 }
 
 func handleErr(err error) error {
