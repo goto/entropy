@@ -18,12 +18,12 @@ func (fd *firehoseDriver) Sync(ctx context.Context, exr module.ExpandedResource)
 
 	out, err := readOutputData(exr)
 	if err != nil {
-		return nil, err
+		return nil, errors.ErrInternal.WithCausef(err.Error())
 	}
 
 	conf, err := readConfig(exr.Resource, exr.Spec.Configs)
 	if err != nil {
-		return nil, err
+		return nil, errors.ErrInternal.WithCausef(err.Error())
 	}
 
 	var kubeOut kubernetes.Output
@@ -68,6 +68,7 @@ func (fd *firehoseDriver) Sync(ctx context.Context, exr module.ExpandedResource)
 
 	if len(modData.PendingSteps) == 0 {
 		finalState.Status = resource.StatusCompleted
+		finalState.ModuleData = nil
 	}
 
 	return &finalState, nil
@@ -75,5 +76,8 @@ func (fd *firehoseDriver) Sync(ctx context.Context, exr module.ExpandedResource)
 
 func (fd *firehoseDriver) releaseSync(ctx context.Context, isCreate bool, conf Config, kubeOut kubernetes.Output) error {
 	rc := fd.getHelmRelease(conf)
-	return fd.kubeDeploy(ctx, isCreate, kubeOut.Configs, *rc)
+	if err := fd.kubeDeploy(ctx, isCreate, kubeOut.Configs, *rc); err != nil {
+		return errors.ErrInternal.WithCausef(err.Error())
+	}
+	return nil
 }

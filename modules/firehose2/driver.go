@@ -35,9 +35,14 @@ var defaultDriverConf = driverConf{
 
 type firehoseDriver struct {
 	conf       driverConf
-	kubeDeploy func(ctx context.Context, isCreate bool, conf kube.Config, hc helm.ReleaseConfig) error
-	kubeGetPod func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error)
+	kubeDeploy kubeDeployFn
+	kubeGetPod kubeGetPodFn
 }
+
+type (
+	kubeDeployFn func(ctx context.Context, isCreate bool, conf kube.Config, hc helm.ReleaseConfig) error
+	kubeGetPodFn func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error)
+)
 
 type driverConf struct {
 	Telegraf    map[string]any `json:"telegraf"`
@@ -100,6 +105,10 @@ func readOutputData(exr module.ExpandedResource) (*Output, error) {
 }
 
 func readTransientData(exr module.ExpandedResource) (*transientData, error) {
+	if len(exr.Resource.State.ModuleData) == 0 {
+		return &transientData{}, nil
+	}
+
 	var modData transientData
 	if err := json.Unmarshal(exr.Resource.State.ModuleData, &modData); err != nil {
 		return nil, errors.ErrInternal.WithMsgf("corrupted transient data").WithCausef(err.Error())

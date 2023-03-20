@@ -17,7 +17,7 @@ func (fd *firehoseDriver) Output(ctx context.Context, exr module.ExpandedResourc
 
 	conf, err := readConfig(exr.Resource, exr.Spec.Configs)
 	if err != nil {
-		return nil, err
+		return nil, errors.ErrInternal.WithCausef(err.Error())
 	}
 
 	var kubeOut kubernetes.Output
@@ -34,7 +34,7 @@ func (fd *firehoseDriver) refreshOutput(ctx context.Context,
 	rc := fd.getHelmRelease(conf)
 	pods, err := fd.kubeGetPod(ctx, kubeOut.Configs, rc.Namespace, map[string]string{"app": rc.Name})
 	if err != nil {
-		return nil, err
+		return nil, errors.ErrInternal.WithCausef(err.Error())
 	}
 	output.Pods = pods
 

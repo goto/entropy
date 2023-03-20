@@ -11,13 +11,13 @@ import (
 	"github.com/goto/entropy/pkg/errors"
 )
 
-func (fd *firehoseDriver) Plan(ctx context.Context, exr module.ExpandedResource, act module.ActionRequest) (*module.Plan, error) {
+func (fd *firehoseDriver) Plan(_ context.Context, exr module.ExpandedResource, act module.ActionRequest) (*module.Plan, error) {
 	switch act.Name {
 	case module.CreateAction:
-		return fd.planCreate(ctx, exr, act)
+		return fd.planCreate(exr, act)
 
 	case ResetAction:
-		return fd.planReset(ctx, exr, act)
+		return fd.planReset(exr, act)
 
 	default:
 		return fd.planChange(exr, act)
@@ -51,7 +51,7 @@ func (fd *firehoseDriver) planChange(exr module.ExpandedResource, act module.Act
 			Replicas int `json:"replicas"`
 		}
 		if err := json.Unmarshal(act.Params, &scaleParams); err != nil {
-			return nil, err
+			return nil, errors.ErrInvalid.WithMsgf("invalid params for scale action").WithCausef(err.Error())
 		} else if scaleParams.Replicas < 1 {
 			return nil, errors.ErrInvalid.WithMsgf("replicas must be >= 1")
 		}
@@ -85,7 +85,7 @@ func (fd *firehoseDriver) planChange(exr module.ExpandedResource, act module.Act
 	}, nil
 }
 
-func (fd *firehoseDriver) planCreate(ctx context.Context, exr module.ExpandedResource, act module.ActionRequest) (*module.Plan, error) {
+func (fd *firehoseDriver) planCreate(exr module.ExpandedResource, act module.ActionRequest) (*module.Plan, error) {
 	conf, err := readConfig(exr.Resource, act.Params)
 	if err != nil {
 		return nil, err
@@ -109,12 +109,12 @@ func (fd *firehoseDriver) planCreate(ctx context.Context, exr module.ExpandedRes
 	}
 
 	return &module.Plan{
-		Reason:   "create_firehose",
+		Reason:   "firehose_create",
 		Resource: exr.Resource,
 	}, nil
 }
 
-func (fd *firehoseDriver) planReset(ctx context.Context, exr module.ExpandedResource, act module.ActionRequest) (*module.Plan, error) {
+func (fd *firehoseDriver) planReset(exr module.ExpandedResource, act module.ActionRequest) (*module.Plan, error) {
 	resetValue, err := prepResetValue(act.Params)
 	if err != nil {
 		return nil, err

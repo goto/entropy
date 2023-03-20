@@ -103,7 +103,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 						}),
 					},
 				},
-				Reason: "create_firehose",
+				Reason: "firehose_create",
 			},
 			wantErr: nil,
 		},
@@ -378,6 +378,49 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 			},
 			wantErr: nil,
 		},
+
+		// scale action tests
+		{
+			title: "Scale_Invalid_params",
+			exr: module.ExpandedResource{
+				Resource: resource.Resource{
+					URN:     "urn:goto:entropy:foo:fh1",
+					Kind:    "firehose",
+					Name:    "fh1",
+					Project: "foo",
+					Spec: resource.Spec{
+						Configs: mustJSON(map[string]any{
+							"replicas":      1,
+							"deployment_id": "firehose-deployment-x",
+							"chart_values": map[string]string{
+								"chart_version":     "0.1.0",
+								"image_pull_policy": "IfNotPresent",
+								"image_tag":         "latest",
+							},
+							"env_variables": map[string]string{
+								"SINK_TYPE":                      "LOG",
+								"INPUT_SCHEMA_PROTO_CLASS":       "com.foo.Bar",
+								"SOURCE_KAFKA_CONSUMER_GROUP_ID": "foo-bar-baz",
+								"SOURCE_KAFKA_BROKERS":           "localhost:9092",
+								"SOURCE_KAFKA_TOPIC":             "foo-log",
+							},
+						}),
+					},
+					State: resource.State{
+						Status: resource.StatusCompleted,
+						Output: mustJSON(Output{
+							Namespace:   "foo",
+							ReleaseName: "bar",
+						}),
+					},
+				},
+			},
+			act: module.ActionRequest{
+				Name:   ScaleAction,
+				Params: []byte("{}"),
+			},
+			wantErr: errors.ErrInvalid,
+		},
 	}
 
 	for _, tt := range table {
@@ -392,11 +435,11 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 				assert.Nil(t, got)
 				assert.True(t, errors.Is(err, tt.wantErr), "wantErr=%v\ngotErr=%v", tt.wantErr, err)
 			} else {
-				wantJSON := string(mustJSON(tt.want))
-				gotJSON := string(mustJSON(got))
-
 				assert.NoError(t, err)
 				require.NotNil(t, got)
+
+				wantJSON := string(mustJSON(tt.want))
+				gotJSON := string(mustJSON(got))
 				assert.JSONEq(t, wantJSON, gotJSON)
 			}
 		})
