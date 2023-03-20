@@ -8,6 +8,7 @@ require (
 	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/Masterminds/squirrel v1.5.2
 	github.com/ghodss/yaml v1.0.0
+	github.com/go-playground/validator/v10 v10.11.2
 	github.com/google/go-cmp v0.5.9
 	github.com/gorilla/mux v1.8.0
 	github.com/goto/salt v0.3.0
@@ -194,7 +195,6 @@ require (
 	github.com/go-logfmt/logfmt v0.5.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/go-playground/validator/v10 v10.11.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/newrelic/newrelic-telemetry-sdk-go v0.2.0 // indirect

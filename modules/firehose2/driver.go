@@ -3,152 +3,128 @@ package firehose2
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"strings"
+
+	"github.com/go-playground/validator/v10"
 
 	"github.com/goto/entropy/core/module"
-	"github.com/goto/entropy/core/resource"
-	"github.com/goto/entropy/modules/kubernetes"
 	"github.com/goto/entropy/pkg/errors"
+	"github.com/goto/entropy/pkg/helm"
+	"github.com/goto/entropy/pkg/kube"
 )
 
 const (
 	stepReleaseCreate = "release_create"
 	stepReleaseUpdate = "release_update"
 	stepReleaseStop   = "release_stop"
-	stepConsumerReset = "consumer_reset"
+	stepKafkaReset    = "consumer_reset"
 )
 
+var defaultDriverConf = driverConf{
+	Namespace: "firehose",
+	Telegraf: map[string]any{
+		"enabled": false,
+	},
+	ChartValues: chartValues{
+		ImageTag:        "latest",
+		ChartVersion:    "0.1.3",
+		ImagePullPolicy: "IfNotPresent",
+	},
+}
+
 type firehoseDriver struct {
-	conf driverConf
+	conf       driverConf
+	kubeDeploy func(ctx context.Context, isCreate bool, conf kube.Config, hc helm.ReleaseConfig) error
+	kubeGetPod func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error)
 }
 
-func (fd *firehoseDriver) Plan(ctx context.Context, exr module.ExpandedResource, act module.ActionRequest) (*module.Plan, error) {
-	switch act.Name {
-	case module.CreateAction:
-		return fd.planCreate(ctx, exr, act)
-
-	case module.UpdateAction:
-		return fd.planUpdate(ctx, exr, act)
-
-	case ResetAction:
-		return fd.planReset(ctx, exr, act)
-
-	default:
-		return nil, errors.ErrInternal.
-			WithMsgf("invalid action").
-			WithCausef("action '%s' is not valid", act.Name)
-	}
+type driverConf struct {
+	Telegraf    map[string]any `json:"telegraf"`
+	Namespace   string         `json:"namespace" validate:"required"`
+	ChartValues chartValues    `json:"chart_values" validate:"required"`
 }
 
-func (fd *firehoseDriver) Sync(ctx context.Context, exr module.ExpandedResource) (*resource.State, error) {
-	output, err := readOutputData(exr)
-	if err != nil {
-		return nil, err
-	}
-
-	conf, err := readConfig(exr.Resource, exr.Spec.Configs)
-	if err != nil {
-		return nil, err
-	}
-
-	modData, err := readTransientData(exr)
-	if err != nil {
-		return nil, err
-	}
-
-	var kubeOut kubernetes.Output
-	if err := json.Unmarshal(exr.Dependencies[keyKubeDependency].Output, &kubeOut); err != nil {
-		return nil, errors.ErrInternal.WithMsgf("invalid kube state").WithCausef(err.Error())
-	}
+type chartValues struct {
+	ImageTag        string `json:"image_tag" validate:"required"`
+	ChartVersion    string `json:"chart_version" validate:"required"`
+	ImagePullPolicy string `json:"image_pull_policy" validate:"required"`
 }
 
-func (fd *firehoseDriver) Output(ctx context.Context, res module.ExpandedResource) (json.RawMessage, error) {
-	// TODO implement me
-	panic("implement me")
+type Output struct {
+	Pods        []kube.Pod `json:"pods,omitempty"`
+	Namespace   string     `json:"namespace,omitempty"`
+	ReleaseName string     `json:"release_name,omitempty"`
 }
 
-func (fd *firehoseDriver) planCreate(ctx context.Context, exr module.ExpandedResource, act module.ActionRequest) (*module.Plan, error) {
-	conf, err := readConfig(exr.Resource, act.Params)
-	if err != nil {
-		return nil, err
-	}
-
-	exr.Resource.Spec.Configs = mustJSON(conf)
-	exr.Resource.State = resource.State{
-		Status: resource.StatusPending,
-		Output: mustJSON(Output{
-			Defaults: fd.conf,
-		}),
-		ModuleData: mustJSON(transientData{
-			PendingSteps: []string{stepReleaseCreate},
-		}),
-	}
-
-	return &module.Plan{
-		Reason:        "create_firehose",
-		Resource:      exr.Resource,
-		ScheduleRunAt: conf.StopTime,
-	}, nil
+type transientData struct {
+	PendingSteps  []string `json:"pending"`
+	ResetOffsetTo string   `json:"reset_offset_to,omitempty"`
 }
 
-func (fd *firehoseDriver) planUpdate(ctx context.Context, exr module.ExpandedResource, act module.ActionRequest) (*module.Plan, error) {
-	newConf, err := readConfig(exr.Resource, act.Params)
-	if err != nil {
-		return nil, err
-	}
+func (fd *firehoseDriver) getHelmRelease(conf Config) *helm.ReleaseConfig {
+	const (
+		chartRepo = "https://odpf.github.io/charts/"
+		chartName = "firehose"
+		imageRepo = "gotocompany/firehose"
+	)
 
-	exr.Resource.Spec.Configs = mustJSON(newConf)
-	exr.Resource.State = resource.State{
-		Status: resource.StatusPending,
-		Output: exr.Resource.State.Output,
-		ModuleData: mustJSON(transientData{
-			PendingSteps: []string{stepReleaseUpdate},
-		}),
-	}
-	return &module.Plan{
-		Reason:        "update_firehose",
-		Resource:      exr.Resource,
-		ScheduleRunAt: newConf.StopTime,
-	}, nil
-}
-
-func (fd *firehoseDriver) planReset(ctx context.Context, exr module.ExpandedResource, act module.ActionRequest) (*module.Plan, error) {
-	resetValue, err := prepResetValue(act.Params)
-	if err != nil {
-		return nil, err
-	}
-
-	exr.Resource.State = resource.State{
-		Status: resource.StatusPending,
-		Output: exr.Resource.State.Output,
-		ModuleData: mustJSON(transientData{
-			ResetTo: resetValue,
-			PendingSteps: []string{
-				stepReleaseStop,   // stop the deployment.
-				stepConsumerReset, // reset the consumer group offset value.
-				stepReleaseUpdate, // restart the deployment.
+	rc := helm.DefaultReleaseConfig()
+	rc.Name = conf.DeploymentID
+	rc.Repository = chartRepo
+	rc.Chart = chartName
+	rc.Namespace = conf.Namespace
+	rc.ForceUpdate = true
+	rc.Version = conf.ChartValues.ChartVersion
+	rc.Values = map[string]interface{}{
+		"replicaCount": conf.Replicas,
+		"firehose": map[string]interface{}{
+			"image": map[string]interface{}{
+				"repository": imageRepo,
+				"pullPolicy": conf.ChartValues.ImagePullPolicy,
+				"tag":        conf.ChartValues.ImageTag,
 			},
-		}),
+			"config": conf.EnvVariables,
+		},
+		"telegraf": fd.conf.Telegraf,
 	}
-	return &module.Plan{
-		Reason:   "reset_firehose",
-		Resource: exr.Resource,
-	}, nil
+	return rc
 }
 
-func prepResetValue(params json.RawMessage) (string, error) {
-	var resetParams struct {
-		To       string `json:"to"`
-		Datetime string `json:"datetime"`
+func readOutputData(exr module.ExpandedResource) (*Output, error) {
+	var curOut Output
+	if err := json.Unmarshal(exr.Resource.State.Output, &curOut); err != nil {
+		return nil, errors.ErrInternal.WithMsgf("corrupted output").WithCausef(err.Error())
 	}
-	if err := json.Unmarshal(params, &resetParams); err != nil {
-		return "", errors.ErrInvalid.
-			WithMsgf("invalid params for reset action").
-			WithCausef(err.Error())
-	}
+	return &curOut, nil
+}
 
-	resetValue := resetParams.To
-	if resetParams.To == "DATETIME" {
-		resetValue = resetParams.Datetime
+func readTransientData(exr module.ExpandedResource) (*transientData, error) {
+	var modData transientData
+	if err := json.Unmarshal(exr.Resource.State.Output, &modData); err != nil {
+		return nil, errors.ErrInternal.WithMsgf("corrupted transient data").WithCausef(err.Error())
 	}
-	return resetValue, nil
+	return &modData, nil
+}
+
+func mustJSON(v any) json.RawMessage {
+	bytes, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	return bytes
+}
+
+func validateStruct(structVal any) error {
+	err := validator.New().Struct(structVal)
+	if err != nil {
+		var fields []string
+		for _, fieldError := range err.(validator.ValidationErrors) {
+			fields = append(fields, fmt.Sprintf("%s: %s", fieldError.Field(), fieldError.Tag()))
+		}
+		return errors.ErrInvalid.
+			WithMsgf("invalid values for fields").
+			WithCausef(strings.Join(fields, ", "))
+	}
+	return nil
 }

@@ -1,24 +1,38 @@
 package firehose2
 
 import (
+	"crypto/sha256"
+	_ "embed"
 	"encoding/json"
 	"fmt"
-	"time"
+	"strings"
 
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/pkg/errors"
+	"github.com/goto/entropy/pkg/validator"
+)
+
+const (
+	startSequence     = "0001"
+	confKeyConsumerID = "SOURCE_KAFKA_CONSUMER_GROUP_ID"
+)
+
+const kubeDeploymentNameLengthLimit = 53
+
+var (
+	//go:embed schema/config.json
+	configSchemaRaw []byte
+
+	validateConfig = validator.FromJSONSchema(configSchemaRaw)
 )
 
 type Config struct {
-	Stopped      bool       `json:"stopped,omitempty"`
-	StopTime     *time.Time `json:"stop_time,omitempty"`
-	Replicas     int        `json:"replicas" validate:"required,gte=1"`
-	DeploymentID string     `json:"deployment_id,omitempty"`
-
-	KafkaTopic         string            `json:"kafka_topic" validate:"required"`
-	KafkaConsumerID    string            `json:"kafka_consumer_id" validate:"required"`
-	KafkaBrokerAddress string            `json:"kafka_broker_address" validate:"required"`
-	EnvVariables       map[string]string `json:"env_variables,omitempty"`
+	Telegraf     map[string]any    `json:"telegraf,omitempty"`
+	Replicas     int               `json:"replicas"`
+	Namespace    string            `json:"namespace,omitempty"`
+	DeploymentID string            `json:"deployment_id,omitempty"`
+	ChartValues  *chartValues      `json:"chart_values,omitempty"`
+	EnvVariables map[string]string `json:"env_variables,omitempty"`
 }
 
 func readConfig(r resource.Resource, confJSON json.RawMessage) (*Config, error) {
@@ -27,13 +41,36 @@ func readConfig(r resource.Resource, confJSON json.RawMessage) (*Config, error) 
 		return nil, errors.ErrInvalid.WithMsgf("invalid config json").WithCausef(err.Error())
 	}
 
-	const startSequence = "0001"
-	if cfg.KafkaConsumerID == "" {
-		cfg.KafkaConsumerID = fmt.Sprintf("%s-%s-firehose-%s", r.Project, r.Name, startSequence)
-	}
-
-	if err := validateStruct(cfg); err != nil {
+	if err := validateConfig(confJSON); err != nil {
 		return nil, err
 	}
+
+	if consumerID := cfg.EnvVariables[confKeyConsumerID]; consumerID == "" {
+		cfg.EnvVariables[confKeyConsumerID] = fmt.Sprintf("%s-%s-firehose-%s", r.Project, r.Name, startSequence)
+	}
+
+	// note: enforce the kubernetes deployment name length limit.
+	if len(cfg.DeploymentID) == 0 {
+		cfg.DeploymentID = generateSafeReleaseName(r.Project, r.Name)
+	} else if len(cfg.DeploymentID) >= kubeDeploymentNameLengthLimit {
+		return nil, errors.ErrInvalid.WithMsgf("deployment_id must be shorter than 53 chars")
+	}
+
 	return &cfg, nil
+}
+
+func generateSafeReleaseName(project, name string) string {
+	const prefix = "firehose-"
+	const randomHashLen = 6
+
+	releaseName := fmt.Sprintf("%s%s-%s", prefix, project, name)
+	if len(releaseName) >= kubeDeploymentNameLengthLimit {
+		releaseName = strings.Trim(releaseName[:kubeDeploymentNameLengthLimit-randomHashLen-1], "-")
+
+		val := sha256.Sum256([]byte(releaseName))
+		hash := fmt.Sprintf("%x", val)
+		releaseName = releaseName + "-" + hash[:randomHashLen]
+	}
+
+	return releaseName
 }

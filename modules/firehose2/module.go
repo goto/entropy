@@ -1,29 +1,22 @@
 package firehose2
 
 import (
+	"context"
+	_ "embed"
 	"encoding/json"
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/modules/kubernetes"
+	"github.com/goto/entropy/pkg/helm"
+	"github.com/goto/entropy/pkg/kube"
 )
 
-const keyKubeDependency = "kube_cluster"
-
 const (
+	keyKubeDependency = "kube_cluster"
+
 	ResetAction   = "reset"
 	UpgradeAction = "upgrade"
 )
-
-var defaultDriverConf = driverConf{
-	ChartRepository: "https://odpf.github.io/charts/",
-	ChartName:       "firehose",
-	ChartVersion:    "0.1.3",
-	ImageRepository: "gotocompany/firehose",
-	ImageName:       "firehose",
-	ImageTag:        "latest",
-	Namespace:       "firehose",
-	ImagePullPolicy: "IfNotPresent",
-}
 
 var Module = module.Descriptor{
 	Kind: "firehose2",
@@ -52,29 +45,27 @@ var Module = module.Descriptor{
 		conf := defaultDriverConf // clone the default value
 		if err := json.Unmarshal(confJSON, &conf); err != nil {
 			return nil, err
-		} else if err := conf.sanitise(); err != nil {
+		} else if err := validateStruct(conf); err != nil {
 			return nil, err
 		}
 
 		return &firehoseDriver{
 			conf: conf,
+			kubeDeploy: func(_ context.Context, isCreate bool, kubeConf kube.Config, hc helm.ReleaseConfig) error {
+				helmCl := helm.NewClient(&helm.Config{Kubernetes: kubeConf})
+
+				var helmErr error
+				if isCreate {
+					_, helmErr = helmCl.Create(&hc)
+				} else {
+					_, helmErr = helmCl.Update(&hc)
+				}
+				return helmErr
+			},
+			kubeGetPod: func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error) {
+				kubeCl := kube.NewClient(conf)
+				return kubeCl.GetPodDetails(ctx, ns, labels)
+			},
 		}, nil
 	},
-}
-
-type driverConf struct {
-	ChartName       string `json:"chart_name,omitempty" validate:"required"`
-	ChartVersion    string `json:"chart_version,omitempty" validate:"required"`
-	ChartRepository string `json:"chart_repository,omitempty" validate:"required"`
-
-	Namespace       string `json:"namespace,omitempty" validate:"required"`
-	ImagePullPolicy string `json:"image_pull_policy,omitempty" validate:"required"`
-
-	ImageTag        string `json:"image_tag,omitempty" validate:"required"`
-	ImageName       string `json:"image_name,omitempty" validate:"required"`
-	ImageRepository string `json:"image_repository,omitempty" validate:"required"`
-}
-
-func (dc *driverConf) sanitise() error {
-	return validateStruct(dc)
 }

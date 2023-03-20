@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "env_variables"
+  ],
+  "properties": {
+    "stop_time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "telegraf": {
+      "type": "object",
+      "readOnly": true,
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "chart_values": {
+      "type": "object",
+      "readOnly": true,
+      "additionalProperties": true
+    },
+    "replicas": {
+      "type": "number",
+      "default": 1,
+      "minimum": 1
+    },
+    "deployment_id": {
+      "type": "string"
+    },
+    "env_variables": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "SINK_TYPE",
+        "INPUT_SCHEMA_PROTO_CLASS",
+        "SOURCE_KAFKA_CONSUMER_GROUP_ID",
+        "SOURCE_KAFKA_BROKERS",
+        "SOURCE_KAFKA_TOPIC"
+      ],
+      "properties": {
+        "SOURCE_KAFKA_CONSUMER_GROUP_ID": {
+          "type": "string"
+        },
+        "SOURCE_KAFKA_TOPIC": {
+          "type": "string"
+        },
+        "SOURCE_KAFKA_BROKERS": {
+          "type": "string"
+        },
+        "SINK_TYPE": {
+          "type": "string",
+          "enum": [
+            "LOG",
+            "HTTP",
+            "POSTGRES",
+            "INFLUXDB",
+            "ELASTIC",
+            "REDIS",
+            "GRPC",
+            "PROMETHEUS",
+            "BIGQUERY",
+            "BLOB",
+            "BIGTABLE"
+          ]
+        },
+        "KAFKA_RECORD_PARSER_MODE": {
+          "type": "string",
+          "default": "message"
+        },
+        "INPUT_SCHEMA_PROTO_CLASS": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
