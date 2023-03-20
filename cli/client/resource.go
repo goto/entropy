@@ -1,4 +1,4 @@
-package cli
+package client
 
 import (
 	"fmt"
@@ -31,18 +31,18 @@ func cmdResource() *cobra.Command {
 	}
 
 	cmd.AddCommand(
-		createResourceCommand(),
-		listAllResourcesCommand(),
-		viewResourceCommand(),
-		editResourceCommand(),
-		deleteResourceCommand(),
-		getRevisionsCommand(),
+		cmdCreateResource(),
+		cmdListResources(),
+		cmdViewResource(),
+		cmdEditResource(),
+		cmdDeleteResource(),
+		cmdGetGetRevisions(),
 	)
 
 	return cmd
 }
 
-func createResourceCommand() *cobra.Command {
+func cmdCreateResource() *cobra.Command {
 	var file, output string
 	cmd := &cobra.Command{
 		Use:   "create",
@@ -95,7 +95,7 @@ func createResourceCommand() *cobra.Command {
 	return cmd
 }
 
-func listAllResourcesCommand() *cobra.Command {
+func cmdListResources() *cobra.Command {
 	var output, kind, project string
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -158,7 +158,7 @@ func listAllResourcesCommand() *cobra.Command {
 	return cmd
 }
 
-func viewResourceCommand() *cobra.Command {
+func cmdViewResource() *cobra.Command {
 	var output string
 	cmd := &cobra.Command{
 		Use:   "view <resource-urn>",
@@ -214,7 +214,7 @@ func viewResourceCommand() *cobra.Command {
 	return cmd
 }
 
-func editResourceCommand() *cobra.Command {
+func cmdEditResource() *cobra.Command {
 	var file string
 	cmd := &cobra.Command{
 		Use:   "edit <resource-urn>",
@@ -266,7 +266,7 @@ func editResourceCommand() *cobra.Command {
 	return cmd
 }
 
-func deleteResourceCommand() *cobra.Command {
+func cmdDeleteResource() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete <resource-urn>",
 		Short: "delete a resource",
@@ -303,7 +303,7 @@ func deleteResourceCommand() *cobra.Command {
 	return cmd
 }
 
-func getRevisionsCommand() *cobra.Command {
+func cmdGetGetRevisions() *cobra.Command {
 	var output string
 	cmd := &cobra.Command{
 		Use:   "revisions",

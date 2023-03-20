@@ -1,4 +1,4 @@
-package cli
+package client
 
 import (
 	"errors"
@@ -15,7 +15,7 @@ import (
 	entropyv1beta1 "github.com/goto/entropy/proto/gotocompany/entropy/v1beta1"
 )
 
-func cmdLogs() *cobra.Command {
+func cmdStreamLogs() *cobra.Command {
 	var filter []string
 	filters := make(map[string]string)
 	cmd := &cobra.Command{

@@ -1,4 +1,4 @@
-package cli
+package client
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 	entropyv1beta1 "github.com/goto/entropy/proto/gotocompany/entropy/v1beta1"
 )
 
-func cmdAction() *cobra.Command {
+func cmdApplyAction() *cobra.Command {
 	var urn, file, output string
 	var params structpb.Value
 	cmd := &cobra.Command{
