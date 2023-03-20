@@ -50,6 +50,11 @@ func (fd *firehoseDriver) Sync(ctx context.Context, exr module.ExpandedResource)
 				return nil, err
 			}
 
+		case stepKafkaReset:
+			if err := fd.consumerReset(ctx, *conf, kubeOut, modData.ResetOffsetTo); err != nil {
+				return nil, err
+			}
+
 		default:
 			return nil, errors.ErrInternal.WithMsgf("unknown step: '%s'", pendingStep)
 		}

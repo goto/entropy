@@ -9,6 +9,7 @@ import (
 	"github.com/go-playground/validator/v10"
 
 	"github.com/goto/entropy/core/module"
+	"github.com/goto/entropy/modules/kubernetes"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/helm"
 	"github.com/goto/entropy/pkg/kube"
@@ -34,14 +35,16 @@ var defaultDriverConf = driverConf{
 }
 
 type firehoseDriver struct {
-	conf       driverConf
-	kubeDeploy kubeDeployFn
-	kubeGetPod kubeGetPodFn
+	conf          driverConf
+	kubeDeploy    kubeDeployFn
+	kubeGetPod    kubeGetPodFn
+	consumerReset consumerResetFn
 }
 
 type (
-	kubeDeployFn func(ctx context.Context, isCreate bool, conf kube.Config, hc helm.ReleaseConfig) error
-	kubeGetPodFn func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error)
+	kubeDeployFn    func(ctx context.Context, isCreate bool, conf kube.Config, hc helm.ReleaseConfig) error
+	kubeGetPodFn    func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error)
+	consumerResetFn func(ctx context.Context, conf Config, out kubernetes.Output, resetTo string) error
 )
 
 type driverConf struct {

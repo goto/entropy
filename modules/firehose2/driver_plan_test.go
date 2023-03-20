@@ -42,6 +42,71 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 			wantErr: errors.ErrInvalid,
 		},
 		{
+			title: "Create_LongName",
+			exr: module.ExpandedResource{
+				Resource: resource.Resource{
+					URN:     "urn:goto:entropy:ABCDEFGHIJKLMNOPQRSTUVWXYZ:abcdefghijklmnopqrstuvwxyz",
+					Kind:    "firehose",
+					Name:    "abcdefghijklmnopqrstuvwxyz",
+					Project: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+				},
+			},
+			act: module.ActionRequest{
+				Name: module.CreateAction,
+				Params: mustJSON(map[string]any{
+					"replicas": 1,
+					"env_variables": map[string]string{
+						"SINK_TYPE":                "LOG",
+						"INPUT_SCHEMA_PROTO_CLASS": "com.foo.Bar",
+						"SOURCE_KAFKA_BROKERS":     "localhost:9092",
+						"SOURCE_KAFKA_TOPIC":       "foo-log",
+					},
+				}),
+			},
+			want: &module.Plan{
+				Resource: resource.Resource{
+					URN:     "urn:goto:entropy:ABCDEFGHIJKLMNOPQRSTUVWXYZ:abcdefghijklmnopqrstuvwxyz",
+					Kind:    "firehose",
+					Name:    "abcdefghijklmnopqrstuvwxyz",
+					Project: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+					Spec: resource.Spec{
+						Configs: mustJSON(map[string]any{
+							"replicas":      1,
+							"namespace":     "firehose",
+							"deployment_id": "firehose-ABCDEFGHIJKLMNOPQRSTUVWXYZ-abcdefghij-9bf099",
+							"telegraf": map[string]any{
+								"enabled": false,
+							},
+							"chart_values": map[string]string{
+								"chart_version":     "0.1.3",
+								"image_pull_policy": "IfNotPresent",
+								"image_tag":         "latest",
+							},
+							"env_variables": map[string]string{
+								"SINK_TYPE":                      "LOG",
+								"INPUT_SCHEMA_PROTO_CLASS":       "com.foo.Bar",
+								"SOURCE_KAFKA_CONSUMER_GROUP_ID": "firehose-ABCDEFGHIJKLMNOPQRSTUVWXYZ-abcdefghij-9bf099-0001",
+								"SOURCE_KAFKA_BROKERS":           "localhost:9092",
+								"SOURCE_KAFKA_TOPIC":             "foo-log",
+							},
+						}),
+					},
+					State: resource.State{
+						Status: resource.StatusPending,
+						Output: mustJSON(Output{
+							Namespace:   "firehose",
+							ReleaseName: "firehose-ABCDEFGHIJKLMNOPQRSTUVWXYZ-abcdefghij-9bf099",
+						}),
+						ModuleData: mustJSON(transientData{
+							PendingSteps: []string{stepReleaseCreate},
+						}),
+					},
+				},
+				Reason: "firehose_create",
+			},
+			wantErr: nil,
+		},
+		{
 			title: "Create_ValidRequest",
 			exr: module.ExpandedResource{
 				Resource: resource.Resource{

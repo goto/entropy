@@ -13,8 +13,9 @@ import (
 )
 
 const (
-	startSequence     = "0001"
-	confKeyConsumerID = "SOURCE_KAFKA_CONSUMER_GROUP_ID"
+	startSequence       = "0001"
+	confKeyConsumerID   = "SOURCE_KAFKA_CONSUMER_GROUP_ID"
+	confKeyKafkaBrokers = "SOURCE_KAFKA_BROKERS"
 )
 
 const kubeDeploymentNameLengthLimit = 53
@@ -49,15 +50,15 @@ func readConfig(r resource.Resource, confJSON json.RawMessage) (*Config, error) 
 		return nil, err
 	}
 
-	if consumerID := cfg.EnvVariables[confKeyConsumerID]; consumerID == "" {
-		cfg.EnvVariables[confKeyConsumerID] = fmt.Sprintf("%s-%s-firehose-%s", r.Project, r.Name, startSequence)
-	}
-
 	// note: enforce the kubernetes deployment name length limit.
 	if len(cfg.DeploymentID) == 0 {
 		cfg.DeploymentID = generateSafeReleaseName(r.Project, r.Name)
 	} else if len(cfg.DeploymentID) >= kubeDeploymentNameLengthLimit {
 		return nil, errors.ErrInvalid.WithMsgf("deployment_id must be shorter than 53 chars")
+	}
+
+	if consumerID := cfg.EnvVariables[confKeyConsumerID]; consumerID == "" {
+		cfg.EnvVariables[confKeyConsumerID] = fmt.Sprintf("%s-0001", cfg.DeploymentID)
 	}
 
 	return &cfg, nil

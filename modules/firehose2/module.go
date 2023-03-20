@@ -4,11 +4,15 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"time"
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/modules/kubernetes"
+	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/helm"
+	"github.com/goto/entropy/pkg/kafka"
 	"github.com/goto/entropy/pkg/kube"
+	"github.com/goto/entropy/pkg/worker"
 )
 
 const (
@@ -81,6 +85,50 @@ var Module = module.Descriptor{
 				kubeCl := kube.NewClient(conf)
 				return kubeCl.GetPodDetails(ctx, ns, labels)
 			},
+			consumerReset: consumerReset,
 		}, nil
 	},
+}
+
+func consumerReset(ctx context.Context, conf Config, out kubernetes.Output, resetTo string) error {
+	const (
+		networkErrorRetryDuration   = 5 * time.Second
+		kubeAPIRetryBackoffDuration = 30 * time.Second
+	)
+
+	var (
+		errNetwork = worker.RetryableError{RetryAfter: networkErrorRetryDuration}
+		errKubeAPI = worker.RetryableError{RetryAfter: kubeAPIRetryBackoffDuration}
+	)
+
+	broker := conf.EnvVariables[confKeyKafkaBrokers]
+	consumerID := conf.EnvVariables[confKeyConsumerID]
+
+	cgm := kafka.NewConsumerGroupManager(broker, kube.NewClient(out.Configs), conf.Namespace)
+
+	var err error
+	switch resetTo {
+	case "earliest":
+		err = cgm.ResetOffsetToEarliest(ctx, consumerID)
+
+	case "latest":
+		err = cgm.ResetOffsetToLatest(ctx, consumerID)
+
+	default:
+		err = cgm.ResetOffsetToDatetime(ctx, consumerID, resetTo)
+	}
+
+	switch {
+	case errors.Is(err, kube.ErrJobCreationFailed):
+		return errNetwork.WithCause(err)
+
+	case errors.Is(err, kube.ErrJobNotFound):
+		return errKubeAPI.WithCause(err)
+
+	case errors.Is(err, kube.ErrJobExecutionFailed):
+		return errKubeAPI.WithCause(err)
+
+	default:
+		return err
+	}
 }
