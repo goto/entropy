@@ -1,4 +1,4 @@
-package firehose2
+package firehose
 
 import (
 	"context"

@@ -1,4 +1,4 @@
-package firehose
+package firehoseold
 
 import (
 	"crypto/sha256"
