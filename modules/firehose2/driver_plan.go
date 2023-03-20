@@ -21,6 +21,9 @@ func (fd *firehoseDriver) Plan(ctx context.Context, exr module.ExpandedResource,
 	case ResetAction:
 		return fd.planReset(ctx, exr, act)
 
+	case UpgradeAction:
+		return fd.planUpgrade(ctx, exr, act)
+
 	default:
 		return nil, errors.ErrInternal.
 			WithMsgf("invalid action").
@@ -108,6 +111,29 @@ func (fd *firehoseDriver) planReset(ctx context.Context, exr module.ExpandedReso
 	}
 	return &module.Plan{
 		Reason:   "reset_firehose",
+		Resource: exr.Resource,
+	}, nil
+}
+
+func (fd *firehoseDriver) planUpgrade(ctx context.Context, exr module.ExpandedResource, act module.ActionRequest) (*module.Plan, error) {
+	curConf, err := readConfig(exr.Resource, exr.Resource.Spec.Configs)
+	if err != nil {
+		return nil, err
+	}
+
+	// upgrade the chart values to the latest project-level config.
+	curConf.ChartValues = &fd.conf.ChartValues
+
+	exr.Resource.Spec.Configs = mustJSON(curConf)
+	exr.Resource.State = resource.State{
+		Status: resource.StatusPending,
+		Output: exr.Resource.State.Output,
+		ModuleData: mustJSON(transientData{
+			PendingSteps: []string{stepReleaseUpdate},
+		}),
+	}
+	return &module.Plan{
+		Reason:   "upgrade_firehose",
 		Resource: exr.Resource,
 	}, nil
 }

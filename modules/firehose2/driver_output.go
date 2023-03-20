@@ -29,7 +29,8 @@ func (fd *firehoseDriver) Output(ctx context.Context, exr module.ExpandedResourc
 }
 
 func (fd *firehoseDriver) refreshOutput(ctx context.Context,
-	conf Config, output Output, kubeOut kubernetes.Output) (json.RawMessage, error) {
+	conf Config, output Output, kubeOut kubernetes.Output,
+) (json.RawMessage, error) {
 	rc := fd.getHelmRelease(conf)
 	pods, err := fd.kubeGetPod(ctx, kubeOut.Configs, rc.Namespace, map[string]string{"app": rc.Name})
 	if err != nil {

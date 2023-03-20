@@ -10,22 +10,6 @@
       "type": "string",
       "format": "date-time"
     },
-    "telegraf": {
-      "type": "object",
-      "readOnly": true,
-      "additionalProperties": true,
-      "properties": {
-        "enabled": {
-          "type": "boolean",
-          "default": false
-        }
-      }
-    },
-    "chart_values": {
-      "type": "object",
-      "readOnly": true,
-      "additionalProperties": true
-    },
     "replicas": {
       "type": "number",
       "default": 1,
@@ -40,7 +24,6 @@
       "required": [
         "SINK_TYPE",
         "INPUT_SCHEMA_PROTO_CLASS",
-        "SOURCE_KAFKA_CONSUMER_GROUP_ID",
         "SOURCE_KAFKA_BROKERS",
         "SOURCE_KAFKA_TOPIC"
       ],
