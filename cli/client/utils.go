@@ -15,12 +15,6 @@ import (
 
 type RunEFunc func(cmd *cobra.Command, args []string) error
 
-const (
-	outputJSON = "json"
-	outputYAML = "yaml"
-	outputYML  = "yml"
-)
-
 func parseFile(filePath string, v protoreflect.ProtoMessage) error {
 	b, err := os.ReadFile(filePath)
 	if err != nil {
@@ -49,33 +43,6 @@ func parseFile(filePath string, v protoreflect.ProtoMessage) error {
 	}
 
 	return nil
-}
-
-func formatOutput(i protoreflect.ProtoMessage, format string) (string, error) {
-	marshalOpts := protojson.MarshalOptions{
-		Indent:        "\t",
-		Multiline:     true,
-		UseProtoNames: true,
-	}
-
-	b, e := marshalOpts.Marshal(i)
-	if e != nil {
-		return "", e
-	}
-
-	switch format {
-	case outputJSON:
-		return string(b), nil
-
-	case outputYAML, outputYML:
-		y, e := yaml.JSONToYAML(b)
-		if e != nil {
-			return "", e
-		}
-		return string(y), nil
-	default:
-		return "", errors.New("unsupported format") // nolint
-	}
 }
 
 func fatalExitf(format string, args ...interface{}) {

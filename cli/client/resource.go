@@ -2,63 +2,98 @@ package client
 
 import (
 	"fmt"
+	"io"
 	"os"
+	"strings"
 
-	"github.com/MakeNowJust/heredoc"
 	"github.com/goto/salt/printer"
-	"github.com/goto/salt/term" // nolint
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/goto/entropy/pkg/errors"
 	entropyv1beta1 "github.com/goto/entropy/proto/gotocompany/entropy/v1beta1"
 )
 
-func cmdResource() *cobra.Command {
+func cmdViewResource() *cobra.Command {
+	var kind, project string
 	cmd := &cobra.Command{
-		Use:     "resource",
-		Aliases: []string{"resources"},
-		Short:   "Manage resources",
-		Annotations: map[string]string{
-			"group:core": "true",
-		},
-		Example: heredoc.Doc(`
-			$ entropy resource create
-			$ entropy resource list
-			$ entropy resource view <resource-urn>
-			$ entropy resource delete <resource-urn>
-			$ entropy resource edit <resource-urn>
-			$ entropy resource revisions <resource-urn>
-		`),
+		Use:     "get [resource-urn]",
+		Args:    cobra.MaximumNArgs(1),
+		Short:   "List or View existing resource(s)",
+		Aliases: []string{"view"},
+		RunE: handleErr(func(cmd *cobra.Command, args []string) error {
+			spinner := printer.Spin("")
+			defer spinner.Stop()
+
+			client, cancel, err := createClient(cmd)
+			if err != nil {
+				return err
+			}
+			defer cancel()
+
+			if len(args) == 1 {
+				// get resource
+				req := entropyv1beta1.GetResourceRequest{
+					Urn: args[0],
+				}
+				res, err := client.GetResource(cmd.Context(), &req)
+				if err != nil {
+					return err
+				}
+				spinner.Stop()
+
+				r := res.GetResource()
+				return Display(cmd, r, func(w io.Writer, v any) error {
+					printer.Table(os.Stdout, [][]string{
+						{"URN", "NAME", "KIND", "PROJECT", "STATUS"},
+						{r.Urn, r.Name, r.Kind, r.Project, r.State.Status.String()},
+					})
+
+					return nil
+				})
+			}
+
+			// list resource
+			req := entropyv1beta1.ListResourcesRequest{
+				Kind:    kind,
+				Project: project,
+			}
+			res, err := client.ListResources(cmd.Context(), &req)
+			if err != nil {
+				return err
+			}
+			spinner.Stop()
+
+			resources := res.GetResources()
+			return Display(cmd, resources, func(w io.Writer, _ any) error {
+				var report [][]string
+				report = append(report, []string{"URN", "NAME", "KIND", "PROJECT", "STATUS"})
+				for _, r := range resources {
+					report = append(report, []string{r.Urn, r.Name, r.Kind, r.Project, r.State.Status.String()})
+				}
+				printer.Table(os.Stdout, report)
+				_, _ = fmt.Fprintf(w, "Total: %d\n", len(report)-1)
+				return nil
+			})
+		}),
 	}
 
-	cmd.AddCommand(
-		cmdCreateResource(),
-		cmdListResources(),
-		cmdViewResource(),
-		cmdEditResource(),
-		cmdDeleteResource(),
-		cmdGetGetRevisions(),
-	)
+	cmd.Flags().StringVarP(&kind, "kind", "k", "", "kind of resources")
+	cmd.Flags().StringVarP(&project, "project", "p", "", "project of resources")
 
 	return cmd
 }
 
 func cmdCreateResource() *cobra.Command {
-	var file, output string
 	cmd := &cobra.Command{
-		Use:   "create",
-		Short: "create a resource",
-		Example: heredoc.Doc(`
-			$ entropy resource create --file=<file-path> --out=json
-		`),
-		Annotations: map[string]string{
-			"action:core": "true",
-		},
+		Use:   "create <file>",
+		Short: "Create a new resource on Entropy.",
 		RunE: handleErr(func(cmd *cobra.Command, args []string) error {
 			spinner := printer.Spin("")
 			defer spinner.Stop()
 
-			var reqBody entropyv1beta1.CreateResourceRequest
-			if err := parseFile(file, &reqBody); err != nil {
+			var reqBody entropyv1beta1.Resource
+			if err := parseFile(args[0], &reqBody); err != nil {
 				return err
 			} else if err := reqBody.ValidateAll(); err != nil {
 				return err
@@ -70,146 +105,20 @@ func cmdCreateResource() *cobra.Command {
 			}
 			defer cancel()
 
-			res, err := client.CreateResource(cmd.Context(), &reqBody)
+			req := &entropyv1beta1.CreateResourceRequest{
+				Resource: &reqBody,
+			}
+
+			res, err := client.CreateResource(cmd.Context(), req)
 			if err != nil {
 				return err
 			}
 			spinner.Stop()
 
-			fmt.Println("URN: \t", term.Greenf(res.Resource.Urn))
-			if output == outputJSON || output == outputYAML || output == outputYML {
-				formattedOutput, err := formatOutput(res.GetResource(), output)
-				if err != nil {
-					return err
-				}
-				fmt.Println(term.Bluef(formattedOutput))
-			}
-
-			return nil
+			resource := res.GetResource()
+			return Display(cmd, resource, nil)
 		}),
 	}
-
-	cmd.Flags().StringVarP(&file, "file", "f", "", "path to body of resource")
-	cmd.Flags().StringVarP(&output, "out", "o", "", "output format, `-o json | yaml`")
-
-	return cmd
-}
-
-func cmdListResources() *cobra.Command {
-	var output, kind, project string
-	cmd := &cobra.Command{
-		Use:   "list",
-		Short: "list all resources",
-		Example: heredoc.Doc(`
-			$ entropy resource list --kind=<resource-kind> --project=<project-name> --out=json
-		`),
-		Annotations: map[string]string{
-			"action:core": "true",
-		},
-		RunE: handleErr(func(cmd *cobra.Command, args []string) error {
-			spinner := printer.Spin("")
-			defer spinner.Stop()
-
-			var reqBody entropyv1beta1.ListResourcesRequest
-			reqBody.Kind = kind
-			reqBody.Project = project
-
-			client, cancel, err := createClient(cmd)
-			if err != nil {
-				return err
-			}
-			defer cancel()
-
-			res, err := client.ListResources(cmd.Context(), &reqBody)
-			if err != nil {
-				return err
-			}
-			spinner.Stop()
-
-			if output == outputJSON || output == outputYAML || output == outputYML {
-				for _, resource := range res.GetResources() {
-					formattedOutput, err := formatOutput(resource, output)
-					if err != nil {
-						return err
-					}
-					fmt.Println(term.Bluef(formattedOutput))
-				}
-			} else {
-				var report [][]string
-				report = append(report, []string{"URN", "NAME", "KIND", "PROJECT", "STATUS"})
-				count := 0
-				for _, r := range res.GetResources() {
-					report = append(report, []string{r.Urn, r.Name, r.Kind, r.Project, r.State.Status.String()})
-					count++
-				}
-				printer.Table(os.Stdout, report)
-				fmt.Println("\nTotal: ", count)
-
-				fmt.Println(term.Cyanf("To view all the data in JSON/YAML format, use flag `-o json | yaml`"))
-			}
-			return nil
-		}),
-	}
-
-	cmd.Flags().StringVarP(&output, "out", "o", "", "output format, `-o json | yaml`")
-	cmd.Flags().StringVarP(&kind, "kind", "k", "", "kind of resources")
-	cmd.Flags().StringVarP(&project, "project", "p", "", "project of resources")
-
-	return cmd
-}
-
-func cmdViewResource() *cobra.Command {
-	var output string
-	cmd := &cobra.Command{
-		Use:   "view <resource-urn>",
-		Short: "view a resource",
-		Example: heredoc.Doc(`
-			$ entropy resource view <resource-urn> --out=json
-		`),
-		Annotations: map[string]string{
-			"action:core": "true",
-		},
-		Args: cobra.ExactArgs(1),
-		RunE: handleErr(func(cmd *cobra.Command, args []string) error {
-			spinner := printer.Spin("")
-			defer spinner.Stop()
-
-			var reqBody entropyv1beta1.GetResourceRequest
-			reqBody.Urn = args[0]
-
-			client, cancel, err := createClient(cmd)
-			if err != nil {
-				return err
-			}
-			defer cancel()
-
-			res, err := client.GetResource(cmd.Context(), &reqBody)
-			if err != nil {
-				return err
-			}
-			spinner.Stop()
-
-			if output == outputJSON || output == outputYAML || output == outputYML {
-				formattedOutput, err := formatOutput(res.GetResource(), output)
-				if err != nil {
-					return err
-				}
-				fmt.Println(term.Bluef(formattedOutput))
-			} else {
-				r := res.GetResource()
-
-				printer.Table(os.Stdout, [][]string{
-					{"URN", "NAME", "KIND", "PROJECT", "STATUS"},
-					{r.Urn, r.Name, r.Kind, r.Project, r.State.Status.String()},
-				})
-
-				fmt.Println(term.Cyanf("\nTo view all the data in JSON/YAML format, use flag `-o json | yaml`"))
-			}
-			return nil
-		}),
-	}
-
-	cmd.Flags().StringVarP(&output, "out", "o", "", "output format, `-o json | yaml`")
 
 	return cmd
 }
@@ -218,14 +127,8 @@ func cmdEditResource() *cobra.Command {
 	var file string
 	cmd := &cobra.Command{
 		Use:   "edit <resource-urn>",
-		Short: "edit a resource",
-		Example: heredoc.Doc(`
-			$ entropy resource edit <resource-urn> --file=<file-path>
-		`),
-		Annotations: map[string]string{
-			"action:core": "true",
-		},
-		Args: cobra.ExactArgs(1),
+		Args:  cobra.ExactArgs(1),
+		Short: "Make updates to an existing resource",
 		RunE: handleErr(func(cmd *cobra.Command, args []string) error {
 			spinner := printer.Spin("")
 			defer spinner.Stop()
@@ -233,13 +136,12 @@ func cmdEditResource() *cobra.Command {
 			var newSpec entropyv1beta1.ResourceSpec
 			if err := parseFile(file, &newSpec); err != nil {
 				return err
-			} else if err := newSpec.ValidateAll(); err != nil {
-				return err
 			}
 
-			var reqBody entropyv1beta1.UpdateResourceRequest
-			reqBody.NewSpec = &newSpec
-			reqBody.Urn = args[0]
+			reqBody := entropyv1beta1.UpdateResourceRequest{
+				Urn:     args[0],
+				NewSpec: &newSpec,
+			}
 			if err := reqBody.ValidateAll(); err != nil {
 				return err
 			}
@@ -250,39 +152,52 @@ func cmdEditResource() *cobra.Command {
 			}
 			defer cancel()
 
-			_, err = client.UpdateResource(cmd.Context(), &reqBody)
+			resp, err := client.UpdateResource(cmd.Context(), &reqBody)
 			if err != nil {
 				return err
 			}
 			spinner.Stop()
 
-			fmt.Println(term.Greenf("Successfully updated"))
-			return nil
+			resource := resp.GetResource()
+			return Display(cmd, resource, func(w io.Writer, _ any) error {
+				_, _ = fmt.Fprintln(w, "Update request placed successfully.")
+				return nil
+			})
 		}),
 	}
 
 	cmd.Flags().StringVarP(&file, "file", "f", "", "path to the updated spec of resource")
-
 	return cmd
 }
 
-func cmdDeleteResource() *cobra.Command {
+func cmdApplyAction() *cobra.Command {
+	var urn, file string
 	cmd := &cobra.Command{
-		Use:   "delete <resource-urn>",
-		Short: "delete a resource",
-		Example: heredoc.Doc(`
-			$ entropy resource delete <resource-urn>
-		`),
-		Annotations: map[string]string{
-			"action:core": "true",
-		},
-		Args: cobra.ExactArgs(1),
+		Use:     "action <action-name>",
+		Args:    cobra.ExactArgs(1),
+		Short:   "Apply an action on an existing resource",
+		Aliases: []string{"execute"},
 		RunE: handleErr(func(cmd *cobra.Command, args []string) error {
 			spinner := printer.Spin("")
 			defer spinner.Stop()
 
-			var reqBody entropyv1beta1.DeleteResourceRequest
-			reqBody.Urn = args[0]
+			var params structpb.Value
+			if file != "" {
+				if err := parseFile(file, &params); err != nil {
+					return err
+				}
+			}
+
+			reqBody := entropyv1beta1.ApplyActionRequest{
+				Urn:    urn,
+				Action: args[0],
+				Params: &params,
+			}
+
+			err := reqBody.ValidateAll()
+			if err != nil {
+				return err
+			}
 
 			client, cancel, err := createClient(cmd)
 			if err != nil {
@@ -290,30 +205,59 @@ func cmdDeleteResource() *cobra.Command {
 			}
 			defer cancel()
 
-			_, err = client.DeleteResource(cmd.Context(), &reqBody)
+			res, err := client.ApplyAction(cmd.Context(), &reqBody)
 			if err != nil {
 				return err
 			}
 			spinner.Stop()
 
-			fmt.Println(term.Greenf("Successfully deleted"))
-			return nil
+			resource := res.GetResource()
+			return Display(cmd, resource, nil)
+		}),
+	}
+
+	cmd.Flags().StringVarP(&urn, "urn", "u", "", "urn of the resource")
+	cmd.Flags().StringVarP(&file, "file", "f", "", "path to the params file")
+
+	return cmd
+}
+
+func cmdDeleteResource() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "delete <resource-urn>",
+		Args:    cobra.ExactArgs(1),
+		Short:   "Delete an existing resource.",
+		Aliases: []string{"rm", "del"},
+		RunE: handleErr(func(cmd *cobra.Command, args []string) error {
+			spinner := printer.Spin("")
+			defer spinner.Stop()
+
+			client, cancel, err := createClient(cmd)
+			if err != nil {
+				return err
+			}
+			defer cancel()
+
+			_, err = client.DeleteResource(cmd.Context(), &entropyv1beta1.DeleteResourceRequest{Urn: args[0]})
+			if err != nil {
+				return err
+			}
+			spinner.Stop()
+
+			return Display(cmd, nil, func(w io.Writer, v any) error {
+				_, _ = fmt.Fprintln(w, "Delete request placed successfully")
+				return nil
+			})
 		}),
 	}
 	return cmd
 }
 
-func cmdGetGetRevisions() *cobra.Command {
-	var output string
+func cmdListRevisions() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "revisions",
-		Short: "get revisions of a resource",
-		Example: heredoc.Doc(`
-			$ entropy resource revisions <resource-urn> --out=json
-		`),
-		Annotations: map[string]string{
-			"action:core": "true",
-		},
+		Use:     "revisions",
+		Short:   "List revisions of a resource.",
+		Aliases: []string{"revs"},
 		RunE: handleErr(func(cmd *cobra.Command, args []string) error {
 			spinner := printer.Spin("")
 			defer spinner.Stop()
@@ -327,38 +271,88 @@ func cmdGetGetRevisions() *cobra.Command {
 			}
 			defer cancel()
 
-			res, err := client.GetResourceRevisions(cmd.Context(), &reqBody)
+			req := &entropyv1beta1.GetResourceRevisionsRequest{Urn: args[0]}
+			res, err := client.GetResourceRevisions(cmd.Context(), req)
 			if err != nil {
 				return err
 			}
 			spinner.Stop()
 
-			if output == outputJSON || output == outputYAML || output == outputYML {
-				for _, rev := range res.GetRevisions() {
-					formattedOutput, err := formatOutput(rev, output)
-					if err != nil {
-						return err
-					}
-					fmt.Println(term.Bluef(formattedOutput))
-				}
-			} else {
+			revisions := res.GetRevisions()
+			return Display(cmd, revisions, func(w io.Writer, v any) error {
 				var report [][]string
 				report = append(report, []string{"ID", "URN", "CREATED AT"})
-				count := 0
 				for _, rev := range res.GetRevisions() {
 					report = append(report, []string{rev.GetId(), rev.GetUrn(), rev.GetCreatedAt().AsTime().String()})
-					count++
 				}
 				printer.Table(os.Stdout, report)
-				fmt.Println("\nTotal: ", count)
+				_, _ = fmt.Fprintf(w, "Total: %d\n", len(report)-1)
+				return nil
+			})
+		}),
+	}
 
-				fmt.Println(term.Cyanf("To view all the data in JSON/YAML format, use flag `-o json | yaml`"))
+	return cmd
+}
+
+func cmdStreamLogs() *cobra.Command {
+	var filter []string
+	cmd := &cobra.Command{
+		Use:     "logs <resource-urn>",
+		Args:    cobra.ExactArgs(1),
+		Short:   "Stream real-time logs for an existing resource.",
+		Aliases: []string{"logs"},
+		RunE: handleErr(func(cmd *cobra.Command, args []string) error {
+			spinner := printer.Spin("")
+			defer spinner.Stop()
+
+			client, cancel, err := createClient(cmd)
+			if err != nil {
+				return err
 			}
+			defer cancel()
+
+			filters := map[string]string{}
+			for _, f := range filter {
+				keyValue := strings.Split(f, ":")
+				filters[keyValue[0]] = keyValue[1]
+			}
+
+			reqBody := &entropyv1beta1.GetLogRequest{
+				Urn:    args[0],
+				Filter: filters,
+			}
+
+			if err := reqBody.ValidateAll(); err != nil {
+				return err
+			}
+
+			stream, err := client.GetLog(cmd.Context(), reqBody)
+			if err != nil {
+				return err
+			}
+			spinner.Stop()
+
+			for {
+				resp, err := stream.Recv()
+				if err != nil {
+					if errors.Is(err, io.EOF) {
+						break
+					}
+					return fmt.Errorf("failed to read stream: %w", err)
+				}
+
+				chunk := resp.GetChunk()
+				_ = Display(cmd, chunk, func(w io.Writer, v any) error {
+					_, _ = fmt.Fprintln(w, string(chunk.GetData()))
+					return nil
+				})
+			}
+
 			return nil
 		}),
 	}
 
-	cmd.Flags().StringVarP(&output, "out", "o", "", "output format, `-o json | yaml`")
-
+	cmd.Flags().StringSliceVarP(&filter, "filter", "f", nil, "Filter. (e.g., --filter=\"key:value\")")
 	return cmd
 }

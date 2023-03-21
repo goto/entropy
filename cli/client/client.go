@@ -13,8 +13,11 @@ import (
 )
 
 const (
+	outFormatFlag   = "format"
 	entropyHostFlag = "entropy"
 	dialTimeoutFlag = "timeout"
+
+	dialTimeout = 5 * time.Second
 )
 
 func Command() *cobra.Command {
@@ -32,37 +35,33 @@ func Command() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringP(entropyHostFlag, "E", "", "Entropy host to connect to")
-	cmd.PersistentFlags().DurationP(dialTimeoutFlag, "T", 5*time.Second, "Dial timeout")
+	cmd.PersistentFlags().DurationP(dialTimeoutFlag, "T", dialTimeout, "Dial timeout")
+	cmd.PersistentFlags().StringP(outFormatFlag, "F", "json", "output format (json, yaml)")
 
 	cmd.AddCommand(
 		cmdStreamLogs(),
 		cmdApplyAction(),
 		cmdCreateResource(),
-		cmdListResources(),
 		cmdViewResource(),
 		cmdEditResource(),
 		cmdDeleteResource(),
-		cmdGetGetRevisions(),
+		cmdListRevisions(),
 	)
 
 	return cmd
 }
 
-func createConnection(ctx context.Context, host string) (*grpc.ClientConn, error) {
+func createClient(cmd *cobra.Command) (entropyv1beta1.ResourceServiceClient, func(), error) {
+	dialTimeoutVal, _ := cmd.Flags().GetDuration(dialTimeoutFlag)
+	entropyAddr, _ := cmd.Flags().GetString(entropyHostFlag)
+
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithBlock(),
 	}
 
-	return grpc.DialContext(ctx, host, opts...)
-}
-
-func createClient(cmd *cobra.Command) (entropyv1beta1.ResourceServiceClient, func(), error) {
-	dialTimeout, _ := cmd.Flags().GetDuration(dialTimeoutFlag)
-	entropyAddr, _ := cmd.Flags().GetString(entropyHostFlag)
-
-	dialTimeoutCtx, dialCancel := context.WithTimeout(cmd.Context(), dialTimeout)
-	conn, err := createConnection(dialTimeoutCtx, entropyAddr)
+	dialCtx, dialCancel := context.WithTimeout(cmd.Context(), dialTimeoutVal)
+	conn, err := grpc.DialContext(dialCtx, entropyAddr, opts...)
 	if err != nil {
 		dialCancel()
 		return nil, nil, err
@@ -72,7 +71,5 @@ func createClient(cmd *cobra.Command) (entropyv1beta1.ResourceServiceClient, fun
 		dialCancel()
 		_ = conn.Close()
 	}
-
-	client := entropyv1beta1.NewResourceServiceClient(conn)
-	return client, cancel, nil
+	return entropyv1beta1.NewResourceServiceClient(conn), cancel, nil
 }
