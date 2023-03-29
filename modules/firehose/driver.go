@@ -109,7 +109,7 @@ func mergeChartValues(cur, newVal *ChartValues) (*ChartValues, error) {
 			return nil, errors.ErrInvalid.
 				WithMsgf("unknown image repo: '%s', must start with '%s'", newTag, imageRepo)
 		}
-		merged.ImageTag = strings.TrimPrefix(newTag, imageRepo)
+		merged.ImageTag = strings.TrimPrefix(newTag, imageRepo+":")
 	}
 
 	return &merged, nil
