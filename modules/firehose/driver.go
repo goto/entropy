@@ -139,7 +139,7 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		}
 	}
 
-	tolerationKey := fmt.Sprintf("firhose_%s", conf.EnvVariables["SINK_TYPE"])
+	tolerationKey := fmt.Sprintf("firehose_%s", conf.EnvVariables["SINK_TYPE"])
 	var tolerations []map[string]any
 	for _, t := range kubeOut.Tolerations[tolerationKey] {
 		tolerations = append(tolerations, map[string]any{
