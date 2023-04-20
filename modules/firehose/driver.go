@@ -236,10 +236,10 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 					"memory": conf.Requests.Memory,
 				},
 			},
-			"tolerations":  tolerations,
 			"volumeMounts": volumeMounts,
-			"volumes":      volumes,
 		},
+		"volumes":     volumes,
+		"tolerations": tolerations,
 		"init-firehose": map[string]any{
 			"enabled": fd.conf.InitContainer.Enabled,
 			"image": map[string]any{
