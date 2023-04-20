@@ -182,13 +182,8 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 	var requiredDuringSchedulingIgnoredDuringExecution []Preference
 	var preferredDuringSchedulingIgnoredDuringExecution []WeightedPreference
 
-	if fd.conf.NodeAffinityMatchExpressions.RequiredDuringSchedulingIgnoredDuringExecution != nil {
-		requiredDuringSchedulingIgnoredDuringExecution = fd.conf.NodeAffinityMatchExpressions.RequiredDuringSchedulingIgnoredDuringExecution
-	}
-
-	if fd.conf.NodeAffinityMatchExpressions.PreferredDuringSchedulingIgnoredDuringExecution != nil {
-		preferredDuringSchedulingIgnoredDuringExecution = fd.conf.NodeAffinityMatchExpressions.PreferredDuringSchedulingIgnoredDuringExecution
-	}
+	requiredDuringSchedulingIgnoredDuringExecution = fd.conf.NodeAffinityMatchExpressions.RequiredDuringSchedulingIgnoredDuringExecution
+	preferredDuringSchedulingIgnoredDuringExecution = fd.conf.NodeAffinityMatchExpressions.PreferredDuringSchedulingIgnoredDuringExecution
 
 	newVolume := func(name string) map[string]any {
 		const mountMode = 420
