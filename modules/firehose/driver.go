@@ -79,7 +79,7 @@ type driverConf struct {
 	Requests                     UsageSpec                    `json:"requests,omitempty" validate:"required"`
 	Tolerations                  map[string]Toleration        `json:"tolerations"`
 	InitContainer                InitContainer                `json:"init_container"`
-	NodeAffinityMatchExpressions NodeAffinityMatchExpressions `json:"node_affinitiy_match_expressions"`
+	NodeAffinityMatchExpressions NodeAffinityMatchExpressions `json:"node_affinity_match_expressions"`
 
 	GCSSinkCredential      string `json:"gcs_sink_credential,omitempty"`
 	DLQGCSSinkCredential   string `json:"dlq_gcs_sink_credential,omitempty"`
