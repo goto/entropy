@@ -71,22 +71,22 @@ type (
 )
 
 type driverConf struct {
-	Labels                        map[string]string             `json:"labels,omitempty"`
-	Telegraf                      *Telegraf                     `json:"telegraf"`
-	Namespace                     string                        `json:"namespace" validate:"required"`
-	ChartValues                   ChartValues                   `json:"chart_values" validate:"required"`
-	Limits                        UsageSpec                     `json:"limits,omitempty" validate:"required"`
-	Requests                      UsageSpec                     `json:"requests,omitempty" validate:"required"`
-	Tolerations                   map[string]Toleration         `json:"tolerations"`
-	InitContainer                 InitContainer                 `json:"init_container"`
-	NodeAffinitiyMatchExpressions NodeAffinitiyMatchExpressions `json:"node_affinitiy_match_expressions"`
+	Labels                       map[string]string            `json:"labels,omitempty"`
+	Telegraf                     *Telegraf                    `json:"telegraf"`
+	Namespace                    string                       `json:"namespace" validate:"required"`
+	ChartValues                  ChartValues                  `json:"chart_values" validate:"required"`
+	Limits                       UsageSpec                    `json:"limits,omitempty" validate:"required"`
+	Requests                     UsageSpec                    `json:"requests,omitempty" validate:"required"`
+	Tolerations                  map[string]Toleration        `json:"tolerations"`
+	InitContainer                InitContainer                `json:"init_container"`
+	NodeAffinityMatchExpressions NodeAffinityMatchExpressions `json:"node_affinitiy_match_expressions"`
 
 	GCSSinkCredential      string `json:"gcs_sink_credential,omitempty"`
 	DLQGCSSinkCredential   string `json:"dlq_gcs_sink_credential,omitempty"`
 	BigQuerySinkCredential string `json:"big_query_sink_credential,omitempty"`
 }
 
-type NodeAffinitiyMatchExpressions struct {
+type NodeAffinityMatchExpressions struct {
 	RequiredDuringSchedulingIgnoredDuringExecution  []Preference         `json:"requiredDuringSchedulingIgnoredDuringExecution,omitempty"`
 	PreferredDuringSchedulingIgnoredDuringExecution []WeightedPreference `json:"preferredDuringSchedulingIgnoredDuringExecution,omitempty"`
 }
@@ -182,12 +182,12 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 	var requiredDuringSchedulingIgnoredDuringExecution []Preference
 	var preferredDuringSchedulingIgnoredDuringExecution []WeightedPreference
 
-	if fd.conf.NodeAffinitiyMatchExpressions.RequiredDuringSchedulingIgnoredDuringExecution != nil {
-		requiredDuringSchedulingIgnoredDuringExecution = fd.conf.NodeAffinitiyMatchExpressions.RequiredDuringSchedulingIgnoredDuringExecution
+	if fd.conf.NodeAffinityMatchExpressions.RequiredDuringSchedulingIgnoredDuringExecution != nil {
+		requiredDuringSchedulingIgnoredDuringExecution = fd.conf.NodeAffinityMatchExpressions.RequiredDuringSchedulingIgnoredDuringExecution
 	}
 
-	if fd.conf.NodeAffinitiyMatchExpressions.PreferredDuringSchedulingIgnoredDuringExecution != nil {
-		preferredDuringSchedulingIgnoredDuringExecution = fd.conf.NodeAffinitiyMatchExpressions.PreferredDuringSchedulingIgnoredDuringExecution
+	if fd.conf.NodeAffinityMatchExpressions.PreferredDuringSchedulingIgnoredDuringExecution != nil {
+		preferredDuringSchedulingIgnoredDuringExecution = fd.conf.NodeAffinityMatchExpressions.PreferredDuringSchedulingIgnoredDuringExecution
 	}
 
 	newVolume := func(name string) map[string]any {
@@ -267,7 +267,7 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		},
 		"volumes":     volumes,
 		"tolerations": tolerations,
-		"nodeAffinitiyMatchExpressions": map[string]any{
+		"nodeAffinityMatchExpressions": map[string]any{
 			"requiredDuringSchedulingIgnoredDuringExecution":  requiredDuringSchedulingIgnoredDuringExecution,
 			"preferredDuringSchedulingIgnoredDuringExecution": preferredDuringSchedulingIgnoredDuringExecution,
 		},
