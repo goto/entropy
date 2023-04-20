@@ -71,18 +71,35 @@ type (
 )
 
 type driverConf struct {
-	Labels        map[string]string     `json:"labels,omitempty"`
-	Telegraf      *Telegraf             `json:"telegraf"`
-	Namespace     string                `json:"namespace" validate:"required"`
-	ChartValues   ChartValues           `json:"chart_values" validate:"required"`
-	Limits        UsageSpec             `json:"limits,omitempty" validate:"required"`
-	Requests      UsageSpec             `json:"requests,omitempty" validate:"required"`
-	Tolerations   map[string]Toleration `json:"tolerations"`
-	InitContainer InitContainer         `json:"init_container"`
+	Labels                        map[string]string             `json:"labels,omitempty"`
+	Telegraf                      *Telegraf                     `json:"telegraf"`
+	Namespace                     string                        `json:"namespace" validate:"required"`
+	ChartValues                   ChartValues                   `json:"chart_values" validate:"required"`
+	Limits                        UsageSpec                     `json:"limits,omitempty" validate:"required"`
+	Requests                      UsageSpec                     `json:"requests,omitempty" validate:"required"`
+	Tolerations                   map[string]Toleration         `json:"tolerations"`
+	InitContainer                 InitContainer                 `json:"init_container"`
+	NodeAffinitiyMatchExpressions NodeAffinitiyMatchExpressions `json:"node_affinitiy_match_expressions"`
 
 	GCSSinkCredential      string `json:"gcs_sink_credential,omitempty"`
 	DLQGCSSinkCredential   string `json:"dlq_gcs_sink_credential,omitempty"`
 	BigQuerySinkCredential string `json:"big_query_sink_credential,omitempty"`
+}
+
+type NodeAffinitiyMatchExpressions struct {
+	RequiredDuringSchedulingIgnoredDuringExecution  []Preference         `json:"requiredDuringSchedulingIgnoredDuringExecution,omitempty"`
+	PreferredDuringSchedulingIgnoredDuringExecution []WeightedPreference `json:"preferredDuringSchedulingIgnoredDuringExecution,omitempty"`
+}
+
+type WeightedPreference struct {
+	Weight     int          `json:"weight" validate:"required"`
+	Preference []Preference `json:"preference" validate:"required"`
+}
+
+type Preference struct {
+	Key      string   `json:"key" validate:"required"`
+	Operator string   `json:"operator" validate:"required"`
+	Values   []string `json:"values"`
 }
 
 type InitContainer struct {
@@ -162,6 +179,16 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 
 	var volumes []map[string]any
 	var volumeMounts []map[string]any
+	var requiredDuringSchedulingIgnoredDuringExecution []Preference
+	var preferredDuringSchedulingIgnoredDuringExecution []WeightedPreference
+
+	if fd.conf.NodeAffinitiyMatchExpressions.RequiredDuringSchedulingIgnoredDuringExecution != nil {
+		requiredDuringSchedulingIgnoredDuringExecution = fd.conf.NodeAffinitiyMatchExpressions.RequiredDuringSchedulingIgnoredDuringExecution
+	}
+
+	if fd.conf.NodeAffinitiyMatchExpressions.PreferredDuringSchedulingIgnoredDuringExecution != nil {
+		preferredDuringSchedulingIgnoredDuringExecution = fd.conf.NodeAffinitiyMatchExpressions.PreferredDuringSchedulingIgnoredDuringExecution
+	}
 
 	newVolume := func(name string) map[string]any {
 		const mountMode = 420
@@ -240,6 +267,10 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		},
 		"volumes":     volumes,
 		"tolerations": tolerations,
+		"nodeAffinitiyMatchExpressions": map[string]any{
+			"requiredDuringSchedulingIgnoredDuringExecution":  requiredDuringSchedulingIgnoredDuringExecution,
+			"preferredDuringSchedulingIgnoredDuringExecution": preferredDuringSchedulingIgnoredDuringExecution,
+		},
 		"init-firehose": map[string]any{
 			"enabled": fd.conf.InitContainer.Enabled,
 			"image": map[string]any{
