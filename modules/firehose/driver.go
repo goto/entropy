@@ -188,12 +188,10 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 	newVolume := func(name string) map[string]any {
 		const mountMode = 420
 		return map[string]any{
-			"name": name,
-			"secret": map[string]any{
-				"items":       []map[string]any{{"key": "token", "path": "auth.json"}},
-				"secretName":  name,
-				"defaultMode": mountMode,
-			},
+			"name":        name,
+			"items":       []map[string]any{{"key": "token", "path": "auth.json"}},
+			"secretName":  name,
+			"defaultMode": mountMode,
 		}
 	}
 
