@@ -12,10 +12,8 @@ import (
 	"github.com/goto/entropy/pkg/kube"
 )
 
-const tolerationKey = "tolerations"
-
 type kubeDriver struct {
-	Configs json.RawMessage `json:"configs"`
+	Tolerations map[string][]Toleration
 }
 
 func (m *kubeDriver) Plan(ctx context.Context, res module.ExpandedResource,
@@ -65,19 +63,9 @@ func (m *kubeDriver) Output(_ context.Context, res module.ExpandedResource) (jso
 		return nil, errors.ErrInvalid.WithMsgf("failed to fetch server info: %v", err)
 	}
 
-	configs := map[string]map[string][]Toleration{}
-	err = json.Unmarshal(m.Configs, &configs)
-	if err != nil {
-		return nil, errors.ErrInvalid.WithMsgf("failed to unmarshal module config: %v", err)
-	}
-
-	output := Output{
-		Configs:    conf,
-		ServerInfo: *info,
-	}
-	if configs[tolerationKey] != nil {
-		output.Tolerations = configs[tolerationKey]
-	}
-
-	return output.JSON(), nil
+	return Output{
+		Configs:     conf,
+		ServerInfo:  *info,
+		Tolerations: m.Tolerations,
+	}.JSON(), nil
 }

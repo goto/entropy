@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 
 	"github.com/goto/entropy/core/module"
+	"github.com/goto/entropy/pkg/errors"
 )
+
+const tolerationKey = "tolerations"
 
 var Module = module.Descriptor{
 	Kind: "kubernetes",
@@ -18,8 +21,18 @@ var Module = module.Descriptor{
 		},
 	},
 	DriverFactory: func(conf json.RawMessage) (module.Driver, error) {
-		return &kubeDriver{
-			Configs: conf,
-		}, nil
+		configs := map[string]map[string][]Toleration{}
+		err := json.Unmarshal(conf, &configs)
+		if err != nil {
+			return nil, errors.ErrInvalid.WithMsgf("failed to unmarshal module config: %v", err)
+		}
+
+		kd := &kubeDriver{}
+
+		if configs[tolerationKey] != nil {
+			kd.Tolerations = configs[tolerationKey]
+		}
+
+		return kd, nil
 	},
 }
