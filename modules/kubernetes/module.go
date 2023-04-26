@@ -18,6 +18,8 @@ var Module = module.Descriptor{
 		},
 	},
 	DriverFactory: func(conf json.RawMessage) (module.Driver, error) {
-		return &kubeDriver{}, nil
+		return &kubeDriver{
+			Configs: conf,
+		}, nil
 	},
 }
