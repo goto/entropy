@@ -8,8 +8,6 @@ import (
 	"github.com/goto/entropy/pkg/errors"
 )
 
-const tolerationKey = "tolerations"
-
 var Module = module.Descriptor{
 	Kind: "kubernetes",
 	Actions: []module.ActionDesc{
