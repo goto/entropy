@@ -13,7 +13,7 @@ import (
 )
 
 type kubeDriver struct {
-	Tolerations map[string][]Toleration
+	Tolerations map[string][]Toleration `json:"tolerations"`
 }
 
 func (m *kubeDriver) Plan(ctx context.Context, res module.ExpandedResource,
