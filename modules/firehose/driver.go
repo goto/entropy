@@ -41,6 +41,11 @@ const (
 
 const defaultKey = "default"
 
+const (
+	metricStatsdHost = "localhost"
+	metricStatsdPort = "8152"
+)
+
 var defaultDriverConf = driverConf{
 	Namespace: "firehose",
 	ChartValues: ChartValues{
@@ -259,6 +264,19 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 			"mountPath": mountPath,
 		})
 		conf.EnvVariables["SINK_BIGQUERY_CREDENTIAL_PATH"] = credentialPath
+	}
+
+	if telegrafConf.Enabled {
+		sink := conf.EnvVariables["SINK_TYPE"]
+		datatype := conf.EnvVariables["INPUT_SCHEMA_DATA_TYPE"]
+		proto := conf.EnvVariables["INPUT_SCHEMA_PROTO_CLASS"]
+		streamName := res.Labels["stream_name"]
+		app := entropyLabels["deployment"]
+		team := deploymentLabels["owner"]
+
+		conf.EnvVariables["METRIC_STATSD_TAGS"] = fmt.Sprintf("namespace=firehose,app=%s,sink=%s,datatype=%s,stream=%s,team=%s,proto=%s", app, sink, datatype, streamName, team, proto)
+		conf.EnvVariables["METRIC_STATSD_HOST"] = metricStatsdHost
+		conf.EnvVariables["METRIC_STATSD_PORT"] = metricStatsdPort
 	}
 
 	rc := helm.DefaultReleaseConfig()
