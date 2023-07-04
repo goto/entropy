@@ -362,11 +362,12 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 						"replicas":      1,
 						"deployment_id": "firehose-deployment-x",
 						"env_variables": map[string]string{
-							"SINK_TYPE":                      "LOG",
-							"INPUT_SCHEMA_PROTO_CLASS":       "com.foo.Bar",
-							"SOURCE_KAFKA_CONSUMER_GROUP_ID": "foo-bar-baz",
-							"SOURCE_KAFKA_BROKERS":           "localhost:9092",
-							"SOURCE_KAFKA_TOPIC":             "foo-log",
+							"SINK_TYPE":                                      "LOG",
+							"INPUT_SCHEMA_PROTO_CLASS":                       "com.foo.Bar",
+							"SOURCE_KAFKA_CONSUMER_GROUP_ID":                 "foo-bar-baz",
+							"SOURCE_KAFKA_BROKERS":                           "localhost:9092",
+							"SOURCE_KAFKA_TOPIC":                             "foo-log",
+							"SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_OFFSET_RESET": "latest",
 						},
 						"limits": map[string]any{
 							"cpu":    "200m",
@@ -376,6 +377,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 							"cpu":    "200m",
 							"memory": "512Mi",
 						},
+						"stopped": false,
 					}),
 				},
 				State: resource.State{
