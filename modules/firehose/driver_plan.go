@@ -10,6 +10,8 @@ import (
 	"github.com/goto/entropy/pkg/kafka"
 )
 
+const offsetResetKey = "SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_OFFSET_RESET"
+
 func (fd *firehoseDriver) Plan(_ context.Context, exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
 	switch act.Name {
 	case module.CreateAction:
@@ -130,6 +132,14 @@ func (fd *firehoseDriver) planReset(exr module.ExpandedResource, act module.Acti
 
 	immediately := fd.timeNow()
 
+	curConf, err := readConfig(exr.Resource, exr.Resource.Spec.Configs, fd.conf)
+	if err != nil {
+		return nil, err
+	}
+
+	curConf.EnvVariables[offsetResetKey] = resetValue
+
+	exr.Resource.Spec.Configs = mustJSON(curConf)
 	exr.Resource.State = resource.State{
 		Status:     resource.StatusPending,
 		Output:     exr.Resource.State.Output,
