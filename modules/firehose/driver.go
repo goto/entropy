@@ -176,7 +176,7 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 ) (*helm.ReleaseConfig, error) {
 	var telegrafConf Telegraf
 	if conf.Telegraf != nil && conf.Telegraf.Enabled {
-		telegrafTags, err := renderLabels(conf.Telegraf.Config.AdditionalGlobalTags, res.Labels)
+		telegrafTags, err := renderTpl(conf.Telegraf.Config.AdditionalGlobalTags, res.Labels)
 		if err != nil {
 			return nil, err
 		}
@@ -207,7 +207,7 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		labelOrchestrator: orchestratorLabelValue,
 	}
 
-	deploymentLabels, err := renderLabels(fd.conf.Labels, cloneAndMergeMaps(res.Labels, entropyLabels))
+	deploymentLabels, err := renderTpl(fd.conf.Labels, cloneAndMergeMaps(res.Labels, entropyLabels))
 	if err != nil {
 		return nil, err
 	}
@@ -267,14 +267,12 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 	}
 
 	if telegrafConf.Enabled {
-		sink := conf.EnvVariables["SINK_TYPE"]
-		datatype := conf.EnvVariables["INPUT_SCHEMA_DATA_TYPE"]
-		proto := conf.EnvVariables["INPUT_SCHEMA_PROTO_CLASS"]
-		streamName := res.Labels["stream_name"]
-		app := entropyLabels["deployment"]
-		team := deploymentLabels["owner"]
 
-		conf.EnvVariables["METRIC_STATSD_TAGS"] = fmt.Sprintf("namespace=firehose,app=%s,sink=%s,datatype=%s,stream=%s,team=%s,proto=%s", app, sink, datatype, streamName, team, proto)
+		conf.EnvVariables, err = renderTpl(conf.EnvVariables, cloneAndMergeMaps(conf.EnvVariables, cloneAndMergeMaps(deploymentLabels, cloneAndMergeMaps(res.Labels, entropyLabels))))
+		if err != nil {
+			return nil, err
+		}
+
 		conf.EnvVariables["METRIC_STATSD_HOST"] = metricStatsdHost
 		conf.EnvVariables["METRIC_STATSD_PORT"] = metricStatsdPort
 	}
@@ -337,7 +335,7 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 	return rc, nil
 }
 
-func renderLabels(labelsTpl map[string]string, labelsValues map[string]string) (map[string]string, error) {
+func renderTpl(labelsTpl map[string]string, labelsValues map[string]string) (map[string]string, error) {
 	const useZeroValueForMissingKey = "missingkey=zero"
 
 	finalLabels := map[string]string{}
