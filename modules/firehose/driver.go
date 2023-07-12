@@ -267,7 +267,6 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 	}
 
 	if telegrafConf.Enabled {
-
 		conf.EnvVariables, err = renderTpl(conf.EnvVariables, cloneAndMergeMaps(conf.EnvVariables, cloneAndMergeMaps(deploymentLabels, cloneAndMergeMaps(res.Labels, entropyLabels))))
 		if err != nil {
 			return nil, err
