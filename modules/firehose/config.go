@@ -33,7 +33,7 @@ type ScaleParams struct {
 }
 
 type StartParams struct {
-	StopTime *time.Time `json:"stop_time,omitempty"`
+	StopTime *time.Time `json:"stop_time"`
 }
 
 type Config struct {
