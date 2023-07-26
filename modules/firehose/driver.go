@@ -201,7 +201,6 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 	entropyLabels := map[string]string{
 		labelDeployment:   conf.DeploymentID,
 		labelOrchestrator: orchestratorLabelValue,
-		labelURN:          res.URN,
 	}
 
 	otherLabels := map[string]string{
