@@ -155,6 +155,7 @@ func revisionToProto(revision resource.Revision) (*entropyv1beta1.ResourceRevisi
 		Reason:    revision.Reason,
 		Labels:    revision.Labels,
 		CreatedAt: timestamppb.New(revision.CreatedAt),
+		CreatedBy: revision.CreatedBy,
 		Spec:      spec,
 	}, nil
 }

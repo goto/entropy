@@ -64,6 +64,7 @@ func (m *ResourceDependency) validate(all bool) error {
 	if len(errors) > 0 {
 		return ResourceDependencyMultiError(errors)
 	}
+
 	return nil
 }
 
@@ -228,6 +229,7 @@ func (m *ResourceSpec) validate(all bool) error {
 	if len(errors) > 0 {
 		return ResourceSpecMultiError(errors)
 	}
+
 	return nil
 }
 
@@ -326,6 +328,7 @@ func (m *ListString) validate(all bool) error {
 	if len(errors) > 0 {
 		return ListStringMultiError(errors)
 	}
+
 	return nil
 }
 
@@ -470,6 +473,7 @@ func (m *LogOptions) validate(all bool) error {
 	if len(errors) > 0 {
 		return LogOptionsMultiError(errors)
 	}
+
 	return nil
 }
 
@@ -663,6 +667,7 @@ func (m *ResourceState) validate(all bool) error {
 	if len(errors) > 0 {
 		return ResourceStateMultiError(errors)
 	}
+
 	return nil
 }
 
@@ -888,6 +893,7 @@ func (m *Resource) validate(all bool) error {
 	if len(errors) > 0 {
 		return ResourceMultiError(errors)
 	}
+
 	return nil
 }
 
@@ -992,6 +998,7 @@ func (m *ListResourcesRequest) validate(all bool) error {
 	if len(errors) > 0 {
 		return ListResourcesRequestMultiError(errors)
 	}
+
 	return nil
 }
 
@@ -1127,6 +1134,7 @@ func (m *ListResourcesResponse) validate(all bool) error {
 	if len(errors) > 0 {
 		return ListResourcesResponseMultiError(errors)
 	}
+
 	return nil
 }
 
@@ -1230,6 +1238,7 @@ func (m *GetResourceRequest) validate(all bool) error {
 	if len(errors) > 0 {
 		return GetResourceRequestMultiError(errors)
 	}
+
 	return nil
 }
 
@@ -1360,6 +1369,7 @@ func (m *GetResourceResponse) validate(all bool) error {
 	if len(errors) > 0 {
 		return GetResourceResponseMultiError(errors)
 	}
+
 	return nil
 }
 
@@ -1490,6 +1500,7 @@ func (m *CreateResourceRequest) validate(all bool) error {
 	if len(errors) > 0 {
 		return CreateResourceRequestMultiError(errors)
 	}
+
 	return nil
 }
 
@@ -1620,6 +1631,7 @@ func (m *CreateResourceResponse) validate(all bool) error {
 	if len(errors) > 0 {
 		return CreateResourceResponseMultiError(errors)
 	}
+
 	return nil
 }
 
@@ -1754,6 +1766,7 @@ func (m *UpdateResourceRequest) validate(all bool) error {
 	if len(errors) > 0 {
 		return UpdateResourceRequestMultiError(errors)
 	}
+
 	return nil
 }
 
@@ -1884,6 +1897,7 @@ func (m *UpdateResourceResponse) validate(all bool) error {
 	if len(errors) > 0 {
 		return UpdateResourceResponseMultiError(errors)
 	}
+
 	return nil
 }
 
@@ -1987,6 +2001,7 @@ func (m *DeleteResourceRequest) validate(all bool) error {
 	if len(errors) > 0 {
 		return DeleteResourceRequestMultiError(errors)
 	}
+
 	return nil
 }
 
@@ -2088,6 +2103,7 @@ func (m *DeleteResourceResponse) validate(all bool) error {
 	if len(errors) > 0 {
 		return DeleteResourceResponseMultiError(errors)
 	}
+
 	return nil
 }
 
@@ -2224,6 +2240,7 @@ func (m *ApplyActionRequest) validate(all bool) error {
 	if len(errors) > 0 {
 		return ApplyActionRequestMultiError(errors)
 	}
+
 	return nil
 }
 
@@ -2354,6 +2371,7 @@ func (m *ApplyActionResponse) validate(all bool) error {
 	if len(errors) > 0 {
 		return ApplyActionResponseMultiError(errors)
 	}
+
 	return nil
 }
 
@@ -2459,6 +2477,7 @@ func (m *LogChunk) validate(all bool) error {
 	if len(errors) > 0 {
 		return LogChunkMultiError(errors)
 	}
+
 	return nil
 }
 
@@ -2561,6 +2580,7 @@ func (m *GetLogRequest) validate(all bool) error {
 	if len(errors) > 0 {
 		return GetLogRequestMultiError(errors)
 	}
+
 	return nil
 }
 
@@ -2689,6 +2709,7 @@ func (m *GetLogResponse) validate(all bool) error {
 	if len(errors) > 0 {
 		return GetLogResponseMultiError(errors)
 	}
+
 	return nil
 }
 
@@ -2851,9 +2872,12 @@ func (m *ResourceRevision) validate(all bool) error {
 
 	// no validation rules for Reason
 
+	// no validation rules for CreatedBy
+
 	if len(errors) > 0 {
 		return ResourceRevisionMultiError(errors)
 	}
+
 	return nil
 }
 
@@ -2955,6 +2979,7 @@ func (m *GetResourceRevisionsRequest) validate(all bool) error {
 	if len(errors) > 0 {
 		return GetResourceRevisionsRequestMultiError(errors)
 	}
+
 	return nil
 }
 
@@ -3091,6 +3116,7 @@ func (m *GetResourceRevisionsResponse) validate(all bool) error {
 	if len(errors) > 0 {
 		return GetResourceRevisionsResponseMultiError(errors)
 	}
+
 	return nil
 }
 
