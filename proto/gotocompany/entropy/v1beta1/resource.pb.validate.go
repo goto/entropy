@@ -890,6 +890,10 @@ func (m *Resource) validate(all bool) error {
 		}
 	}
 
+	// no validation rules for CreatedBy
+
+	// no validation rules for UpdatedBy
+
 	if len(errors) > 0 {
 		return ResourceMultiError(errors)
 	}

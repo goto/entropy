@@ -35,6 +35,8 @@ func resourceToProto(res resource.Resource) (*entropyv1beta1.Resource, error) {
 		UpdatedAt: timestamppb.New(res.UpdatedAt),
 		Spec:      spec,
 		State:     protoState,
+		CreatedBy: res.CreatedBy,
+		UpdatedBy: res.UpdatedBy,
 	}, nil
 }
 
