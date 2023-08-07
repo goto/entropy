@@ -1,7 +1,10 @@
 package server
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -84,24 +87,41 @@ func requestLogger(lg *zap.Logger) gorillamux.MiddlewareFunc {
 			t := time.Now()
 			span := trace.FromContext(req.Context())
 
-			clientID, _, _ := req.BasicAuth()
-			fields := []zap.Field{
-				zap.String("path", req.URL.Path),
-				zap.String("method", req.Method),
-				zap.String("request_id", req.Header.Get(headerRequestID)),
-				zap.String("client_id", clientID),
-				zap.String("trace_id", span.SpanContext().TraceID.String()),
+			buf, err := io.ReadAll(req.Body)
+			if err != nil {
+				lg.Debug("error reading request body: %v", zap.String("error", err.Error()))
+				http.Error(wr, err.Error(), http.StatusInternalServerError)
+				return
 			}
+			reader := io.NopCloser(bytes.NewBuffer(buf))
+			req.Body = reader
+
+			body := json.RawMessage(buf)
+			jsonBody, err := json.Marshal(body)
+			if err != nil {
+				lg.Debug("error marshaling request body: %v", zap.String("error", err.Error()))
+				http.Error(wr, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			clientID, _, _ := req.BasicAuth()
 
 			wrapped := &wrappedWriter{
 				Status:         http.StatusOK,
 				ResponseWriter: wr,
 			}
 			next.ServeHTTP(wrapped, req)
-			fields = append(fields,
+
+			fields := []zap.Field{
+				zap.String("path", req.URL.Path),
+				zap.String("method", req.Method),
+				zap.String("request_id", req.Header.Get(headerRequestID)),
+				zap.String("client_id", clientID),
+				zap.String("trace_id", span.SpanContext().TraceID.String()),
 				zap.Duration("response_time", time.Since(t)),
+				zap.String("request_body", string(jsonBody)),
 				zap.Int("status", wrapped.Status),
-			)
+			}
 
 			if !is2xx(wrapped.Status) {
 				lg.Warn("request handled with non-2xx response", fields...)
