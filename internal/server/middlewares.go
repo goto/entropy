@@ -87,23 +87,6 @@ func requestLogger(lg *zap.Logger) gorillamux.MiddlewareFunc {
 			t := time.Now()
 			span := trace.FromContext(req.Context())
 
-			buf, err := io.ReadAll(req.Body)
-			if err != nil {
-				lg.Debug("error reading request body: %v", zap.String("error", err.Error()))
-				http.Error(wr, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			reader := io.NopCloser(bytes.NewBuffer(buf))
-			req.Body = reader
-
-			body := json.RawMessage(buf)
-			jsonBody, err := json.Marshal(body)
-			if err != nil {
-				lg.Debug("error marshaling request body: %v", zap.String("error", err.Error()))
-				http.Error(wr, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
 			clientID, _, _ := req.BasicAuth()
 
 			wrapped := &wrappedWriter{
@@ -119,8 +102,28 @@ func requestLogger(lg *zap.Logger) gorillamux.MiddlewareFunc {
 				zap.String("client_id", clientID),
 				zap.String("trace_id", span.SpanContext().TraceID.String()),
 				zap.Duration("response_time", time.Since(t)),
-				zap.String("request_body", string(jsonBody)),
 				zap.Int("status", wrapped.Status),
+			}
+
+			switch req.Method {
+			case http.MethodGet:
+				break
+			default:
+				buf, err := io.ReadAll(req.Body)
+				if err != nil {
+					lg.Debug("error reading request body: %v", zap.String("error", err.Error()))
+				} else if len(buf) > 0 {
+					dst := &bytes.Buffer{}
+					err := json.Compact(dst, buf)
+					if err != nil {
+						lg.Debug("error json compacting request body: %v", zap.String("error", err.Error()))
+					} else {
+						fields = append(fields, zap.String("request_body", dst.String()))
+					}
+				}
+
+				reader := io.NopCloser(bytes.NewBuffer(buf))
+				req.Body = reader
 			}
 
 			if !is2xx(wrapped.Status) {
