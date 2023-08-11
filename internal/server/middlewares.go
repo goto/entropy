@@ -95,6 +95,10 @@ func requestLogger(lg *zap.Logger) gorillamux.MiddlewareFunc {
 			}
 			next.ServeHTTP(wrapped, req)
 
+			if req.URL.Path == "/ping" {
+				return
+			}
+
 			fields := []zap.Field{
 				zap.String("path", req.URL.Path),
 				zap.String("method", req.Method),
