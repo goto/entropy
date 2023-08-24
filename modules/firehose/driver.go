@@ -340,7 +340,7 @@ func renderTpl(labelsTpl map[string]string, labelsValues map[string]string) (map
 				WithMsgf("failed to render label template").WithCausef(err.Error())
 		}
 
-		//allow empty values
+		// allow empty values
 		//		labelVal := strings.TrimSpace(buf.String())
 		//		if labelVal == "" {
 		//			continue
