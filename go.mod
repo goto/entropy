@@ -11,7 +11,7 @@ require (
 	github.com/go-playground/validator/v10 v10.11.2
 	github.com/google/go-cmp v0.5.9
 	github.com/gorilla/mux v1.8.0
-	github.com/goto/salt v0.3.0
+	github.com/goto/salt v0.3.3
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.3
 	github.com/jmoiron/sqlx v1.3.5
