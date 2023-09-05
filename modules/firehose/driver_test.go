@@ -571,7 +571,7 @@ func TestFirehoseDriver(t *testing.T) {
 				timeNow: func() time.Time { return frozenTime },
 			}
 
-			conf, err := readConfig(tt.res, tt.res.Spec.Configs, fd.conf)
+			conf, _ := readConfig(tt.res, tt.res.Spec.Configs, fd.conf)
 			chartVals, _ := mergeChartValues(&fd.conf.ChartValues, conf.ChartValues)
 
 			conf.Telegraf = fd.conf.Telegraf
@@ -642,7 +642,7 @@ func firehoseDriverConf() driverConf {
 		},
 		Namespace: "namespace-1",
 		RequestsAndLimits: map[string]RequestsAndLimits{
-			"BIGQUERY": RequestsAndLimits{
+			"BIGQUERY": {
 				Limits: UsageSpec{
 					CPU:    "6000m",
 					Memory: "20000Mi",
