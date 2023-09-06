@@ -94,9 +94,11 @@ func requestLogger(lg *zap.Logger) gorillamux.MiddlewareFunc {
 				ResponseWriter: wr,
 			}
 
-			buf, _ := io.ReadAll(req.Body)
-			reader := io.NopCloser(bytes.NewBuffer(buf))
-			req.Body = reader
+			bodyCopy := bytes.NewBuffer(nil)
+			noOfBytes, err := io.Copy(bodyCopy, req.Body)
+			if err != nil {
+				lg.Error("error copying request body: %v", zap.String("error", err.Error()))
+			}
 
 			next.ServeHTTP(wrapped, req)
 
@@ -118,7 +120,8 @@ func requestLogger(lg *zap.Logger) gorillamux.MiddlewareFunc {
 			case http.MethodGet:
 				break
 			default:
-				if len(buf) > 0 {
+				if noOfBytes > 0 {
+					buf, _ := io.ReadAll(bodyCopy)
 					dst := &bytes.Buffer{}
 					err := json.Compact(dst, buf)
 					if err != nil {
@@ -127,9 +130,6 @@ func requestLogger(lg *zap.Logger) gorillamux.MiddlewareFunc {
 						fields = append(fields, zap.String("request_body", dst.String()))
 					}
 				}
-
-				reader := io.NopCloser(bytes.NewBuffer(buf))
-				req.Body = reader
 			}
 
 			if !is2xx(wrapped.Status) {
