@@ -93,6 +93,11 @@ func requestLogger(lg *zap.Logger) gorillamux.MiddlewareFunc {
 				Status:         http.StatusOK,
 				ResponseWriter: wr,
 			}
+
+			buf, _ := io.ReadAll(req.Body)
+			reader := io.NopCloser(bytes.NewBuffer(buf))
+			req.Body = reader
+
 			next.ServeHTTP(wrapped, req)
 
 			if req.URL.Path == "/ping" {
@@ -113,10 +118,7 @@ func requestLogger(lg *zap.Logger) gorillamux.MiddlewareFunc {
 			case http.MethodGet:
 				break
 			default:
-				buf, err := io.ReadAll(req.Body)
-				if err != nil {
-					lg.Debug("error reading request body: %v", zap.String("error", err.Error()))
-				} else if len(buf) > 0 {
+				if len(buf) > 0 {
 					dst := &bytes.Buffer{}
 					err := json.Compact(dst, buf)
 					if err != nil {
