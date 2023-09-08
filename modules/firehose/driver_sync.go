@@ -3,12 +3,15 @@ package firehose
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/modules/kubernetes"
 	"github.com/goto/entropy/pkg/errors"
 )
+
+const SleepDurationBeforeReset = 10
 
 func (fd *firehoseDriver) Sync(ctx context.Context, exr module.ExpandedResource) (*resource.State, error) {
 	modData, err := readTransientData(exr)
@@ -56,6 +59,7 @@ func (fd *firehoseDriver) Sync(ctx context.Context, exr module.ExpandedResource)
 			}
 
 		case stepKafkaReset:
+			time.Sleep(SleepDurationBeforeReset * time.Second)
 			if err := fd.consumerReset(ctx, *conf, kubeOut, modData.ResetOffsetTo); err != nil {
 				return nil, err
 			}
