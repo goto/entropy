@@ -11,8 +11,6 @@ import (
 	"github.com/goto/entropy/pkg/errors"
 )
 
-const SleepDurationBeforeReset = 10
-
 func (fd *firehoseDriver) Sync(ctx context.Context, exr module.ExpandedResource) (*resource.State, error) {
 	modData, err := readTransientData(exr)
 	if err != nil {
@@ -59,7 +57,7 @@ func (fd *firehoseDriver) Sync(ctx context.Context, exr module.ExpandedResource)
 			}
 
 		case stepKafkaReset:
-			time.Sleep(SleepDurationBeforeReset * time.Second)
+			time.Sleep(fd.conf.OffsetResetDelay)
 			if err := fd.consumerReset(ctx, *conf, kubeOut, modData.ResetOffsetTo); err != nil {
 				return nil, err
 			}
