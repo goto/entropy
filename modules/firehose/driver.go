@@ -120,7 +120,7 @@ type driverConf struct {
 	NodeAffinityMatchExpressions NodeAffinityMatchExpressions `json:"node_affinity_match_expressions"`
 
 	// delay between stopping a firehose and making an offset reset request
-	OffsetResetDelay time.Duration `json:"offset_reset_delay"`
+	OffsetResetDelaySeconds int `json:"offset_reset_delay_seconds"`
 }
 
 type RequestsAndLimits struct {

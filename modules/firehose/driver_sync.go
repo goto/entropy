@@ -57,7 +57,7 @@ func (fd *firehoseDriver) Sync(ctx context.Context, exr module.ExpandedResource)
 			}
 
 		case stepKafkaReset:
-			time.Sleep(fd.conf.OffsetResetDelay)
+			time.Sleep(time.Duration(fd.conf.OffsetResetDelaySeconds) * time.Second)
 			if err := fd.consumerReset(ctx, *conf, kubeOut, modData.ResetOffsetTo); err != nil {
 				return nil, err
 			}
