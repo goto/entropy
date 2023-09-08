@@ -119,7 +119,7 @@ type driverConf struct {
 	// NodeAffinityMatchExpressions can be used to set node-affinity for the deployment.
 	NodeAffinityMatchExpressions NodeAffinityMatchExpressions `json:"node_affinity_match_expressions"`
 
-	//delay after stopping a firehose, for making an offset reset request
+	//delay between stopping a firehose and making an offset reset request
 	OffsetResetDelay time.Duration `json:"offset_reset_delay"`
 }
 
