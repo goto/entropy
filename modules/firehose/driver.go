@@ -75,7 +75,7 @@ type firehoseDriver struct {
 type (
 	kubeDeployFn    func(ctx context.Context, isCreate bool, conf kube.Config, hc helm.ReleaseConfig) error
 	kubeGetPodFn    func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error)
-	consumerResetFn func(ctx context.Context, conf Config, out kubernetes.Output, resetTo string) error
+	consumerResetFn func(ctx context.Context, conf Config, out kubernetes.Output, resetTo string, offsetResetDelaySeconds int) error
 )
 
 type driverConf struct {

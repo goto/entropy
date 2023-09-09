@@ -3,7 +3,6 @@ package firehose
 import (
 	"context"
 	"encoding/json"
-	"time"
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
@@ -57,8 +56,7 @@ func (fd *firehoseDriver) Sync(ctx context.Context, exr module.ExpandedResource)
 			}
 
 		case stepKafkaReset:
-			time.Sleep(time.Duration(fd.conf.OffsetResetDelaySeconds) * time.Second)
-			if err := fd.consumerReset(ctx, *conf, kubeOut, modData.ResetOffsetTo); err != nil {
+			if err := fd.consumerReset(ctx, *conf, kubeOut, modData.ResetOffsetTo, fd.conf.OffsetResetDelaySeconds); err != nil {
 				return nil, err
 			}
 
