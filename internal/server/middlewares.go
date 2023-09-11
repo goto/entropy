@@ -97,6 +97,7 @@ func requestLogger(lg *zap.Logger) gorillamux.MiddlewareFunc {
 			bodyBytes, err := io.ReadAll(req.Body)
 			if err != nil {
 				lg.Debug("error reading request body: %v", zap.String("error", err.Error()))
+				return
 			}
 			reader := io.NopCloser(bytes.NewBuffer(bodyBytes))
 			req.Body = reader
