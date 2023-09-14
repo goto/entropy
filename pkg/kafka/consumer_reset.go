@@ -28,6 +28,8 @@ type ResetParams struct {
 // DoReset executes a kubernetes job with kafka-consumer-group.sh installed to
 // reset offset policy for the given consumer id on all topics.
 func DoReset(ctx context.Context, jobCluster *kube.Client, kubeNamespace, kafkaBrokers, kafkaConsumerID, kafkaResetValue, resetJobName string) error {
+	suffix := "-firehose"
+	resetJobName = strings.TrimSuffix(resetJobName, suffix)
 	jobName := resetJobName + "-reset"
 
 	return jobCluster.RunJob(ctx, kubeNamespace,
