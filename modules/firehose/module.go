@@ -122,7 +122,6 @@ func consumerReset(ctx context.Context, conf Config, out kubernetes.Output, rese
 
 	brokerAddr := conf.EnvVariables[confKeyKafkaBrokers]
 	consumerID := conf.EnvVariables[confKeyConsumerID]
-	deploymentID := conf.DeploymentID
 
 	kubeClient, err := kube.NewClient(out.Configs)
 	if err != nil {
@@ -131,7 +130,7 @@ func consumerReset(ctx context.Context, conf Config, out kubernetes.Output, rese
 
 	select {
 	case <-time.After(time.Duration(offsetResetDelaySeconds) * time.Second):
-		if err := kafka.DoReset(ctx, kubeClient, conf.Namespace, brokerAddr, consumerID, resetTo, deploymentID); err != nil {
+		if err := kafka.DoReset(ctx, kubeClient, conf.Namespace, brokerAddr, consumerID, resetTo, conf.DeploymentID); err != nil {
 			switch {
 			case errors.Is(err, kube.ErrJobCreationFailed):
 				return errNetwork.WithCause(err)
