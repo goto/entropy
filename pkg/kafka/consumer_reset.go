@@ -30,7 +30,7 @@ type ResetParams struct {
 func DoReset(ctx context.Context, jobCluster *kube.Client, kubeNamespace, kafkaBrokers, kafkaConsumerID, kafkaResetValue, resetJobName string) error {
 	suffix := "-firehose"
 	resetJobName = strings.TrimSuffix(resetJobName, suffix)
-	resetJobName = resetJobName + "-reset"
+	resetJobName += "-reset"
 
 	return jobCluster.RunJob(ctx, kubeNamespace,
 		resetJobName,
