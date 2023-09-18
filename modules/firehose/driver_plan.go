@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strconv"
 
 	"github.com/goto/entropy/core/module"
@@ -14,7 +15,7 @@ import (
 
 const SourceKafkaConsumerAutoOffsetReset = "SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_OFFSET_RESET"
 
-var errGroupNumberLimitCrossed = errors.New("group number limit crossed 9999")
+var suffixRegex = regexp.MustCompile(`^([A-Za-z0-9-]+)-([0-9]+)$`)
 
 func (fd *firehoseDriver) Plan(_ context.Context, exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
 	switch act.Name {
@@ -184,7 +185,7 @@ func (fd *firehoseDriver) planReset(exr module.ExpandedResource, act module.Acti
 
 	curConf.ResetOffset = resetValue
 	curConf.EnvVariables[SourceKafkaConsumerAutoOffsetReset] = resetValue
-	curConf.EnvVariables[confKeyConsumerID], err = getNewConsumerGroupID(curConf.EnvVariables[confKeyConsumerID], curConf.DeploymentID)
+	curConf.EnvVariables[confKeyConsumerID], err = getNewConsumerGroupID(curConf.EnvVariables[confKeyConsumerID])
 	if err != nil {
 		return nil, err
 	}
@@ -204,24 +205,19 @@ func (fd *firehoseDriver) planReset(exr module.ExpandedResource, act module.Acti
 	return &exr.Resource, nil
 }
 
-func getNewConsumerGroupID(currentConsumerGroupID, deploymentID string) (string, error) {
-	const groupNumberSuffixLength = 4
-	suffix := "0000"
+func getNewConsumerGroupID(curGroup string) (string, error) {
+	matches := suffixRegex.FindStringSubmatch(curGroup)
+	if len(matches) != 3 {
+		return "", errors.New("group id doest not match regex")
+	}
+	prefix, sequence := matches[1], matches[2]
 
-	currentConsumerGroupSuffix := currentConsumerGroupID[len(currentConsumerGroupID)-groupNumberSuffixLength:]
-	currentConsumerGroupNumber, err := strconv.Atoi(currentConsumerGroupSuffix)
+	seq, err := strconv.Atoi(sequence)
 	if err != nil {
-		return "", err
+		return "", errors.Errorf("error converting group sequence %s to int: %v", sequence, err)
+	} else {
+		seq++
 	}
 
-	currentConsumerGroupNumber++
-	newConsumerGroupSuffix := strconv.Itoa(currentConsumerGroupNumber)
-
-	if len(newConsumerGroupSuffix) > groupNumberSuffixLength {
-		return "", errGroupNumberLimitCrossed
-	}
-
-	newConsumerGroupSuffix = suffix[:groupNumberSuffixLength-len(newConsumerGroupSuffix)] + newConsumerGroupSuffix
-
-	return fmt.Sprintf("%s-%s", deploymentID, newConsumerGroupSuffix), nil
+	return fmt.Sprintf("%s-%d", prefix, seq), nil
 }
