@@ -594,7 +594,6 @@ func TestGetNewConsumerGroupID(t *testing.T) {
 
 	for _, tt := range table {
 		t.Run(tt.title, func(t *testing.T) {
-
 			got, err := getNewConsumerGroupID(tt.consumerGroupID, tt.deploymentID)
 			if tt.wantErr != "" {
 				require.Error(t, err)
