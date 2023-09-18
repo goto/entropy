@@ -206,9 +206,8 @@ func (fd *firehoseDriver) planReset(exr module.ExpandedResource, act module.Acti
 }
 
 func getNewConsumerGroupID(curGroup string) (string, error) {
-	expLen := 3
 	matches := suffixRegex.FindStringSubmatch(curGroup)
-	if len(matches) != expLen {
+	if expLen := 3; len(matches) != expLen {
 		return "", errors.New("group id doest not match regex")
 	}
 	prefix, sequence := matches[1], matches[2]
