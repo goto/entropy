@@ -14,6 +14,8 @@ import (
 
 const SourceKafkaConsumerAutoOffsetReset = "SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_OFFSET_RESET"
 
+var errGroupNumberLimitCrossed = errors.New("group number limit crossed 9999")
+
 func (fd *firehoseDriver) Plan(_ context.Context, exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
 	switch act.Name {
 	case module.CreateAction:
@@ -216,7 +218,7 @@ func getNewConsumerGroupID(currentConsumerGroupID, deploymentID string) (string,
 	newConsumerGroupSuffix := strconv.Itoa(currentConsumerGroupNumber)
 
 	if len(newConsumerGroupSuffix) > groupNumberSuffixLength {
-		return "", errors.New("group number limit crossed 9999")
+		return "", errGroupNumberLimitCrossed
 	}
 
 	newConsumerGroupSuffix = suffix[:groupNumberSuffixLength-len(newConsumerGroupSuffix)] + newConsumerGroupSuffix

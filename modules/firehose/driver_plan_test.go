@@ -558,3 +558,53 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 		})
 	}
 }
+
+func TestGetNewConsumerGroupID(t *testing.T) {
+	t.Parallel()
+
+	table := []struct {
+		title           string
+		deploymentID    string
+		consumerGroupID string
+		want            string
+		wantErr         string
+	}{
+		{
+			title:           "invalid-group-id",
+			deploymentID:    "test-firehose",
+			consumerGroupID: "test-firehose-xyz",
+			want:            "",
+			wantErr:         "strconv.Atoi: parsing \"-xyz\": invalid syntax",
+		},
+		{
+			title:           "group-id-9999",
+			deploymentID:    "test-firehose",
+			consumerGroupID: "test-firehose-9999",
+			want:            "",
+			wantErr:         errGroupNumberLimitCrossed.Error(),
+		},
+		{
+			title:           "valid-group-id",
+			deploymentID:    "test-firehose",
+			consumerGroupID: "test-firehose-0999",
+			want:            "test-firehose-1000",
+			wantErr:         "",
+		},
+	}
+
+	for _, tt := range table {
+		t.Run(tt.title, func(t *testing.T) {
+
+			got, err := getNewConsumerGroupID(tt.consumerGroupID, tt.deploymentID)
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.Equal(t, "", got)
+				assert.Equal(t, err.Error(), tt.wantErr)
+			} else {
+				assert.NoError(t, err)
+				require.NotNil(t, got)
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
