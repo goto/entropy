@@ -21,11 +21,12 @@ import (
 const (
 	keyKubeDependency = "kube_cluster"
 
-	ScaleAction   = "scale"
-	StartAction   = "start"
-	StopAction    = "stop"
-	ResetAction   = "reset"
-	UpgradeAction = "upgrade"
+	ScaleAction    = "scale"
+	StartAction    = "start"
+	StopAction     = "stop"
+	ResetAction    = "reset"
+	NewResetAction = "new-reset"
+	UpgradeAction  = "upgrade"
 )
 
 var Module = module.Descriptor{

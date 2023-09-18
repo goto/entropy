@@ -3,12 +3,16 @@ package firehose
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"strconv"
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/kafka"
 )
+
+const SourceKafkaConsumerAutoOffsetReset = "SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_OFFSET_RESET"
 
 func (fd *firehoseDriver) Plan(_ context.Context, exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
 	switch act.Name {
@@ -17,6 +21,9 @@ func (fd *firehoseDriver) Plan(_ context.Context, exr module.ExpandedResource, a
 
 	case ResetAction:
 		return fd.planReset(exr, act)
+
+	case NewResetAction:
+		return fd.planNewReset(exr, act)
 
 	default:
 		return fd.planChange(exr, act)
@@ -128,8 +135,8 @@ func (fd *firehoseDriver) planCreate(exr module.ExpandedResource, act module.Act
 	return &exr.Resource, nil
 }
 
-func (fd *firehoseDriver) planReset(exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
-	resetValue, err := kafka.ParseResetParams(act.Params)
+func (fd *firehoseDriver) planNewReset(exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
+	resetValue, err := kafka.ParseNewResetParams(act.Params)
 	if err != nil {
 		return nil, err
 	}
@@ -158,4 +165,61 @@ func (fd *firehoseDriver) planReset(exr module.ExpandedResource, act module.Acti
 		}),
 	}
 	return &exr.Resource, nil
+}
+
+func (fd *firehoseDriver) planReset(exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
+	resetValue, err := kafka.ParseResetParams(act.Params)
+	if err != nil {
+		return nil, err
+	}
+
+	immediately := fd.timeNow()
+
+	curConf, err := readConfig(exr.Resource, exr.Resource.Spec.Configs, fd.conf)
+	if err != nil {
+		return nil, err
+	}
+
+	curConf.ResetOffset = resetValue
+	curConf.EnvVariables[SourceKafkaConsumerAutoOffsetReset] = resetValue
+	curConf.EnvVariables[confKeyConsumerID], err = getNewConsumerGroupID(curConf.EnvVariables[confKeyConsumerID], curConf.DeploymentID)
+	if err != nil {
+		return nil, err
+	}
+
+	exr.Resource.Spec.Configs = mustJSON(curConf)
+	exr.Resource.State = resource.State{
+		Status:     resource.StatusPending,
+		Output:     exr.Resource.State.Output,
+		NextSyncAt: &immediately,
+		ModuleData: mustJSON(transientData{
+			PendingSteps: []string{
+				stepReleaseStop,   // stop the firehose
+				stepReleaseUpdate, // restart the deployment.
+			},
+		}),
+	}
+	return &exr.Resource, nil
+}
+
+func getNewConsumerGroupID(currentConsumerGroupID, deploymentID string) (string, error) {
+	const groupNumberSuffixLength = 4
+	suffix := "0000"
+
+	currentConsumerGroupSuffix := currentConsumerGroupID[len(currentConsumerGroupID)-groupNumberSuffixLength:]
+	currentConsumerGroupNumber, err := strconv.Atoi(currentConsumerGroupSuffix)
+	if err != nil {
+		return "", err
+	}
+
+	currentConsumerGroupNumber += 1
+	newConsumerGroupSuffix := strconv.Itoa(currentConsumerGroupNumber)
+
+	if len(newConsumerGroupSuffix) > groupNumberSuffixLength {
+		return "", errors.New("group number limit crossed 9999")
+	}
+
+	newConsumerGroupSuffix = suffix[:groupNumberSuffixLength-len(newConsumerGroupSuffix)] + newConsumerGroupSuffix
+
+	return fmt.Sprintf("%s-%s", deploymentID, newConsumerGroupSuffix), nil
 }

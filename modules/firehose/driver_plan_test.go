@@ -306,7 +306,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 			act: module.ActionRequest{
 				Name: ResetAction,
 				Params: mustJSON(map[string]any{
-					"reset_to": "some_random",
+					"to": "some_random",
 				}),
 			},
 			wantErr: errors.ErrInvalid,
@@ -324,11 +324,12 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 							"replicas":      1,
 							"deployment_id": "firehose-deployment-x",
 							"env_variables": map[string]string{
-								"SINK_TYPE":                      "LOG",
-								"INPUT_SCHEMA_PROTO_CLASS":       "com.foo.Bar",
-								"SOURCE_KAFKA_CONSUMER_GROUP_ID": "foo-bar-baz",
-								"SOURCE_KAFKA_BROKERS":           "localhost:9092",
-								"SOURCE_KAFKA_TOPIC":             "foo-log",
+								"SINK_TYPE":                                      "LOG",
+								"INPUT_SCHEMA_PROTO_CLASS":                       "com.foo.Bar",
+								"SOURCE_KAFKA_CONSUMER_GROUP_ID":                 "firehose-deployment-x-0001",
+								"SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_OFFSET_RESET": "latest",
+								"SOURCE_KAFKA_BROKERS":                           "localhost:9092",
+								"SOURCE_KAFKA_TOPIC":                             "foo-log",
 							},
 							"limits": map[string]any{
 								"cpu":    "200m",
@@ -352,7 +353,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 			act: module.ActionRequest{
 				Name: ResetAction,
 				Params: mustJSON(map[string]any{
-					"to": "latest",
+					"to": "earliest",
 				}),
 			},
 			want: &resource.Resource{
@@ -365,13 +366,14 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 						"replicas":      1,
 						"deployment_id": "firehose-deployment-x",
 						"env_variables": map[string]string{
-							"SINK_TYPE":                      "LOG",
-							"INPUT_SCHEMA_PROTO_CLASS":       "com.foo.Bar",
-							"SOURCE_KAFKA_CONSUMER_GROUP_ID": "foo-bar-baz",
-							"SOURCE_KAFKA_BROKERS":           "localhost:9092",
-							"SOURCE_KAFKA_TOPIC":             "foo-log",
+							"SINK_TYPE":                                      "LOG",
+							"INPUT_SCHEMA_PROTO_CLASS":                       "com.foo.Bar",
+							"SOURCE_KAFKA_CONSUMER_GROUP_ID":                 "firehose-deployment-x-0002",
+							"SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_OFFSET_RESET": "earliest",
+							"SOURCE_KAFKA_BROKERS":                           "localhost:9092",
+							"SOURCE_KAFKA_TOPIC":                             "foo-log",
 						},
-						"reset_offset": "latest",
+						"reset_offset": "earliest",
 						"limits": map[string]any{
 							"cpu":    "200m",
 							"memory": "512Mi",
@@ -391,10 +393,8 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 						ReleaseName: "bar",
 					}),
 					ModuleData: mustJSON(transientData{
-						ResetOffsetTo: "latest",
 						PendingSteps: []string{
 							stepReleaseStop,
-							stepKafkaReset,
 							stepReleaseUpdate,
 						},
 					}),
