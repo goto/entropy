@@ -109,7 +109,7 @@ func readConfig(r resource.Resource, confJSON json.RawMessage, dc driverConf) (*
 	}
 
 	if consumerID := cfg.EnvVariables[confKeyConsumerID]; consumerID == "" {
-		cfg.EnvVariables[confKeyConsumerID] = fmt.Sprintf("%s-0001", cfg.DeploymentID)
+		cfg.EnvVariables[confKeyConsumerID] = fmt.Sprintf("%s-1", cfg.DeploymentID)
 	}
 
 	rl := dc.RequestsAndLimits[defaultKey]
