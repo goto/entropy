@@ -214,7 +214,7 @@ func getNewConsumerGroupID(currentConsumerGroupID, deploymentID string) (string,
 		return "", err
 	}
 
-	currentConsumerGroupNumber += 1
+	currentConsumerGroupNumber++
 	newConsumerGroupSuffix := strconv.Itoa(currentConsumerGroupNumber)
 
 	if len(newConsumerGroupSuffix) > groupNumberSuffixLength {
