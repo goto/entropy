@@ -93,7 +93,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 						"env_variables": map[string]string{
 							"SINK_TYPE":                      "LOG",
 							"INPUT_SCHEMA_PROTO_CLASS":       "com.foo.Bar",
-							"SOURCE_KAFKA_CONSUMER_GROUP_ID": "ABCDEFGHIJKLMNOPQRSTUVWXYZ-abcdefghij-3801d0-firehose-0001",
+							"SOURCE_KAFKA_CONSUMER_GROUP_ID": "ABCDEFGHIJKLMNOPQRSTUVWXYZ-abcdefghij-3801d0-firehose-1",
 							"SOURCE_KAFKA_BROKERS":           "localhost:9092",
 							"SOURCE_KAFKA_TOPIC":             "foo-log",
 						},
@@ -368,7 +368,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 						"env_variables": map[string]string{
 							"SINK_TYPE":                                      "LOG",
 							"INPUT_SCHEMA_PROTO_CLASS":                       "com.foo.Bar",
-							"SOURCE_KAFKA_CONSUMER_GROUP_ID":                 "firehose-deployment-x-0002",
+							"SOURCE_KAFKA_CONSUMER_GROUP_ID":                 "firehose-deployment-x-2",
 							"SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_OFFSET_RESET": "earliest",
 							"SOURCE_KAFKA_BROKERS":                           "localhost:9092",
 							"SOURCE_KAFKA_TOPIC":                             "foo-log",
