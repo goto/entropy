@@ -20,7 +20,7 @@ const (
 	resetDatetime = "datetime"
 )
 
-type NewResetParams struct {
+type ResetV2Params struct {
 	To       string `json:"to"`
 	Datetime string `json:"datetime"`
 }
@@ -44,10 +44,10 @@ func DoReset(ctx context.Context, jobCluster *kube.Client, kubeNamespace, kafkaB
 	)
 }
 
-// ParseNewResetParams parses the given JSON data as reset parameters value and
+// ParseResetV2Params parses the given JSON data as reset parameters value and
 // returns the actual reset value to be used with DoReset().
-func ParseNewResetParams(bytes json.RawMessage) (string, error) {
-	var params NewResetParams
+func ParseResetV2Params(bytes json.RawMessage) (string, error) {
+	var params ResetV2Params
 	if err := json.Unmarshal(bytes, &params); err != nil {
 		return "", errors.ErrInvalid.
 			WithMsgf("invalid reset params").

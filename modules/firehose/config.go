@@ -108,6 +108,8 @@ func readConfig(r resource.Resource, confJSON json.RawMessage, dc driverConf) (*
 		return nil, errors.ErrInvalid.WithMsgf("deployment_id must not have more than 53 chars")
 	}
 
+	// we name a consumer group by adding a sequence suffix to the deployment name
+	// this sequence will later be incremented to name new consumer group while resetting offset
 	if consumerID := cfg.EnvVariables[confKeyConsumerID]; consumerID == "" {
 		cfg.EnvVariables[confKeyConsumerID] = fmt.Sprintf("%s-1", cfg.DeploymentID)
 	}

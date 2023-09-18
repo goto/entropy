@@ -25,8 +25,8 @@ func (fd *firehoseDriver) Plan(_ context.Context, exr module.ExpandedResource, a
 	case ResetAction:
 		return fd.planReset(exr, act)
 
-	case NewResetAction:
-		return fd.planNewReset(exr, act)
+	case ResetV2Action:
+		return fd.planResetV2(exr, act)
 
 	default:
 		return fd.planChange(exr, act)
@@ -138,8 +138,8 @@ func (fd *firehoseDriver) planCreate(exr module.ExpandedResource, act module.Act
 	return &exr.Resource, nil
 }
 
-func (fd *firehoseDriver) planNewReset(exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
-	resetValue, err := kafka.ParseNewResetParams(act.Params)
+func (fd *firehoseDriver) planResetV2(exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
+	resetValue, err := kafka.ParseResetV2Params(act.Params)
 	if err != nil {
 		return nil, err
 	}
