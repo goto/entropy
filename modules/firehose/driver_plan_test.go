@@ -573,7 +573,7 @@ func TestGetNewConsumerGroupID(t *testing.T) {
 			title:           "invalid-group-id",
 			consumerGroupID: "test-firehose-xyz",
 			want:            "",
-			wantErr:         errorGroupIDFormat,
+			wantErr:         errGroupIDFormat,
 		},
 		{
 			title:           "valid-group-id",
