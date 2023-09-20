@@ -16,6 +16,7 @@ import (
 const SourceKafkaConsumerAutoOffsetReset = "SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_OFFSET_RESET"
 
 var suffixRegex = regexp.MustCompile(`^([A-Za-z0-9-]+)-([0-9]+)$`)
+var errorGroupIdFormat = fmt.Errorf("group id must match the format '%s'", suffixRegex)
 
 func (fd *firehoseDriver) Plan(_ context.Context, exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
 	switch act.Name {
@@ -208,7 +209,7 @@ func (fd *firehoseDriver) planReset(exr module.ExpandedResource, act module.Acti
 func getNewConsumerGroupID(curGroup string) (string, error) {
 	matches := suffixRegex.FindStringSubmatch(curGroup)
 	if expLen := 3; len(matches) != expLen {
-		return "", errors.New("group id doest not match regex")
+		return "", errorGroupIdFormat
 	}
 	prefix, sequence := matches[1], matches[2]
 

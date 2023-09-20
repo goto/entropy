@@ -567,29 +567,29 @@ func TestGetNewConsumerGroupID(t *testing.T) {
 		deploymentID    string
 		consumerGroupID string
 		want            string
-		wantErr         string
+		wantErr         error
 	}{
 		{
 			title:           "invalid-group-id",
 			consumerGroupID: "test-firehose-xyz",
 			want:            "",
-			wantErr:         "group id doest not match regex",
+			wantErr:         errorGroupIdFormat,
 		},
 		{
 			title:           "valid-group-id",
 			consumerGroupID: "test-firehose-0999",
 			want:            "test-firehose-1000",
-			wantErr:         "",
+			wantErr:         nil,
 		},
 	}
 
 	for _, tt := range table {
 		t.Run(tt.title, func(t *testing.T) {
 			got, err := getNewConsumerGroupID(tt.consumerGroupID)
-			if tt.wantErr != "" {
+			if tt.wantErr != nil {
 				require.Error(t, err)
 				assert.Equal(t, "", got)
-				assert.Equal(t, err.Error(), tt.wantErr)
+				assert.ErrorIs(t, err, tt.wantErr)
 			} else {
 				assert.NoError(t, err)
 				require.NotNil(t, got)
