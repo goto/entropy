@@ -96,7 +96,7 @@ func requestLogger(lg *zap.Logger) gorillamux.MiddlewareFunc {
 
 			bodyBytes, err := io.ReadAll(req.Body)
 			if err != nil {
-				lg.Debug("error reading request body: %v", zap.String("error", err.Error()))
+				lg.Error("error reading request body: %v", zap.String("error", err.Error()))
 				return
 			}
 			reader := io.NopCloser(bytes.NewBuffer(bodyBytes))
@@ -122,7 +122,7 @@ func requestLogger(lg *zap.Logger) gorillamux.MiddlewareFunc {
 				dst := bytes.NewBuffer(nil)
 				err = json.Compact(dst, bodyBytes)
 				if err != nil {
-					lg.Debug("error json compacting request body: %v", zap.String("error", err.Error()))
+					lg.Error("error json compacting request body: %v", zap.String("error", err.Error()))
 				} else {
 					fields = append(fields, zap.String("request_body", dst.String()))
 				}
