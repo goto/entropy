@@ -212,7 +212,7 @@ func (fd *firehoseDriver) planReset(exr module.ExpandedResource, act module.Acti
 func getNewConsumerGroupID(curGroup string) (string, error) {
 	matches := suffixRegex.FindStringSubmatch(curGroup)
 	if expLen := 3; len(matches) != expLen {
-		return "", errGroupIDFormat
+		return curGroup + "-1", nil
 	}
 	prefix, sequence := matches[1], matches[2]
 
