@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/goto/entropy/modules/utils"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -586,8 +588,8 @@ func TestFirehoseDriver(t *testing.T) {
 				assert.NoError(t, err)
 				require.NotNil(t, got)
 
-				wantJSON := string(mustJSON(tt.want))
-				gotJSON := string(mustJSON(got))
+				wantJSON := string(utils.MustJSON(tt.want))
+				gotJSON := string(utils.MustJSON(got))
 				assert.JSONEq(t, wantJSON, gotJSON)
 			}
 		})

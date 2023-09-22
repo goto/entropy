@@ -10,6 +10,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/goto/entropy/pkg/kube/job"
+
+	typedbatchv1 "k8s.io/client-go/kubernetes/typed/batch/v1"
+
 	"github.com/mcuadros/go-defaults"
 	"github.com/mitchellh/mapstructure"
 	batchv1 "k8s.io/api/batch/v1"
@@ -19,7 +23,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/kubernetes"
-	typedbatchv1 "k8s.io/client-go/kubernetes/typed/batch/v1"
 	"k8s.io/client-go/rest"
 
 	"github.com/goto/entropy/pkg/errors"
@@ -151,10 +154,10 @@ func (c Client) StreamLogs(ctx context.Context, namespace string, filter map[str
 	return c.streamFromPods(ctx, namespace, logOptions)
 }
 
-func (c Client) RunJob(ctx context.Context, namespace, name string, image string, cmd []string, retries int32) error {
+func (c Client) RunJob(ctx context.Context, namespace, name string, image string, cmd []string, retries int32, wait bool) (*batchv1.Job, error) {
 	clientSet, err := kubernetes.NewForConfig(&c.restConfig)
 	if err != nil {
-		return ErrJobCreationFailed.WithCausef(err.Error())
+		return nil, ErrJobCreationFailed.WithCausef(err.Error())
 	}
 
 	jobs := clientSet.BatchV1().Jobs(namespace)
@@ -172,9 +175,8 @@ func (c Client) RunJob(ctx context.Context, namespace, name string, image string
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:  name,
-							Image: image,
-
+							Name:    name,
+							Image:   image,
 							Command: cmd,
 						},
 					},
@@ -185,12 +187,15 @@ func (c Client) RunJob(ctx context.Context, namespace, name string, image string
 		},
 	}
 
-	_, err = jobs.Create(ctx, jobSpec, metav1.CreateOptions{})
+	job, err := jobs.Create(ctx, jobSpec, metav1.CreateOptions{})
 	if err != nil {
-		return ErrJobCreationFailed.WithCausef(err.Error())
+		return nil, ErrJobCreationFailed.WithCausef(err.Error())
 	}
-
-	return waitForJob(ctx, name, jobs)
+	if !wait {
+		return job, nil
+	}
+	err = waitForJob(ctx, name, jobs)
+	return job, err
 }
 
 func waitForJob(ctx context.Context, jobName string, jobs typedbatchv1.JobInterface) error {
@@ -269,6 +274,14 @@ func (c Client) streamFromPods(ctx context.Context, namespace string, logOptions
 	}()
 
 	return logCh, nil
+}
+
+func (c Client) GetJobProcessor(j *job.Job) (*job.Processor, error) {
+	clientSet, err := kubernetes.NewForConfig(&c.restConfig)
+	if err != nil {
+		return nil, err
+	}
+	return job.NewProcessor(j, clientSet.BatchV1().Jobs(j.Namespace)), nil
 }
 
 func (c Client) GetPodDetails(ctx context.Context, namespace string, labelSelectors map[string]string) ([]Pod, error) {

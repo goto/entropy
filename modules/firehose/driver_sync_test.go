@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/goto/entropy/modules/utils"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -50,7 +52,7 @@ func TestFirehoseDriver_Sync(t *testing.T) {
 					Name:    "fh1",
 					Project: "foo",
 					State: resource.State{
-						ModuleData: mustJSON(transientData{}),
+						ModuleData: utils.MustJSON(transientData{}),
 					},
 				},
 			},
@@ -65,8 +67,8 @@ func TestFirehoseDriver_Sync(t *testing.T) {
 					Name:    "fh1",
 					Project: "foo",
 					State: resource.State{
-						Output:     mustJSON(Output{}),
-						ModuleData: mustJSON(transientData{}),
+						Output:     utils.MustJSON(Output{}),
+						ModuleData: utils.MustJSON(transientData{}),
 					},
 				},
 			},
@@ -76,8 +78,8 @@ func TestFirehoseDriver_Sync(t *testing.T) {
 			title: "NoPendingStep",
 			exr: sampleResourceWithState(resource.State{
 				Status: resource.StatusPending,
-				Output: mustJSON(Output{}),
-				ModuleData: mustJSON(transientData{
+				Output: utils.MustJSON(Output{}),
+				ModuleData: utils.MustJSON(transientData{
 					PendingSteps: nil,
 				}),
 			}),
@@ -96,7 +98,7 @@ func TestFirehoseDriver_Sync(t *testing.T) {
 			},
 			want: &resource.State{
 				Status: resource.StatusCompleted,
-				Output: mustJSON(Output{
+				Output: utils.MustJSON(Output{
 					Pods: []kube.Pod{
 						{
 							Name:       "foo-1",
@@ -111,7 +113,7 @@ func TestFirehoseDriver_Sync(t *testing.T) {
 			title: "Sync_refresh_output_failure",
 			exr: sampleResourceWithState(resource.State{
 				Status: resource.StatusCompleted,
-				Output: mustJSON(Output{}),
+				Output: utils.MustJSON(Output{}),
 			}),
 			kubeGetPod: func(t *testing.T) kubeGetPodFn {
 				t.Helper()
@@ -125,8 +127,8 @@ func TestFirehoseDriver_Sync(t *testing.T) {
 			title: "Sync_release_create_failure",
 			exr: sampleResourceWithState(resource.State{
 				Status: resource.StatusPending,
-				Output: mustJSON(Output{}),
-				ModuleData: mustJSON(transientData{
+				Output: utils.MustJSON(Output{}),
+				ModuleData: utils.MustJSON(transientData{
 					PendingSteps: []string{stepReleaseCreate},
 				}),
 			}),
@@ -155,8 +157,8 @@ func TestFirehoseDriver_Sync(t *testing.T) {
 			title: "Sync_release_create_success",
 			exr: sampleResourceWithState(resource.State{
 				Status: resource.StatusPending,
-				Output: mustJSON(Output{}),
-				ModuleData: mustJSON(transientData{
+				Output: utils.MustJSON(Output{}),
+				ModuleData: utils.MustJSON(transientData{
 					PendingSteps: []string{stepReleaseCreate},
 				}),
 			}),
@@ -183,8 +185,8 @@ func TestFirehoseDriver_Sync(t *testing.T) {
 			},
 			want: &resource.State{
 				Status: resource.StatusPending,
-				Output: mustJSON(Output{}),
-				ModuleData: mustJSON(transientData{
+				Output: utils.MustJSON(Output{}),
+				ModuleData: utils.MustJSON(transientData{
 					PendingSteps: []string{},
 				}),
 				NextSyncAt: &frozenTime,
@@ -194,8 +196,8 @@ func TestFirehoseDriver_Sync(t *testing.T) {
 			title: "Sync_release_stop_success",
 			exr: sampleResourceWithState(resource.State{
 				Status: resource.StatusPending,
-				Output: mustJSON(Output{}),
-				ModuleData: mustJSON(transientData{
+				Output: utils.MustJSON(Output{}),
+				ModuleData: utils.MustJSON(transientData{
 					PendingSteps: []string{stepReleaseStop},
 				}),
 			}),
@@ -222,8 +224,8 @@ func TestFirehoseDriver_Sync(t *testing.T) {
 			},
 			want: &resource.State{
 				Status: resource.StatusPending,
-				Output: mustJSON(Output{}),
-				ModuleData: mustJSON(transientData{
+				Output: utils.MustJSON(Output{}),
+				ModuleData: utils.MustJSON(transientData{
 					PendingSteps: []string{},
 				}),
 				NextSyncAt: &frozenTime,
@@ -254,8 +256,8 @@ func TestFirehoseDriver_Sync(t *testing.T) {
 				assert.NoError(t, err)
 				require.NotNil(t, got)
 
-				wantJSON := string(mustJSON(tt.want))
-				gotJSON := string(mustJSON(got))
+				wantJSON := string(utils.MustJSON(tt.want))
+				gotJSON := string(utils.MustJSON(got))
 				assert.JSONEq(t, wantJSON, gotJSON)
 			}
 		})
@@ -270,7 +272,7 @@ func sampleResourceWithState(state resource.State) module.ExpandedResource {
 			Name:    "fh1",
 			Project: "foo",
 			Spec: resource.Spec{
-				Configs: mustJSON(map[string]any{
+				Configs: utils.MustJSON(map[string]any{
 					"replicas":      1,
 					"namespace":     "firehose",
 					"deployment_id": "firehose-foo-fh1",
@@ -296,7 +298,7 @@ func sampleResourceWithState(state resource.State) module.ExpandedResource {
 		Dependencies: map[string]module.ResolvedDependency{
 			"kube_cluster": {
 				Kind:   "kubernetes",
-				Output: mustJSON(kubernetes.Output{}),
+				Output: utils.MustJSON(kubernetes.Output{}),
 			},
 		},
 	}

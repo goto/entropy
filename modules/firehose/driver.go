@@ -9,6 +9,8 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/goto/entropy/modules/utils"
+
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/modules/kubernetes"
@@ -186,13 +188,13 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		labelName: res.Name,
 	}
 
-	deploymentLabels, err := renderTpl(fd.conf.Labels, cloneAndMergeMaps(res.Labels, entropyLabels))
+	deploymentLabels, err := renderTpl(fd.conf.Labels, utils.CloneAndMergeMaps(res.Labels, entropyLabels))
 	if err != nil {
 		return nil, err
 	}
 
 	if conf.Telegraf != nil && conf.Telegraf.Enabled {
-		mergedLabelsAndEnvVariablesMap := cloneAndMergeMaps(cloneAndMergeMaps(conf.EnvVariables, cloneAndMergeMaps(deploymentLabels, cloneAndMergeMaps(res.Labels, entropyLabels))), otherLabels)
+		mergedLabelsAndEnvVariablesMap := utils.CloneAndMergeMaps(utils.CloneAndMergeMaps(conf.EnvVariables, utils.CloneAndMergeMaps(deploymentLabels, utils.CloneAndMergeMaps(res.Labels, entropyLabels))), otherLabels)
 
 		conf.EnvVariables, err = renderTpl(conf.EnvVariables, mergedLabelsAndEnvVariablesMap)
 		if err != nil {
@@ -215,7 +217,7 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 	}
 
 	tolerationKey := fmt.Sprintf("firehose_%s", conf.EnvVariables["SINK_TYPE"])
-	var tolerations = []map[string]any{}
+	tolerations := []map[string]any{}
 	for _, t := range kubeOut.Tolerations[tolerationKey] {
 		tolerations = append(tolerations, map[string]any{
 			"key":      t.Key,
@@ -225,9 +227,9 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		})
 	}
 
-	var mountSecrets = []map[string]any{}
-	var requiredDuringSchedulingIgnoredDuringExecution = []Preference{}
-	var preferredDuringSchedulingIgnoredDuringExecution = []WeightedPreference{}
+	mountSecrets := []map[string]any{}
+	requiredDuringSchedulingIgnoredDuringExecution := []Preference{}
+	preferredDuringSchedulingIgnoredDuringExecution := []WeightedPreference{}
 
 	if fd.conf.NodeAffinityMatchExpressions.RequiredDuringSchedulingIgnoredDuringExecution != nil {
 		requiredDuringSchedulingIgnoredDuringExecution = fd.conf.NodeAffinityMatchExpressions.RequiredDuringSchedulingIgnoredDuringExecution
@@ -238,7 +240,7 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 
 	if fd.conf.GCSSinkCredential != "" {
 		const mountFile = "gcs_auth.json"
-		var credPath = fmt.Sprintf("/etc/secret/%s", mountFile)
+		credPath := fmt.Sprintf("/etc/secret/%s", mountFile)
 
 		mountSecrets = append(mountSecrets, map[string]any{
 			"value": fd.conf.GCSSinkCredential,
@@ -251,7 +253,7 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 
 	if fd.conf.DLQGCSSinkCredential != "" {
 		const mountFile = "dlq_gcs_auth.json"
-		var credPath = fmt.Sprintf("/etc/secret/%s", mountFile)
+		credPath := fmt.Sprintf("/etc/secret/%s", mountFile)
 
 		mountSecrets = append(mountSecrets, map[string]any{
 			"value": fd.conf.DLQGCSSinkCredential,
@@ -263,7 +265,7 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 
 	if fd.conf.BigQuerySinkCredential != "" {
 		const mountFile = "bigquery_auth.json"
-		var credPath = fmt.Sprintf("/etc/secret/%s", mountFile)
+		credPath := fmt.Sprintf("/etc/secret/%s", mountFile)
 
 		mountSecrets = append(mountSecrets, map[string]any{
 			"value": fd.conf.BigQuerySinkCredential,
@@ -281,7 +283,7 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 	rc.ForceUpdate = true
 	rc.Version = conf.ChartValues.ChartVersion
 	rc.Values = map[string]any{
-		labelsConfKey:  cloneAndMergeMaps(deploymentLabels, entropyLabels),
+		labelsConfKey:  utils.CloneAndMergeMaps(deploymentLabels, entropyLabels),
 		"replicaCount": conf.Replicas,
 		"firehose": map[string]any{
 			"image": map[string]any{
@@ -397,25 +399,6 @@ func readTransientData(exr module.ExpandedResource) (*transientData, error) {
 		return nil, errors.ErrInternal.WithMsgf("corrupted transient data").WithCausef(err.Error())
 	}
 	return &modData, nil
-}
-
-func mustJSON(v any) json.RawMessage {
-	b, err := json.Marshal(v)
-	if err != nil {
-		panic(err)
-	}
-	return b
-}
-
-func cloneAndMergeMaps(m1, m2 map[string]string) map[string]string {
-	res := map[string]string{}
-	for k, v := range m1 {
-		res[k] = v
-	}
-	for k, v := range m2 {
-		res[k] = v
-	}
-	return res
 }
 
 func (us UsageSpec) merge(overide UsageSpec) UsageSpec {

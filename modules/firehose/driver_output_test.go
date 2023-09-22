@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/goto/entropy/modules/utils"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -47,7 +49,7 @@ func TestFirehoseDriver_Output(t *testing.T) {
 					Name:    "fh1",
 					Project: "foo",
 					State: resource.State{
-						ModuleData: mustJSON(transientData{}),
+						ModuleData: utils.MustJSON(transientData{}),
 					},
 				},
 			},
@@ -62,8 +64,8 @@ func TestFirehoseDriver_Output(t *testing.T) {
 					Name:    "fh1",
 					Project: "foo",
 					State: resource.State{
-						Output:     mustJSON(Output{}),
-						ModuleData: mustJSON(transientData{}),
+						Output:     utils.MustJSON(Output{}),
+						ModuleData: utils.MustJSON(transientData{}),
 					},
 				},
 			},
@@ -73,7 +75,7 @@ func TestFirehoseDriver_Output(t *testing.T) {
 			title: "GetPod_Failure",
 			exr: sampleResourceWithState(resource.State{
 				Status: resource.StatusCompleted,
-				Output: mustJSON(Output{}),
+				Output: utils.MustJSON(Output{}),
 			}),
 			kubeGetPod: func(t *testing.T) kubeGetPodFn {
 				t.Helper()
@@ -89,7 +91,7 @@ func TestFirehoseDriver_Output(t *testing.T) {
 			title: "GetPod_Success",
 			exr: sampleResourceWithState(resource.State{
 				Status: resource.StatusCompleted,
-				Output: mustJSON(Output{
+				Output: utils.MustJSON(Output{
 					Pods:        nil,
 					Namespace:   "firehose",
 					ReleaseName: "foo-bar",
@@ -108,7 +110,7 @@ func TestFirehoseDriver_Output(t *testing.T) {
 					}, nil
 				}
 			},
-			want: mustJSON(Output{
+			want: utils.MustJSON(Output{
 				Pods: []kube.Pod{
 					{
 						Name:       "foo-1",

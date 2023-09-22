@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/goto/entropy/modules/utils"
+
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/pkg/errors"
@@ -81,11 +83,11 @@ func (fd *firehoseDriver) planChange(exr module.ExpandedResource, act module.Act
 
 	immediately := fd.timeNow()
 
-	exr.Resource.Spec.Configs = mustJSON(curConf)
+	exr.Resource.Spec.Configs = utils.MustJSON(curConf)
 	exr.Resource.State = resource.State{
 		Status: resource.StatusPending,
 		Output: exr.Resource.State.Output,
-		ModuleData: mustJSON(transientData{
+		ModuleData: utils.MustJSON(transientData{
 			PendingSteps: []string{stepReleaseUpdate},
 		}),
 		NextSyncAt: &immediately,
@@ -112,15 +114,15 @@ func (fd *firehoseDriver) planCreate(exr module.ExpandedResource, act module.Act
 
 	immediately := fd.timeNow()
 
-	exr.Resource.Spec.Configs = mustJSON(conf)
+	exr.Resource.Spec.Configs = utils.MustJSON(conf)
 	exr.Resource.State = resource.State{
 		Status: resource.StatusPending,
-		Output: mustJSON(Output{
+		Output: utils.MustJSON(Output{
 			Namespace:   conf.Namespace,
 			ReleaseName: conf.DeploymentID,
 		}),
 		NextSyncAt: &immediately,
-		ModuleData: mustJSON(transientData{
+		ModuleData: utils.MustJSON(transientData{
 			PendingSteps: []string{stepReleaseCreate},
 		}),
 	}
@@ -143,12 +145,12 @@ func (fd *firehoseDriver) planReset(exr module.ExpandedResource, act module.Acti
 
 	curConf.ResetOffset = resetValue
 
-	exr.Resource.Spec.Configs = mustJSON(curConf)
+	exr.Resource.Spec.Configs = utils.MustJSON(curConf)
 	exr.Resource.State = resource.State{
 		Status:     resource.StatusPending,
 		Output:     exr.Resource.State.Output,
 		NextSyncAt: &immediately,
-		ModuleData: mustJSON(transientData{
+		ModuleData: utils.MustJSON(transientData{
 			ResetOffsetTo: resetValue,
 			PendingSteps: []string{
 				stepReleaseStop,   // stop the firehose

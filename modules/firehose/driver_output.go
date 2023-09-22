@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/goto/entropy/modules/utils"
+
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/modules/kubernetes"
@@ -43,5 +45,5 @@ func (fd *firehoseDriver) refreshOutput(ctx context.Context, r resource.Resource
 	}
 	output.Pods = pods
 
-	return mustJSON(output), nil
+	return utils.MustJSON(output), nil
 }

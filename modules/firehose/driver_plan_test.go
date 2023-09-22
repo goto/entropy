@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/goto/entropy/modules/utils"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -56,7 +58,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 			},
 			act: module.ActionRequest{
 				Name: module.CreateAction,
-				Params: mustJSON(map[string]any{
+				Params: utils.MustJSON(map[string]any{
 					"replicas": 1,
 					"env_variables": map[string]string{
 						"SINK_TYPE":                "LOG",
@@ -72,7 +74,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 				Name:    "abcdefghijklmnopqrstuvwxyz",
 				Project: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
 				Spec: resource.Spec{
-					Configs: mustJSON(map[string]any{
+					Configs: utils.MustJSON(map[string]any{
 						"stopped":       false,
 						"replicas":      1,
 						"namespace":     "firehose",
@@ -102,11 +104,11 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 				},
 				State: resource.State{
 					Status: resource.StatusPending,
-					Output: mustJSON(Output{
+					Output: utils.MustJSON(Output{
 						Namespace:   "firehose",
 						ReleaseName: "ABCDEFGHIJKLMNOPQRSTUVWXYZ-abcdefghij-3801d0-firehose",
 					}),
-					ModuleData: mustJSON(transientData{
+					ModuleData: utils.MustJSON(transientData{
 						PendingSteps: []string{stepReleaseCreate},
 					}),
 					NextSyncAt: &frozenTime,
@@ -126,7 +128,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 			},
 			act: module.ActionRequest{
 				Name: module.CreateAction,
-				Params: mustJSON(map[string]any{
+				Params: utils.MustJSON(map[string]any{
 					"replicas": 1,
 					"env_variables": map[string]string{
 						"SINK_TYPE":                      "LOG",
@@ -143,7 +145,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 				Name:    "fh1",
 				Project: "foo",
 				Spec: resource.Spec{
-					Configs: mustJSON(map[string]any{
+					Configs: utils.MustJSON(map[string]any{
 						"stopped":       false,
 						"replicas":      1,
 						"namespace":     "firehose",
@@ -173,11 +175,11 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 				},
 				State: resource.State{
 					Status: resource.StatusPending,
-					Output: mustJSON(Output{
+					Output: utils.MustJSON(Output{
 						Namespace:   "firehose",
 						ReleaseName: "foo-fh1-firehose",
 					}),
-					ModuleData: mustJSON(transientData{
+					ModuleData: utils.MustJSON(transientData{
 						PendingSteps: []string{stepReleaseCreate},
 					}),
 					NextSyncAt: &frozenTime,
@@ -196,7 +198,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 					Name:    "fh1",
 					Project: "foo",
 					Spec: resource.Spec{
-						Configs: mustJSON(map[string]any{
+						Configs: utils.MustJSON(map[string]any{
 							"replicas":      1,
 							"deployment_id": "firehose-deployment-x",
 							"env_variables": map[string]string{
@@ -209,7 +211,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 					},
 					State: resource.State{
 						Status: resource.StatusCompleted,
-						Output: mustJSON(Output{
+						Output: utils.MustJSON(Output{
 							Namespace:   "foo",
 							ReleaseName: "bar",
 						}),
@@ -218,7 +220,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 			},
 			act: module.ActionRequest{
 				Name: module.UpdateAction,
-				Params: mustJSON(map[string]any{
+				Params: utils.MustJSON(map[string]any{
 					"replicas": 10,
 					"env_variables": map[string]string{
 						"SINK_TYPE":                      "HTTP", // the change being applied
@@ -235,7 +237,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 				Name:    "fh1",
 				Project: "foo",
 				Spec: resource.Spec{
-					Configs: mustJSON(map[string]any{
+					Configs: utils.MustJSON(map[string]any{
 						"stopped":       false,
 						"replicas":      10,
 						"deployment_id": "firehose-deployment-x",
@@ -259,11 +261,11 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 				},
 				State: resource.State{
 					Status: resource.StatusPending,
-					Output: mustJSON(Output{
+					Output: utils.MustJSON(Output{
 						Namespace:   "foo",
 						ReleaseName: "bar",
 					}),
-					ModuleData: mustJSON(transientData{
+					ModuleData: utils.MustJSON(transientData{
 						PendingSteps: []string{stepReleaseUpdate},
 					}),
 					NextSyncAt: &frozenTime,
@@ -282,7 +284,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 					Name:    "fh1",
 					Project: "foo",
 					Spec: resource.Spec{
-						Configs: mustJSON(map[string]any{
+						Configs: utils.MustJSON(map[string]any{
 							"replicas":      1,
 							"deployment_id": "firehose-deployment-x",
 							"env_variables": map[string]string{
@@ -296,7 +298,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 					},
 					State: resource.State{
 						Status: resource.StatusCompleted,
-						Output: mustJSON(Output{
+						Output: utils.MustJSON(Output{
 							Namespace:   "foo",
 							ReleaseName: "bar",
 						}),
@@ -305,7 +307,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 			},
 			act: module.ActionRequest{
 				Name: ResetAction,
-				Params: mustJSON(map[string]any{
+				Params: utils.MustJSON(map[string]any{
 					"reset_to": "some_random",
 				}),
 			},
@@ -320,7 +322,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 					Name:    "fh1",
 					Project: "foo",
 					Spec: resource.Spec{
-						Configs: mustJSON(map[string]any{
+						Configs: utils.MustJSON(map[string]any{
 							"replicas":      1,
 							"deployment_id": "firehose-deployment-x",
 							"env_variables": map[string]string{
@@ -342,7 +344,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 					},
 					State: resource.State{
 						Status: resource.StatusCompleted,
-						Output: mustJSON(Output{
+						Output: utils.MustJSON(Output{
 							Namespace:   "foo",
 							ReleaseName: "bar",
 						}),
@@ -351,7 +353,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 			},
 			act: module.ActionRequest{
 				Name: ResetAction,
-				Params: mustJSON(map[string]any{
+				Params: utils.MustJSON(map[string]any{
 					"to": "latest",
 				}),
 			},
@@ -361,7 +363,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 				Name:    "fh1",
 				Project: "foo",
 				Spec: resource.Spec{
-					Configs: mustJSON(map[string]any{
+					Configs: utils.MustJSON(map[string]any{
 						"replicas":      1,
 						"deployment_id": "firehose-deployment-x",
 						"env_variables": map[string]string{
@@ -386,11 +388,11 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 				},
 				State: resource.State{
 					Status: resource.StatusPending,
-					Output: mustJSON(Output{
+					Output: utils.MustJSON(Output{
 						Namespace:   "foo",
 						ReleaseName: "bar",
 					}),
-					ModuleData: mustJSON(transientData{
+					ModuleData: utils.MustJSON(transientData{
 						ResetOffsetTo: "latest",
 						PendingSteps: []string{
 							stepReleaseStop,
@@ -413,7 +415,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 					Name:    "fh1",
 					Project: "foo",
 					Spec: resource.Spec{
-						Configs: mustJSON(map[string]any{
+						Configs: utils.MustJSON(map[string]any{
 							"stopped":       false,
 							"replicas":      1,
 							"deployment_id": "firehose-deployment-x",
@@ -433,7 +435,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 					},
 					State: resource.State{
 						Status: resource.StatusCompleted,
-						Output: mustJSON(Output{
+						Output: utils.MustJSON(Output{
 							Namespace:   "foo",
 							ReleaseName: "bar",
 						}),
@@ -449,7 +451,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 				Name:    "fh1",
 				Project: "foo",
 				Spec: resource.Spec{
-					Configs: mustJSON(map[string]any{
+					Configs: utils.MustJSON(map[string]any{
 						"stopped":       false,
 						"replicas":      1,
 						"deployment_id": "firehose-deployment-x",
@@ -478,11 +480,11 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 				},
 				State: resource.State{
 					Status: resource.StatusPending,
-					Output: mustJSON(Output{
+					Output: utils.MustJSON(Output{
 						Namespace:   "foo",
 						ReleaseName: "bar",
 					}),
-					ModuleData: mustJSON(transientData{
+					ModuleData: utils.MustJSON(transientData{
 						PendingSteps: []string{stepReleaseUpdate},
 					}),
 					NextSyncAt: &frozenTime,
@@ -501,7 +503,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 					Name:    "fh1",
 					Project: "foo",
 					Spec: resource.Spec{
-						Configs: mustJSON(map[string]any{
+						Configs: utils.MustJSON(map[string]any{
 							"replicas":      1,
 							"deployment_id": "firehose-deployment-x",
 							"chart_values": map[string]string{
@@ -520,7 +522,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 					},
 					State: resource.State{
 						Status: resource.StatusCompleted,
-						Output: mustJSON(Output{
+						Output: utils.MustJSON(Output{
 							Namespace:   "foo",
 							ReleaseName: "bar",
 						}),
@@ -551,8 +553,8 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 				assert.NoError(t, err)
 				require.NotNil(t, got)
 
-				wantJSON := string(mustJSON(tt.want))
-				gotJSON := string(mustJSON(got))
+				wantJSON := string(utils.MustJSON(tt.want))
+				gotJSON := string(utils.MustJSON(got))
 				assert.JSONEq(t, wantJSON, gotJSON)
 			}
 		})
