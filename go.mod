@@ -1,6 +1,6 @@
 module github.com/goto/entropy
 
-go 1.18
+go 1.21
 
 require (
 	contrib.go.opencensus.io/exporter/ocagent v0.7.0
