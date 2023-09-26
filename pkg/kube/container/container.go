@@ -1,7 +1,9 @@
 package container
 
 import (
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 type Container struct {
@@ -13,7 +15,10 @@ type Container struct {
 	Args            []string
 	ImagePullPolicy string
 	VolumeMounts    []VolumeMount
+	Requests        map[string]string
+	Limits          map[string]string
 }
+
 type VolumeMount struct {
 	Name      string
 	MountPath string
@@ -42,6 +47,7 @@ func (c Container) Template() corev1.Container {
 			MountPath: v.MountPath,
 		})
 	}
+
 	return corev1.Container{
 		Name:            c.Name,
 		Image:           c.Image,
@@ -49,8 +55,37 @@ func (c Container) Template() corev1.Container {
 		Args:            c.Args,
 		EnvFrom:         envFrom,
 		Env:             env,
-		Resources:       corev1.ResourceRequirements{},
+		Resources:       c.parseResources(),
 		VolumeMounts:    mounts,
 		ImagePullPolicy: corev1.PullPolicy(c.ImagePullPolicy),
+	}
+}
+
+func (c Container) parseResources() corev1.ResourceRequirements {
+	cpuLimits, err := resource.ParseQuantity(c.Limits["cpu"])
+	if err != nil {
+		zap.L().Error(err.Error())
+	}
+	memLimits, err := resource.ParseQuantity(c.Limits["memory"])
+	if err != nil {
+		zap.L().Error(err.Error())
+	}
+	cpuRequests, err := resource.ParseQuantity(c.Requests["cpu"])
+	if err != nil {
+		zap.L().Error(err.Error())
+	}
+	memRequests, err := resource.ParseQuantity(c.Requests["memory"])
+	if err != nil {
+		zap.L().Error(err.Error())
+	}
+	return corev1.ResourceRequirements{
+		Limits: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceCPU:    cpuLimits,
+			corev1.ResourceMemory: memLimits,
+		},
+		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceCPU:    cpuRequests,
+			corev1.ResourceMemory: memRequests,
+		},
 	}
 }

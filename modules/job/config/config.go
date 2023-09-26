@@ -44,12 +44,12 @@ type Volume struct {
 type Container struct {
 	Name              string            `json:"name"`
 	Image             string            `json:"image"`
-	ImagePullPolicy   string            `json:"image_pull_policy"`
-	Command           []string          `json:"command"`
+	ImagePullPolicy   string            `json:"image_pull_policy,omitempty"`
+	Command           []string          `json:"command,omitempty"`
 	SecretsVolumes    []Secret          `json:"secrets_volumes,omitempty"`
 	ConfigMapsVolumes []ConfigMap       `json:"config_maps_volumes,omitempty"`
-	Limits            *UsageSpec        `json:"limits,omitempty"`
-	Requests          *UsageSpec        `json:"requests,omitempty"`
+	Limits            UsageSpec         `json:"limits,omitempty"`
+	Requests          UsageSpec         `json:"requests,omitempty"`
 	EnvConfigMaps     []string          `json:"env_config_maps,omitempty"`
 	EnvVariables      map[string]string `json:"env_variables,omitempty"`
 }
@@ -77,13 +77,20 @@ func ReadConfig(r resource.Resource, confJSON json.RawMessage, dc DriverConf) (*
 	}
 	// for each container
 	rl := dc.RequestsAndLimits["default"]
-	for _, c := range cfg.Containers {
+	for i := range cfg.Containers {
+		c := &cfg.Containers[i]
 		c.EnvVariables = utils.CloneAndMergeMaps(dc.EnvVariables, c.EnvVariables)
-		if c.Requests == nil {
-			c.Requests = &rl.Requests
+		if c.Requests.CPU == "" {
+			c.Requests.CPU = rl.Requests.CPU
 		}
-		if c.Limits == nil {
-			c.Limits = &rl.Limits
+		if c.Requests.Memory == "" {
+			c.Requests.Memory = rl.Requests.Memory
+		}
+		if c.Limits.CPU == "" {
+			c.Limits.CPU = rl.Limits.CPU
+		}
+		if c.Limits.Memory == "" {
+			c.Limits.Memory = rl.Limits.Memory
 		}
 	}
 	// TODO: add a container for telegraf here

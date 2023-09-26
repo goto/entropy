@@ -21,11 +21,11 @@ var defaultDriverConf = config.DriverConf{
 	RequestsAndLimits: map[string]config.RequestsAndLimits{
 		"default": {
 			Limits: config.UsageSpec{
-				CPU:    "1000m",
+				CPU:    "1",
 				Memory: "2000Mi",
 			},
 			Requests: config.UsageSpec{
-				CPU:    "1000m",
+				CPU:    "1",
 				Memory: "2000Mi",
 			},
 		},

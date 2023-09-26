@@ -20,27 +20,14 @@ func (p Pod) Template() corev1.PodTemplateSpec {
 	}
 	var volumes []corev1.Volume
 	for _, v := range p.Volumes {
-		var vSource corev1.VolumeSource
-		switch v.Kind {
-		case volume.Secret:
-			vSource.Secret = &corev1.SecretVolumeSource{
-				SecretName: v.SourceName,
-			}
-		case volume.ConfigMap:
-			vSource.ConfigMap = &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{Name: v.SourceName},
-			}
-		}
-		volumes = append(volumes, corev1.Volume{
-			Name:         v.Name,
-			VolumeSource: corev1.VolumeSource{},
-		})
+		volumes = append(volumes, v.GetPodVolume())
 	}
 	return corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{Name: p.Name},
 		Spec: corev1.PodSpec{
-			Containers: containers,
-			Volumes:    volumes,
+			Containers:    containers,
+			Volumes:       volumes,
+			RestartPolicy: corev1.RestartPolicyNever,
 		},
 	}
 }

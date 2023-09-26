@@ -28,22 +28,19 @@ func (driver *Driver) create(ctx context.Context, r resource.Resource, config *j
 }
 
 const (
-	labelsConfKey          = "labels"
-	labelOrchestrator      = "orchestrator"
-	labelURN               = "urn"
-	labelName              = "name"
-	orchestratorLabelValue = "entropy"
+	labelOrchestrator            = "orchestrator"
+	labelName                    = "name"
+	orchestratorLabelValue       = "entropy"
+	backoffLimit           int32 = 0
 )
 
 func (driver *Driver) getJob(res resource.Resource, conf *job2.Config) (*job.Job, error) {
 	constantLabels := map[string]string{
 		labelOrchestrator: orchestratorLabelValue,
-		labelURN:          res.URN,
 		labelName:         res.Name,
 	}
 
 	var volumes []volume.Volume
-	var containers []container.Container
 	for _, v := range conf.Volumes {
 		k := volume.Secret
 		if v.Kind == "config-map" {
@@ -55,6 +52,7 @@ func (driver *Driver) getJob(res resource.Resource, conf *job2.Config) (*job.Job
 			SourceName: v.Name,
 		})
 	}
+	var containers []container.Container
 	for _, c := range conf.Containers {
 		var vm []container.VolumeMount
 		for _, s := range c.SecretsVolumes {
@@ -69,7 +67,6 @@ func (driver *Driver) getJob(res resource.Resource, conf *job2.Config) (*job.Job
 				MountPath: cm.Mount,
 			})
 		}
-
 		containers = append(containers, container.Container{
 			Image:           c.Image,
 			Name:            c.Name,
@@ -78,6 +75,8 @@ func (driver *Driver) getJob(res resource.Resource, conf *job2.Config) (*job.Job
 			EnvMap:          c.EnvVariables,
 			ImagePullPolicy: c.ImagePullPolicy,
 			VolumeMounts:    vm,
+			Requests:        map[string]string{"cpu": c.Requests.CPU, "memory": c.Requests.Memory},
+			Limits:          map[string]string{"cpu": c.Limits.CPU, "memory": c.Limits.Memory},
 		})
 	}
 	p := &pod.Pod{
@@ -85,12 +84,14 @@ func (driver *Driver) getJob(res resource.Resource, conf *job2.Config) (*job.Job
 		Containers: containers,
 		Volumes:    volumes,
 	}
+	limit := backoffLimit
 	j := &job.Job{
 		Pod:         p,
 		Name:        conf.Name,
 		Namespace:   conf.Namespace,
 		Labels:      utils.CloneAndMergeMaps(constantLabels, conf.JobLabels),
 		Parallelism: &conf.Replicas,
+		BackOffList: &limit,
 	}
 	return j, nil
 }
