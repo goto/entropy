@@ -1,10 +1,11 @@
 package pod
 
 import (
-	"github.com/goto/entropy/pkg/kube/container"
-	"github.com/goto/entropy/pkg/kube/volume"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/goto/entropy/pkg/kube/container"
+	"github.com/goto/entropy/pkg/kube/volume"
 )
 
 type Pod struct {

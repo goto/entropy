@@ -1,11 +1,9 @@
 package utils
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-
 	"gotest.tools/assert"
 )
 
@@ -18,6 +16,5 @@ func TestCloneAndMergeMaps(t *testing.T) {
 
 func TestSafeName(t *testing.T) {
 	sName := SafeName("testing-1232-end", "-name", 50)
-	fmt.Println(sName)
 	assert.Equal(t, "testing-1232-end-name", sName)
 }

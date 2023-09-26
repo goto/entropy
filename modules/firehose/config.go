@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/goto/entropy/modules/utils"
-
 	"github.com/goto/entropy/core/resource"
+	"github.com/goto/entropy/modules/utils"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/validator"
 )

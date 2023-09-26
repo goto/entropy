@@ -4,11 +4,10 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/goto/entropy/modules/utils"
-
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/modules/kubernetes"
+	"github.com/goto/entropy/modules/utils"
 	"github.com/goto/entropy/pkg/errors"
 )
 

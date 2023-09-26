@@ -3,9 +3,8 @@ package driver
 import (
 	"context"
 
-	job2 "github.com/goto/entropy/modules/job/config"
-
 	"github.com/goto/entropy/core/resource"
+	job2 "github.com/goto/entropy/modules/job/config"
 	"github.com/goto/entropy/modules/kubernetes"
 	"github.com/goto/entropy/modules/utils"
 	"github.com/goto/entropy/pkg/errors"
@@ -15,18 +14,6 @@ import (
 	"github.com/goto/entropy/pkg/kube/volume"
 )
 
-func (driver *Driver) create(ctx context.Context, r resource.Resource, config *job2.Config, out kubernetes.Output) error {
-	j, err := driver.getJob(r, config)
-	if err != nil {
-		return err
-	}
-
-	if err := driver.CreateJob(ctx, out.Configs, j); err != nil {
-		return errors.ErrInternal.WithCausef(err.Error())
-	}
-	return nil
-}
-
 const (
 	labelOrchestrator            = "orchestrator"
 	labelName                    = "name"
@@ -34,7 +21,15 @@ const (
 	backoffLimit           int32 = 0
 )
 
-func (driver *Driver) getJob(res resource.Resource, conf *job2.Config) (*job.Job, error) {
+func (driver *Driver) create(ctx context.Context, r resource.Resource, config *job2.Config, out kubernetes.Output) error {
+	j := getJob(r, config)
+	if err := driver.CreateJob(ctx, out.Configs, j); err != nil {
+		return errors.ErrInternal.WithCausef(err.Error())
+	}
+	return nil
+}
+
+func getJob(res resource.Resource, conf *job2.Config) *job.Job {
 	constantLabels := map[string]string{
 		labelOrchestrator: orchestratorLabelValue,
 		labelName:         res.Name,
@@ -93,5 +88,5 @@ func (driver *Driver) getJob(res resource.Resource, conf *job2.Config) (*job.Job
 		Parallelism: &conf.Replicas,
 		BackOffList: &limit,
 	}
-	return j, nil
+	return j
 }

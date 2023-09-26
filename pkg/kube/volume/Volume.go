@@ -4,12 +4,12 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-type Source int
-
 const (
 	Secret Source = iota
 	ConfigMap
 )
+
+type Source int
 
 type Volume struct {
 	Kind       Source

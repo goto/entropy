@@ -5,10 +5,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/goto/entropy/modules/job/config"
-
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
+	"github.com/goto/entropy/modules/job/config"
 	"github.com/goto/entropy/modules/kubernetes"
 	"github.com/goto/entropy/modules/utils"
 	"github.com/goto/entropy/pkg/errors"
@@ -21,12 +20,12 @@ type Driver struct {
 	CreateJob func(ctx context.Context, conf kube.Config, j *job.Job) error
 }
 
-func (driver *Driver) Plan(ctx context.Context, res module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
+func (driver *Driver) Plan(_ context.Context, res module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
 	switch act.Name {
 	case module.CreateAction:
 		return driver.planCreate(res, act)
 	default:
-		return nil, nil
+		return &resource.Resource{}, nil
 	}
 }
 
@@ -86,6 +85,6 @@ func (driver *Driver) Sync(ctx context.Context, exr module.ExpandedResource) (*r
 	return &finalState, nil
 }
 
-func (driver *Driver) Output(ctx context.Context, res module.ExpandedResource) (json.RawMessage, error) {
+func (*Driver) Output(context.Context, module.ExpandedResource) (json.RawMessage, error) {
 	return nil, nil
 }

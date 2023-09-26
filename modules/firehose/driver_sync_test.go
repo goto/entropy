@@ -5,14 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/goto/entropy/modules/utils"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/modules/kubernetes"
+	"github.com/goto/entropy/modules/utils"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/helm"
 	"github.com/goto/entropy/pkg/kube"

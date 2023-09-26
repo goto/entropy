@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/goto/entropy/modules/utils"
-
 	"github.com/stretchr/testify/assert"
+
+	"github.com/goto/entropy/modules/utils"
 )
 
 func Test_safeReleaseName(t *testing.T) {

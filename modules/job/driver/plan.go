@@ -3,10 +3,9 @@ package driver
 import (
 	"time"
 
-	"github.com/goto/entropy/modules/job/config"
-
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
+	"github.com/goto/entropy/modules/job/config"
 	"github.com/goto/entropy/modules/utils"
 )
 

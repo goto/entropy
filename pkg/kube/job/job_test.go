@@ -4,10 +4,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/goto/entropy/pkg/kube/pod"
 	v12 "k8s.io/api/batch/v1"
 	v13 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/goto/entropy/pkg/kube/pod"
 )
 
 func TestJob_Template(t *testing.T) {

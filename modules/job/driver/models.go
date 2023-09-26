@@ -7,8 +7,6 @@ import (
 	"github.com/goto/entropy/pkg/errors"
 )
 
-type PendingStep int
-
 const (
 	KeyKubeDependency = "kube_cluster"
 	StopAction        = "stop"
@@ -18,6 +16,7 @@ const (
 	Create PendingStep = iota
 )
 
+type PendingStep int
 type TransientData struct {
 	PendingSteps []PendingStep `json:"pending_steps"`
 }

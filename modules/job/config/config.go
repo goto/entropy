@@ -11,10 +11,18 @@ import (
 	"github.com/goto/entropy/pkg/validator"
 )
 
+const maxJobNameLength = 47
+
+var (
+	//go:embed schema/config.json
+	configSchemaRaw []byte
+	validateConfig  = validator.FromJSONSchema(configSchemaRaw)
+)
+
 type DriverConf struct {
-	Namespace         string                       // maybe we shouldn't restrict namespace?
-	RequestsAndLimits map[string]RequestsAndLimits // to use when not provided
-	EnvVariables      map[string]string
+	Namespace         string                       `json:"namespace"`         // maybe we shouldn't restrict namespace?
+	RequestsAndLimits map[string]RequestsAndLimits `json:"requestsAndLimits"` // to use when not provided
+	EnvVariables      map[string]string            `json:"env_variables"`
 }
 
 type RequestsAndLimits struct {
@@ -62,13 +70,6 @@ type ConfigMap struct {
 	Name  string `json:"name"`
 	Mount string `json:"mount"`
 }
-
-var (
-	//go:embed schema/config.json
-	configSchemaRaw []byte
-	validateConfig  = validator.FromJSONSchema(configSchemaRaw)
-)
-var maxJobNameLength = 47
 
 func ReadConfig(r resource.Resource, confJSON json.RawMessage, dc DriverConf) (*Config, error) {
 	var cfg Config

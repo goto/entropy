@@ -4,25 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	v1 "k8s.io/client-go/kubernetes/typed/batch/v1"
-
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
+	v1 "k8s.io/client-go/kubernetes/typed/batch/v1"
+
+	"github.com/goto/entropy/pkg/errors"
 )
-
-type Processor struct {
-	Job              *Job
-	Client           v1.JobInterface
-	watch            watch.Interface
-	JobDeleteOptions metav1.DeleteOptions
-}
-
-func (jp *Processor) GetWatch() watch.Interface {
-	return jp.watch
-}
-
-type StatusType int
 
 const (
 	Invalid StatusType = iota
@@ -33,12 +21,24 @@ const (
 	Dummy
 )
 
+var deletionPolicy = metav1.DeletePropagationForeground
+
+type StatusType int
+type Processor struct {
+	Job              *Job
+	Client           v1.JobInterface
+	watch            watch.Interface
+	JobDeleteOptions metav1.DeleteOptions
+}
+
 type Status struct {
 	Status StatusType
 	Err    error
 }
 
-var deletionPolicy = metav1.DeletePropagationForeground
+func (jp *Processor) GetWatch() watch.Interface {
+	return jp.watch
+}
 
 func NewProcessor(job *Job, client v1.JobInterface) *Processor {
 	deleteOptions := metav1.DeleteOptions{PropagationPolicy: &deletionPolicy}
@@ -90,17 +90,16 @@ func (jp *Processor) WatchCompletion(exitChan chan Status) {
 	if jp.GetWatch() == nil {
 		exitChan <- Status{
 			Status: Invalid,
-			Err:    fmt.Errorf("watcher Object is not initilised"),
+			Err:    errors.New("watcher Object is not initialized"),
 		}
 		return
 	}
+
 	for {
-		select {
-		case _, ok := <-jp.GetWatch().ResultChan():
-			if !ok {
-				exitChan <- Status{Status: Dummy}
-				return
-			}
+		_, more := <-jp.GetWatch().ResultChan()
+		if !more {
+			break
 		}
 	}
+	exitChan <- Status{Status: Dummy}
 }

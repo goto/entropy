@@ -10,10 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/goto/entropy/pkg/kube/job"
-
-	typedbatchv1 "k8s.io/client-go/kubernetes/typed/batch/v1"
-
 	"github.com/mcuadros/go-defaults"
 	"github.com/mitchellh/mapstructure"
 	batchv1 "k8s.io/api/batch/v1"
@@ -23,9 +19,11 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/kubernetes"
+	typedbatchv1 "k8s.io/client-go/kubernetes/typed/batch/v1"
 	"k8s.io/client-go/rest"
 
 	"github.com/goto/entropy/pkg/errors"
+	"github.com/goto/entropy/pkg/kube/job"
 )
 
 const (

@@ -3,8 +3,9 @@ package cli
 import (
 	"context"
 
-	"github.com/goto/entropy/pkg/logger"
 	"github.com/spf13/cobra"
+
+	"github.com/goto/entropy/pkg/logger"
 )
 
 func cmdMigrate() *cobra.Command {

@@ -4,11 +4,9 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/goto/entropy/modules/job/config"
-
-	"github.com/goto/entropy/modules/job/driver"
-
 	"github.com/goto/entropy/core/module"
+	"github.com/goto/entropy/modules/job/config"
+	"github.com/goto/entropy/modules/job/driver"
 	"github.com/goto/entropy/modules/kubernetes"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/kube"

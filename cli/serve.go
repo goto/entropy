@@ -3,8 +3,6 @@ package cli
 import (
 	"time"
 
-	"github.com/goto/entropy/modules/job"
-
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -15,6 +13,7 @@ import (
 	"github.com/goto/entropy/internal/store/postgres"
 	"github.com/goto/entropy/modules"
 	"github.com/goto/entropy/modules/firehose"
+	"github.com/goto/entropy/modules/job"
 	"github.com/goto/entropy/modules/kubernetes"
 	"github.com/goto/entropy/pkg/logger"
 	"github.com/goto/entropy/pkg/telemetry"
