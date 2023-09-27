@@ -2,9 +2,8 @@ package driver
 
 import (
 	"context"
-
 	"github.com/goto/entropy/core/resource"
-	job2 "github.com/goto/entropy/modules/job/config"
+	"github.com/goto/entropy/modules/job/config"
 	"github.com/goto/entropy/modules/kubernetes"
 	"github.com/goto/entropy/modules/utils"
 	"github.com/goto/entropy/pkg/errors"
@@ -21,7 +20,7 @@ const (
 	backoffLimit           int32 = 0
 )
 
-func (driver *Driver) create(ctx context.Context, r resource.Resource, config *job2.Config, out kubernetes.Output) error {
+func (driver *Driver) create(ctx context.Context, r resource.Resource, config *config.Config, out kubernetes.Output) error {
 	j := getJob(r, config)
 	if err := driver.CreateJob(ctx, out.Configs, j); err != nil {
 		return errors.ErrInternal.WithCausef(err.Error())
@@ -29,7 +28,7 @@ func (driver *Driver) create(ctx context.Context, r resource.Resource, config *j
 	return nil
 }
 
-func getJob(res resource.Resource, conf *job2.Config) *job.Job {
+func getJob(res resource.Resource, conf *config.Config) *job.Job {
 	constantLabels := map[string]string{
 		labelOrchestrator: orchestratorLabelValue,
 		labelName:         res.Name,
@@ -38,7 +37,7 @@ func getJob(res resource.Resource, conf *job2.Config) *job.Job {
 	var volumes []volume.Volume
 	for _, v := range conf.Volumes {
 		k := volume.Secret
-		if v.Kind == "config-map" {
+		if v.Kind == "configMap" {
 			k = volume.ConfigMap
 		}
 		volumes = append(volumes, volume.Volume{
