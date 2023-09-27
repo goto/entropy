@@ -23,13 +23,15 @@ const (
 
 var deletionPolicy = metav1.DeletePropagationForeground
 
-type StatusType int
-type Processor struct {
-	Job              *Job
-	Client           v1.JobInterface
-	watch            watch.Interface
-	JobDeleteOptions metav1.DeleteOptions
-}
+type (
+	StatusType int
+	Processor  struct {
+		Job              *Job
+		Client           v1.JobInterface
+		watch            watch.Interface
+		JobDeleteOptions metav1.DeleteOptions
+	}
+)
 
 type Status struct {
 	Status StatusType

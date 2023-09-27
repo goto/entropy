@@ -94,7 +94,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 						"env_variables": map[string]string{
 							"SINK_TYPE":                      "LOG",
 							"INPUT_SCHEMA_PROTO_CLASS":       "com.foo.Bar",
-							"SOURCE_KAFKA_CONSUMER_GROUP_ID": "ABCDEFGHIJKLMNOPQRSTUVWXYZ-abcdefghij-3801d0-firehose-0001",
+							"SOURCE_KAFKA_CONSUMER_GROUP_ID": "ABCDEFGHIJKLMNOPQRSTUVWXYZ-abcdefghij-3801d0-firehose-1",
 							"SOURCE_KAFKA_BROKERS":           "localhost:9092",
 							"SOURCE_KAFKA_TOPIC":             "foo-log",
 						},
@@ -307,7 +307,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 			act: module.ActionRequest{
 				Name: ResetAction,
 				Params: utils.MustJSON(map[string]any{
-					"reset_to": "some_random",
+					"to": "some_random",
 				}),
 			},
 			wantErr: errors.ErrInvalid,
@@ -325,11 +325,12 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 							"replicas":      1,
 							"deployment_id": "firehose-deployment-x",
 							"env_variables": map[string]string{
-								"SINK_TYPE":                      "LOG",
-								"INPUT_SCHEMA_PROTO_CLASS":       "com.foo.Bar",
-								"SOURCE_KAFKA_CONSUMER_GROUP_ID": "foo-bar-baz",
-								"SOURCE_KAFKA_BROKERS":           "localhost:9092",
-								"SOURCE_KAFKA_TOPIC":             "foo-log",
+								"SINK_TYPE":                                      "LOG",
+								"INPUT_SCHEMA_PROTO_CLASS":                       "com.foo.Bar",
+								"SOURCE_KAFKA_CONSUMER_GROUP_ID":                 "firehose-deployment-x-1",
+								"SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_OFFSET_RESET": "latest",
+								"SOURCE_KAFKA_BROKERS":                           "localhost:9092",
+								"SOURCE_KAFKA_TOPIC":                             "foo-log",
 							},
 							"limits": map[string]any{
 								"cpu":    "200m",
@@ -353,7 +354,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 			act: module.ActionRequest{
 				Name: ResetAction,
 				Params: utils.MustJSON(map[string]any{
-					"to": "latest",
+					"to": "earliest",
 				}),
 			},
 			want: &resource.Resource{
@@ -366,13 +367,14 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 						"replicas":      1,
 						"deployment_id": "firehose-deployment-x",
 						"env_variables": map[string]string{
-							"SINK_TYPE":                      "LOG",
-							"INPUT_SCHEMA_PROTO_CLASS":       "com.foo.Bar",
-							"SOURCE_KAFKA_CONSUMER_GROUP_ID": "foo-bar-baz",
-							"SOURCE_KAFKA_BROKERS":           "localhost:9092",
-							"SOURCE_KAFKA_TOPIC":             "foo-log",
+							"SINK_TYPE":                                      "LOG",
+							"INPUT_SCHEMA_PROTO_CLASS":                       "com.foo.Bar",
+							"SOURCE_KAFKA_CONSUMER_GROUP_ID":                 "firehose-deployment-x-2",
+							"SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_OFFSET_RESET": "earliest",
+							"SOURCE_KAFKA_BROKERS":                           "localhost:9092",
+							"SOURCE_KAFKA_TOPIC":                             "foo-log",
 						},
-						"reset_offset": "latest",
+						"reset_offset": "earliest",
 						"limits": map[string]any{
 							"cpu":    "200m",
 							"memory": "512Mi",
@@ -392,10 +394,8 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 						ReleaseName: "bar",
 					}),
 					ModuleData: utils.MustJSON(transientData{
-						ResetOffsetTo: "latest",
 						PendingSteps: []string{
 							stepReleaseStop,
-							stepKafkaReset,
 							stepReleaseUpdate,
 						},
 					}),
@@ -555,6 +555,46 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 				wantJSON := string(utils.MustJSON(tt.want))
 				gotJSON := string(utils.MustJSON(got))
 				assert.JSONEq(t, wantJSON, gotJSON)
+			}
+		})
+	}
+}
+
+func TestGetNewConsumerGroupID(t *testing.T) {
+	t.Parallel()
+
+	table := []struct {
+		title           string
+		deploymentID    string
+		consumerGroupID string
+		want            string
+		wantErr         error
+	}{
+		{
+			title:           "invalid-group-id",
+			consumerGroupID: "test-firehose-xyz",
+			want:            "",
+			wantErr:         errGroupIDFormat,
+		},
+		{
+			title:           "valid-group-id",
+			consumerGroupID: "test-firehose-0999",
+			want:            "test-firehose-1000",
+			wantErr:         nil,
+		},
+	}
+
+	for _, tt := range table {
+		t.Run(tt.title, func(t *testing.T) {
+			got, err := getNewConsumerGroupID(tt.consumerGroupID)
+			if tt.wantErr != nil {
+				require.Error(t, err)
+				assert.Equal(t, "", got)
+				assert.ErrorIs(t, err, tt.wantErr)
+			} else {
+				assert.NoError(t, err)
+				require.NotNil(t, got)
+				assert.Equal(t, tt.want, got)
 			}
 		})
 	}

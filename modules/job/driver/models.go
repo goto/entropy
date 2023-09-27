@@ -16,10 +16,12 @@ const (
 	Create PendingStep = iota
 )
 
-type PendingStep int
-type TransientData struct {
-	PendingSteps []PendingStep `json:"pending_steps"`
-}
+type (
+	PendingStep   int
+	TransientData struct {
+		PendingSteps []PendingStep `json:"pending_steps"`
+	}
+)
 
 type Output struct {
 	Namespace string `json:"namespace"`

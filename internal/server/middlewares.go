@@ -93,6 +93,15 @@ func requestLogger() gorillamux.MiddlewareFunc {
 				Status:         http.StatusOK,
 				ResponseWriter: wr,
 			}
+
+			bodyBytes, err := io.ReadAll(req.Body)
+			if err != nil {
+				zap.L().Error("error reading request body: %v", zap.String("error", err.Error()))
+				return
+			}
+			reader := io.NopCloser(bytes.NewBuffer(bodyBytes))
+			req.Body = reader
+
 			next.ServeHTTP(wrapped, req)
 
 			if req.URL.Path == "/ping" {
@@ -109,25 +118,14 @@ func requestLogger() gorillamux.MiddlewareFunc {
 				zap.Int("status", wrapped.Status),
 			}
 
-			switch req.Method {
-			case http.MethodGet:
-				break
-			default:
-				buf, err := io.ReadAll(req.Body)
+			if len(bodyBytes) > 0 {
+				dst := bytes.NewBuffer(nil)
+				err = json.Compact(dst, bodyBytes)
 				if err != nil {
-					zap.L().Debug("error reading request body: %v", zap.String("error", err.Error()))
-				} else if len(buf) > 0 {
-					dst := &bytes.Buffer{}
-					err := json.Compact(dst, buf)
-					if err != nil {
-						zap.L().Debug("error json compacting request body: %v", zap.String("error", err.Error()))
-					} else {
-						fields = append(fields, zap.String("request_body", dst.String()))
-					}
+					zap.L().Error("error json compacting request body: %v", zap.String("error", err.Error()))
+				} else {
+					fields = append(fields, zap.String("request_body", dst.String()))
 				}
-
-				reader := io.NopCloser(bytes.NewBuffer(buf))
-				req.Body = reader
 			}
 
 			if !is2xx(wrapped.Status) {
