@@ -3,13 +3,13 @@ package driver
 import (
 	"context"
 	"encoding/json"
+	"github.com/goto/entropy/modules"
 	"time"
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/modules/job/config"
 	"github.com/goto/entropy/modules/kubernetes"
-	"github.com/goto/entropy/modules/utils"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/kube"
 	"github.com/goto/entropy/pkg/kube/job"
@@ -69,7 +69,7 @@ func (driver *Driver) Sync(ctx context.Context, exr module.ExpandedResource) (*r
 
 		immediately := time.Now()
 		finalState.NextSyncAt = &immediately
-		finalState.ModuleData = utils.MustJSON(modData)
+		finalState.ModuleData = modules.MustJSON(modData)
 
 		return &finalState, nil
 	}

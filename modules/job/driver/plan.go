@@ -1,12 +1,12 @@
 package driver
 
 import (
+	"github.com/goto/entropy/modules"
 	"time"
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/modules/job/config"
-	"github.com/goto/entropy/modules/utils"
 )
 
 func (driver *Driver) planCreate(exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
@@ -16,15 +16,15 @@ func (driver *Driver) planCreate(exr module.ExpandedResource, act module.ActionR
 	}
 	conf.Namespace = driver.Conf.Namespace
 	immediately := time.Now()
-	exr.Resource.Spec.Configs = utils.MustJSON(conf)
+	exr.Resource.Spec.Configs = modules.MustJSON(conf)
 	exr.Resource.State = resource.State{
 		Status: resource.StatusPending,
-		Output: utils.MustJSON(Output{
+		Output: modules.MustJSON(Output{
 			Namespace: conf.Namespace,
 			JobName:   conf.Name,
 		}),
 		NextSyncAt: &immediately,
-		ModuleData: utils.MustJSON(TransientData{
+		ModuleData: modules.MustJSON(TransientData{
 			PendingSteps: []PendingStep{Create},
 		}),
 	}

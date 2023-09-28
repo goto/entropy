@@ -2,11 +2,10 @@ package firehose
 
 import (
 	"fmt"
+	"github.com/goto/entropy/modules"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/goto/entropy/modules/utils"
 )
 
 func Test_safeReleaseName(t *testing.T) {
@@ -40,7 +39,7 @@ func Test_safeReleaseName(t *testing.T) {
 
 	for i, tt := range table {
 		t.Run(fmt.Sprintf("Case#%d", i), func(t *testing.T) {
-			got := utils.SafeName(tt.str, "-firehose", helmReleaseNameMaxLength)
+			got := modules.SafeName(tt.str, "-firehose", helmReleaseNameMaxLength)
 			assert.Equal(t, tt.want, got)
 			assert.True(t, len(got) <= helmReleaseNameMaxLength, "release name has length %d", len(got))
 		})

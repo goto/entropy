@@ -3,6 +3,7 @@ package firehose
 import (
 	"context"
 	"encoding/json"
+	"github.com/goto/entropy/modules"
 	"testing"
 	"time"
 
@@ -11,7 +12,6 @@ import (
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
-	"github.com/goto/entropy/modules/utils"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/kube"
 )
@@ -48,7 +48,7 @@ func TestFirehoseDriver_Output(t *testing.T) {
 					Name:    "fh1",
 					Project: "foo",
 					State: resource.State{
-						ModuleData: utils.MustJSON(transientData{}),
+						ModuleData: modules.MustJSON(transientData{}),
 					},
 				},
 			},
@@ -63,8 +63,8 @@ func TestFirehoseDriver_Output(t *testing.T) {
 					Name:    "fh1",
 					Project: "foo",
 					State: resource.State{
-						Output:     utils.MustJSON(Output{}),
-						ModuleData: utils.MustJSON(transientData{}),
+						Output:     modules.MustJSON(Output{}),
+						ModuleData: modules.MustJSON(transientData{}),
 					},
 				},
 			},
@@ -74,7 +74,7 @@ func TestFirehoseDriver_Output(t *testing.T) {
 			title: "GetPod_Failure",
 			exr: sampleResourceWithState(resource.State{
 				Status: resource.StatusCompleted,
-				Output: utils.MustJSON(Output{}),
+				Output: modules.MustJSON(Output{}),
 			}),
 			kubeGetPod: func(t *testing.T) kubeGetPodFn {
 				t.Helper()
@@ -90,7 +90,7 @@ func TestFirehoseDriver_Output(t *testing.T) {
 			title: "GetPod_Success",
 			exr: sampleResourceWithState(resource.State{
 				Status: resource.StatusCompleted,
-				Output: utils.MustJSON(Output{
+				Output: modules.MustJSON(Output{
 					Pods:        nil,
 					Namespace:   "firehose",
 					ReleaseName: "foo-bar",
@@ -109,7 +109,7 @@ func TestFirehoseDriver_Output(t *testing.T) {
 					}, nil
 				}
 			},
-			want: utils.MustJSON(Output{
+			want: modules.MustJSON(Output{
 				Pods: []kube.Pod{
 					{
 						Name:       "foo-1",

@@ -23,11 +23,6 @@ type (
 	}
 )
 
-type Output struct {
-	Namespace string `json:"namespace"`
-	JobName   string `json:"job_name"`
-}
-
 func ReadTransientData(exr module.ExpandedResource) (*TransientData, error) {
 	if len(exr.Resource.State.ModuleData) == 0 {
 		return &TransientData{}, nil
@@ -38,12 +33,4 @@ func ReadTransientData(exr module.ExpandedResource) (*TransientData, error) {
 		return nil, errors.ErrInternal.WithMsgf("corrupted transient data").WithCausef(err.Error())
 	}
 	return &modData, nil
-}
-
-func ReadOutputData(exr module.ExpandedResource) (*Output, error) {
-	var curOut Output
-	if err := json.Unmarshal(exr.Resource.State.Output, &curOut); err != nil {
-		return nil, errors.ErrInternal.WithMsgf("corrupted output").WithCausef(err.Error())
-	}
-	return &curOut, nil
 }

@@ -1,6 +1,7 @@
 package firehose
 
 import (
+	"github.com/goto/entropy/modules"
 	"testing"
 	"time"
 
@@ -9,7 +10,6 @@ import (
 
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/modules/kubernetes"
-	"github.com/goto/entropy/modules/utils"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/helm"
 )
@@ -587,8 +587,8 @@ func TestFirehoseDriver(t *testing.T) {
 				assert.NoError(t, err)
 				require.NotNil(t, got)
 
-				wantJSON := string(utils.MustJSON(tt.want))
-				gotJSON := string(utils.MustJSON(got))
+				wantJSON := string(modules.MustJSON(tt.want))
+				gotJSON := string(modules.MustJSON(got))
 				assert.JSONEq(t, wantJSON, gotJSON)
 			}
 		})

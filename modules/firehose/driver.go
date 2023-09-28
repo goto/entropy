@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/goto/entropy/modules"
 	"strings"
 	"text/template"
 	"time"
@@ -12,7 +13,6 @@ import (
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/modules/kubernetes"
-	"github.com/goto/entropy/modules/utils"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/helm"
 	"github.com/goto/entropy/pkg/kube"
@@ -187,13 +187,13 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		labelName: res.Name,
 	}
 
-	deploymentLabels, err := renderTpl(fd.conf.Labels, utils.CloneAndMergeMaps(res.Labels, entropyLabels))
+	deploymentLabels, err := renderTpl(fd.conf.Labels, modules.CloneAndMergeMaps(res.Labels, entropyLabels))
 	if err != nil {
 		return nil, err
 	}
 
 	if conf.Telegraf != nil && conf.Telegraf.Enabled {
-		mergedLabelsAndEnvVariablesMap := utils.CloneAndMergeMaps(utils.CloneAndMergeMaps(conf.EnvVariables, utils.CloneAndMergeMaps(deploymentLabels, utils.CloneAndMergeMaps(res.Labels, entropyLabels))), otherLabels)
+		mergedLabelsAndEnvVariablesMap := modules.CloneAndMergeMaps(modules.CloneAndMergeMaps(conf.EnvVariables, modules.CloneAndMergeMaps(deploymentLabels, modules.CloneAndMergeMaps(res.Labels, entropyLabels))), otherLabels)
 
 		conf.EnvVariables, err = renderTpl(conf.EnvVariables, mergedLabelsAndEnvVariablesMap)
 		if err != nil {
@@ -282,7 +282,7 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 	rc.ForceUpdate = true
 	rc.Version = conf.ChartValues.ChartVersion
 	rc.Values = map[string]any{
-		labelsConfKey:  utils.CloneAndMergeMaps(deploymentLabels, entropyLabels),
+		labelsConfKey:  modules.CloneAndMergeMaps(deploymentLabels, entropyLabels),
 		"replicaCount": conf.Replicas,
 		"firehose": map[string]any{
 			"image": map[string]any{

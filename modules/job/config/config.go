@@ -4,9 +4,9 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"github.com/goto/entropy/modules"
 
 	"github.com/goto/entropy/core/resource"
-	"github.com/goto/entropy/modules/utils"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/validator"
 )
@@ -81,7 +81,7 @@ func ReadConfig(r resource.Resource, confJSON json.RawMessage, dc DriverConf) (*
 	rl := dc.RequestsAndLimits["default"]
 	for i := range cfg.Containers {
 		c := &cfg.Containers[i]
-		c.EnvVariables = utils.CloneAndMergeMaps(dc.EnvVariables, c.EnvVariables)
+		c.EnvVariables = modules.CloneAndMergeMaps(dc.EnvVariables, c.EnvVariables)
 		if c.Requests.CPU == "" {
 			c.Requests.CPU = rl.Requests.CPU
 		}
@@ -103,7 +103,7 @@ func ReadConfig(r resource.Resource, confJSON json.RawMessage, dc DriverConf) (*
 	}
 
 	if len(cfg.Name) == 0 {
-		cfg.Name = utils.SafeName(fmt.Sprintf("%s-%s", r.Project, r.Name), "-job", maxJobNameLength)
+		cfg.Name = modules.SafeName(fmt.Sprintf("%s-%s", r.Project, r.Name), "-job", maxJobNameLength)
 	} else if len(cfg.Name) > maxJobNameLength {
 		return nil, errors.ErrInvalid.WithMsgf("Job name must not have more than %d chars", maxJobNameLength)
 	}

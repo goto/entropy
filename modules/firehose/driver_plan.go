@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/goto/entropy/modules"
 	"regexp"
 	"strconv"
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
-	"github.com/goto/entropy/modules/utils"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/kafka"
 )
@@ -95,11 +95,11 @@ func (fd *firehoseDriver) planChange(exr module.ExpandedResource, act module.Act
 
 	immediately := fd.timeNow()
 
-	exr.Resource.Spec.Configs = utils.MustJSON(curConf)
+	exr.Resource.Spec.Configs = modules.MustJSON(curConf)
 	exr.Resource.State = resource.State{
 		Status: resource.StatusPending,
 		Output: exr.Resource.State.Output,
-		ModuleData: utils.MustJSON(transientData{
+		ModuleData: modules.MustJSON(transientData{
 			PendingSteps: []string{stepReleaseUpdate},
 		}),
 		NextSyncAt: &immediately,
@@ -126,15 +126,15 @@ func (fd *firehoseDriver) planCreate(exr module.ExpandedResource, act module.Act
 
 	immediately := fd.timeNow()
 
-	exr.Resource.Spec.Configs = utils.MustJSON(conf)
+	exr.Resource.Spec.Configs = modules.MustJSON(conf)
 	exr.Resource.State = resource.State{
 		Status: resource.StatusPending,
-		Output: utils.MustJSON(Output{
+		Output: modules.MustJSON(Output{
 			Namespace:   conf.Namespace,
 			ReleaseName: conf.DeploymentID,
 		}),
 		NextSyncAt: &immediately,
-		ModuleData: utils.MustJSON(transientData{
+		ModuleData: modules.MustJSON(transientData{
 			PendingSteps: []string{stepReleaseCreate},
 		}),
 	}
@@ -157,12 +157,12 @@ func (fd *firehoseDriver) planResetV2(exr module.ExpandedResource, act module.Ac
 
 	curConf.ResetOffset = resetValue
 
-	exr.Resource.Spec.Configs = utils.MustJSON(curConf)
+	exr.Resource.Spec.Configs = modules.MustJSON(curConf)
 	exr.Resource.State = resource.State{
 		Status:     resource.StatusPending,
 		Output:     exr.Resource.State.Output,
 		NextSyncAt: &immediately,
-		ModuleData: utils.MustJSON(transientData{
+		ModuleData: modules.MustJSON(transientData{
 			ResetOffsetTo: resetValue,
 			PendingSteps: []string{
 				stepReleaseStop,   // stop the firehose
@@ -194,12 +194,12 @@ func (fd *firehoseDriver) planReset(exr module.ExpandedResource, act module.Acti
 		return nil, err
 	}
 
-	exr.Resource.Spec.Configs = utils.MustJSON(curConf)
+	exr.Resource.Spec.Configs = modules.MustJSON(curConf)
 	exr.Resource.State = resource.State{
 		Status:     resource.StatusPending,
 		Output:     exr.Resource.State.Output,
 		NextSyncAt: &immediately,
-		ModuleData: utils.MustJSON(transientData{
+		ModuleData: modules.MustJSON(transientData{
 			PendingSteps: []string{
 				stepReleaseStop,   // stop the firehose
 				stepReleaseUpdate, // restart the deployment.

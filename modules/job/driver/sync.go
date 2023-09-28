@@ -3,9 +3,9 @@ package driver
 import (
 	"context"
 	"github.com/goto/entropy/core/resource"
+	"github.com/goto/entropy/modules"
 	"github.com/goto/entropy/modules/job/config"
 	"github.com/goto/entropy/modules/kubernetes"
-	"github.com/goto/entropy/modules/utils"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/kube/container"
 	"github.com/goto/entropy/pkg/kube/job"
@@ -83,7 +83,7 @@ func getJob(res resource.Resource, conf *config.Config) *job.Job {
 		Pod:         p,
 		Name:        conf.Name,
 		Namespace:   conf.Namespace,
-		Labels:      utils.CloneAndMergeMaps(constantLabels, conf.JobLabels),
+		Labels:      modules.CloneAndMergeMaps(constantLabels, conf.JobLabels),
 		Parallelism: &conf.Replicas,
 		BackOffList: &limit,
 	}
