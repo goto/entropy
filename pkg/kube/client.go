@@ -192,8 +192,7 @@ func (c Client) RunJob(ctx context.Context, namespace, name string, image string
 	if !wait {
 		return job, nil
 	}
-	err = waitForJob(ctx, name, jobs)
-	return job, err
+	return job, waitForJob(ctx, name, jobs)
 }
 
 func waitForJob(ctx context.Context, jobName string, jobs typedbatchv1.JobInterface) error {
