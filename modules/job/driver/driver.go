@@ -64,7 +64,7 @@ func (driver *Driver) Sync(ctx context.Context, exr module.ExpandedResource) (*r
 				return nil, err
 			}
 		default:
-			return nil, errors.ErrInternal.WithMsgf("unknown step:")
+			return nil, errors.ErrInternal.WithMsgf("unknown step: '%s'", pendingStep)
 		}
 
 		immediately := time.Now()
