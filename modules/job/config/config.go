@@ -11,7 +11,7 @@ import (
 	"github.com/goto/entropy/pkg/validator"
 )
 
-const maxJobNameLength = 47
+const maxJobNameLength = 53
 
 var (
 	//go:embed schema/config.json
@@ -37,11 +37,12 @@ type UsageSpec struct {
 type Config struct {
 	Stopped    bool              `json:"stopped,omitempty"`
 	Replicas   int32             `json:"replicas"`
-	Namespace  string            `json:"namespace,omitempty"`
+	Namespace  string            `json:"namespace"`
 	Name       string            `json:"name,omitempty"`
 	Containers []Container       `json:"containers,omitempty"`
 	JobLabels  map[string]string `json:"job_labels,omitempty"`
 	Volumes    []Volume          `json:"volumes,omitempty"`
+	TTLSeconds int32             `json:"ttl_seconds,omitempty"`
 }
 
 type Volume struct {
@@ -95,9 +96,6 @@ func ReadConfig(r resource.Resource, confJSON json.RawMessage, dc DriverConf) (*
 			c.Limits.Memory = rl.Limits.Memory
 		}
 	}
-	// TODO: add a container for telegraf here
-	// cfg.Containers = append(cfg.Containers, createTelegrafContainer())
-
 	if err := validateConfig(confJSON); err != nil {
 		return nil, err
 	}

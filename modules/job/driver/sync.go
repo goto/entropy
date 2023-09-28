@@ -17,10 +17,11 @@ import (
 )
 
 const (
-	labelOrchestrator            = "orchestrator"
-	labelName                    = "name"
-	orchestratorLabelValue       = "entropy"
-	backoffLimit           int32 = 0
+	labelOrchestrator      = "orchestrator"
+	labelName              = "name"
+	orchestratorLabelValue = "entropy"
+	// Num retries before failing.
+	backoffLimit int32 = 0
 )
 
 func (driver *Driver) create(ctx context.Context, r resource.Resource, config *config.Config, out kubernetes.Output) error {
@@ -89,6 +90,7 @@ func getJob(res resource.Resource, conf *config.Config) *job.Job {
 		Labels:      modules.CloneAndMergeMaps(constantLabels, conf.JobLabels),
 		Parallelism: &conf.Replicas,
 		BackOffList: &limit,
+		TTLSeconds:  &conf.TTLSeconds,
 	}
 	return j
 }

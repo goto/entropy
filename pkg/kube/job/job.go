@@ -18,6 +18,7 @@ type Job struct {
 	Labels      map[string]string
 	Parallelism *int32
 	BackOffList *int32
+	TTLSeconds  *int32
 }
 
 func (j *Job) Template() *v1.Job {
@@ -29,9 +30,10 @@ func (j *Job) Template() *v1.Job {
 			Namespace: j.Namespace,
 		},
 		Spec: v1.JobSpec{
-			Template:     j.Pod.Template(),
-			Parallelism:  j.Parallelism,
-			BackoffLimit: j.BackOffList,
+			Template:                j.Pod.Template(),
+			Parallelism:             j.Parallelism,
+			BackoffLimit:            j.BackOffList,
+			TTLSecondsAfterFinished: j.TTLSeconds,
 		},
 		Status: v1.JobStatus{},
 	}
