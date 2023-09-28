@@ -66,6 +66,7 @@ type Secret struct {
 	Name  string `json:"name"`
 	Mount string `json:"mount"`
 }
+
 type ConfigMap struct {
 	Name  string `json:"name"`
 	Mount string `json:"mount"`
