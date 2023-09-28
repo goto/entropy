@@ -15,7 +15,7 @@ const (
 )
 
 const (
-	Create = "create"
+	Create PendingStep = "create"
 )
 
 type (

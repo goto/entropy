@@ -15,9 +15,9 @@ import (
 )
 
 var defaultDriverConf = config.DriverConf{
-	Namespace: "default",
+	Namespace: config.Default,
 	RequestsAndLimits: map[string]config.RequestsAndLimits{
-		"default": {
+		config.Default: {
 			Limits: config.UsageSpec{
 				CPU:    "1",
 				Memory: "2000Mi",

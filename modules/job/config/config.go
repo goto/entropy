@@ -12,6 +12,7 @@ import (
 )
 
 const maxJobNameLength = 53
+const Default = "default"
 
 var (
 	//go:embed schema/config.json
@@ -73,13 +74,17 @@ type ConfigMap struct {
 	Mount string `json:"mount"`
 }
 
+func (dc DriverConf) getDefaultResources() RequestsAndLimits {
+	return dc.RequestsAndLimits[Default]
+}
+
 func ReadConfig(r resource.Resource, confJSON json.RawMessage, dc DriverConf) (*Config, error) {
 	var cfg Config
 	if err := json.Unmarshal(confJSON, &cfg); err != nil {
 		return nil, errors.ErrInvalid.WithMsgf("invalid config json").WithCausef(err.Error())
 	}
 	// for each container
-	rl := dc.RequestsAndLimits["default"]
+	rl := dc.getDefaultResources()
 	for i := range cfg.Containers {
 		c := &cfg.Containers[i]
 		c.EnvVariables = modules.CloneAndMergeMaps(dc.EnvVariables, c.EnvVariables)
