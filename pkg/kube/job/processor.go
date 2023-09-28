@@ -18,7 +18,7 @@ const (
 	Failed
 	Running
 	Ready
-	Dummy
+	Finished
 )
 
 var deletionPolicy = metav1.DeletePropagationForeground
@@ -103,5 +103,5 @@ func (jp *Processor) WatchCompletion(exitChan chan Status) {
 			break
 		}
 	}
-	exitChan <- Status{Status: Dummy}
+	exitChan <- Status{Status: Finished}
 }

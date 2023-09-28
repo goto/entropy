@@ -2,7 +2,6 @@ package firehose
 
 import (
 	"context"
-	"github.com/goto/entropy/modules"
 	"testing"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
+	"github.com/goto/entropy/modules"
 	"github.com/goto/entropy/pkg/errors"
 )
 

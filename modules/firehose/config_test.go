@@ -2,10 +2,11 @@ package firehose
 
 import (
 	"fmt"
-	"github.com/goto/entropy/modules"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/goto/entropy/modules"
 )
 
 func Test_safeReleaseName(t *testing.T) {

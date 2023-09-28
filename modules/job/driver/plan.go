@@ -1,12 +1,28 @@
 package driver
 
 import (
-	"github.com/goto/entropy/modules"
 	"time"
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
+	"github.com/goto/entropy/modules"
 	"github.com/goto/entropy/modules/job/config"
+)
+
+const (
+	KeyKubeDependency = "kube_cluster"
+	StopAction        = "stop"
+)
+
+const (
+	Create = "create"
+)
+
+type (
+	PendingStep   string
+	TransientData struct {
+		PendingSteps []PendingStep `json:"pending_steps"`
+	}
 )
 
 func (driver *Driver) planCreate(exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {

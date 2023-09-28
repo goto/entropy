@@ -2,6 +2,9 @@ package driver
 
 import (
 	"context"
+	"encoding/json"
+
+	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/modules"
 	"github.com/goto/entropy/modules/job/config"
@@ -88,4 +91,16 @@ func getJob(res resource.Resource, conf *config.Config) *job.Job {
 		BackOffList: &limit,
 	}
 	return j
+}
+
+func ReadTransientData(exr module.ExpandedResource) (*TransientData, error) {
+	if len(exr.Resource.State.ModuleData) == 0 {
+		return &TransientData{}, nil
+	}
+
+	var modData TransientData
+	if err := json.Unmarshal(exr.Resource.State.ModuleData, &modData); err != nil {
+		return nil, errors.ErrInternal.WithMsgf("corrupted transient data").WithCausef(err.Error())
+	}
+	return &modData, nil
 }
