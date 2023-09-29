@@ -16,14 +16,23 @@ import (
 )
 
 type Driver struct {
-	Conf      config.DriverConf
-	CreateJob func(ctx context.Context, conf kube.Config, j *job.Job) error
+	Conf       config.DriverConf
+	CreateJob  func(ctx context.Context, conf kube.Config, j *job.Job) error
+	SuspendJob func(ctx context.Context, conf kube.Config, j *job.Job) error
+	DeleteJob  func(ctx context.Context, conf kube.Config, j *job.Job) error
+	StartJob   func(ctx context.Context, conf kube.Config, j *job.Job) error
 }
 
 func (driver *Driver) Plan(_ context.Context, res module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
 	switch act.Name {
 	case module.CreateAction:
 		return driver.planCreate(res, act)
+	case SuspendAction:
+		return driver.planSuspend(res)
+	case module.DeleteAction:
+		return driver.planDelete(res)
+	case StartAction:
+		return driver.planStart(res)
 	default:
 		return &resource.Resource{}, nil
 	}
@@ -61,6 +70,18 @@ func (driver *Driver) Sync(ctx context.Context, exr module.ExpandedResource) (*r
 		switch pendingStep {
 		case Create:
 			if err := driver.create(ctx, exr.Resource, conf, kubeOut); err != nil {
+				return nil, err
+			}
+		case Suspend:
+			if err := driver.suspend(ctx, conf, kubeOut); err != nil {
+				return nil, err
+			}
+		case Delete:
+			if err := driver.delete(ctx, conf, kubeOut); err != nil {
+				return nil, err
+			}
+		case Start:
+			if err := driver.start(ctx, conf, kubeOut); err != nil {
 				return nil, err
 			}
 		default:

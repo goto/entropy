@@ -11,8 +11,10 @@ import (
 	"github.com/goto/entropy/pkg/validator"
 )
 
-const maxJobNameLength = 53
-const Default = "default"
+const (
+	maxJobNameLength = 53
+	Default          = "default"
+)
 
 var (
 	//go:embed schema/config.json
@@ -36,14 +38,13 @@ type UsageSpec struct {
 }
 
 type Config struct {
-	Stopped    bool              `json:"stopped,omitempty"`
 	Replicas   int32             `json:"replicas"`
 	Namespace  string            `json:"namespace"`
 	Name       string            `json:"name,omitempty"`
 	Containers []Container       `json:"containers,omitempty"`
 	JobLabels  map[string]string `json:"job_labels,omitempty"`
 	Volumes    []Volume          `json:"volumes,omitempty"`
-	TTLSeconds int32             `json:"ttl_seconds,omitempty"`
+	TTLSeconds *int32            `json:"ttl_seconds,omitempty"`
 }
 
 type Volume struct {
@@ -111,5 +112,8 @@ func ReadConfig(r resource.Resource, confJSON json.RawMessage, dc DriverConf) (*
 		return nil, errors.ErrInvalid.WithMsgf("Job name must not have more than %d chars", maxJobNameLength)
 	}
 	cfg.Namespace = dc.Namespace
+	if cfg.Replicas < 1 {
+		cfg.Replicas = 1
+	}
 	return &cfg, nil
 }

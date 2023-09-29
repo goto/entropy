@@ -41,8 +41,16 @@ var Module = module.Descriptor{
 			Description: "Creates a new Kube job.",
 		},
 		{
-			Name:        driver.StopAction,
-			Description: "Stop the kube Job.",
+			Name:        driver.SuspendAction,
+			Description: "Suspend the kube Job.",
+		},
+		{
+			Name:        driver.StartAction,
+			Description: "Start the kube Job.",
+		},
+		{
+			Name:        module.DeleteAction,
+			Description: "Delete the kube Job.",
 		},
 	},
 	DriverFactory: func(confJSON json.RawMessage) (module.Driver, error) {
@@ -55,7 +63,7 @@ var Module = module.Descriptor{
 		return &driver.Driver{
 			Conf: conf,
 			CreateJob: func(ctx context.Context, conf kube.Config, j *job.Job) error {
-				kubeCl, err := kube.NewClient(conf)
+				kubeCl, err := kube.NewClient(ctx, conf)
 				if err != nil {
 					return errors.ErrInternal.WithMsgf("failed to create new kube client on job driver").WithCausef(err.Error())
 				}
@@ -64,6 +72,39 @@ var Module = module.Descriptor{
 					return err
 				}
 				return processor.SubmitJob()
+			},
+			SuspendJob: func(ctx context.Context, conf kube.Config, j *job.Job) error {
+				kubeCl, err := kube.NewClient(ctx, conf)
+				if err != nil {
+					return errors.ErrInternal.WithMsgf("failed to create new kube client on job driver").WithCausef(err.Error())
+				}
+				processor, err := kubeCl.GetJobProcessor(j)
+				if err != nil {
+					return err
+				}
+				return processor.UpdateJob(true)
+			},
+			DeleteJob: func(ctx context.Context, conf kube.Config, j *job.Job) error {
+				kubeCl, err := kube.NewClient(ctx, conf)
+				if err != nil {
+					return errors.ErrInternal.WithMsgf("failed to create new kube client on job driver").WithCausef(err.Error())
+				}
+				processor, err := kubeCl.GetJobProcessor(j)
+				if err != nil {
+					return err
+				}
+				return processor.DeleteJob()
+			},
+			StartJob: func(ctx context.Context, conf kube.Config, j *job.Job) error {
+				kubeCl, err := kube.NewClient(ctx, conf)
+				if err != nil {
+					return errors.ErrInternal.WithMsgf("failed to create new kube client on job driver").WithCausef(err.Error())
+				}
+				processor, err := kubeCl.GetJobProcessor(j)
+				if err != nil {
+					return err
+				}
+				return processor.UpdateJob(false)
 			},
 		}, nil
 	},

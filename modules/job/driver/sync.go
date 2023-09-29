@@ -32,6 +32,30 @@ func (driver *Driver) create(ctx context.Context, r resource.Resource, config *c
 	return nil
 }
 
+func (driver *Driver) suspend(ctx context.Context, config *config.Config, out kubernetes.Output) error {
+	j := &job.Job{Name: config.Name, Namespace: config.Namespace}
+	if err := driver.SuspendJob(ctx, out.Configs, j); err != nil {
+		return errors.ErrInternal.WithCausef(err.Error())
+	}
+	return nil
+}
+
+func (driver *Driver) delete(ctx context.Context, config *config.Config, out kubernetes.Output) error {
+	j := &job.Job{Name: config.Name, Namespace: config.Namespace}
+	if err := driver.DeleteJob(ctx, out.Configs, j); err != nil {
+		return errors.ErrInternal.WithCausef(err.Error())
+	}
+	return nil
+}
+
+func (driver *Driver) start(ctx context.Context, config *config.Config, out kubernetes.Output) error {
+	j := &job.Job{Name: config.Name, Namespace: config.Namespace}
+	if err := driver.StartJob(ctx, out.Configs, j); err != nil {
+		return errors.ErrInternal.WithCausef(err.Error())
+	}
+	return nil
+}
+
 func getJob(res resource.Resource, conf *config.Config) *job.Job {
 	constantLabels := map[string]string{
 		labelOrchestrator: orchestratorLabelValue,
@@ -90,7 +114,7 @@ func getJob(res resource.Resource, conf *config.Config) *job.Job {
 		Labels:      modules.CloneAndMergeMaps(constantLabels, conf.JobLabels),
 		Parallelism: &conf.Replicas,
 		BackOffList: &limit,
-		TTLSeconds:  &conf.TTLSeconds,
+		TTLSeconds:  conf.TTLSeconds,
 	}
 	return j
 }

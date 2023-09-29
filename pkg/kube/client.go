@@ -126,12 +126,12 @@ func DefaultClientConfig() Config {
 	return defaultProviderConfig
 }
 
-func NewClient(config Config) (*Client, error) {
-	restConfig, err := config.RESTConfig()
+func NewClient(ctx context.Context, config Config) (*Client, error) {
+	restConfig, err := config.RESTConfig(ctx)
 	if err != nil {
 		return nil, err
 	}
-	streamingConfig, err := config.StreamingConfig()
+	streamingConfig, err := config.StreamingConfig(ctx)
 	if err != nil {
 		return nil, err
 	}

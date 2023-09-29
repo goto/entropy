@@ -52,6 +52,16 @@ func (jp *Processor) SubmitJob() error {
 	return err
 }
 
+func (jp *Processor) UpdateJob(suspend bool) error {
+	job, err := jp.Client.Get(context.Background(), jp.Job.Name, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	job.Spec.Suspend = &suspend
+	_, err = jp.Client.Update(context.Background(), job, metav1.UpdateOptions{})
+	return err
+}
+
 func (jp *Processor) CreateWatch() error {
 	w, err := jp.Client.Watch(context.Background(), jp.Job.WatchOptions())
 	jp.watch = w
