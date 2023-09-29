@@ -76,7 +76,7 @@ var Module = module.Descriptor{
 			SuspendJob: func(ctx context.Context, conf kube.Config, j *job.Job) error {
 				kubeCl, err := kube.NewClient(ctx, conf)
 				if err != nil {
-					return errors.ErrInternal.WithMsgf("failed to create new kube client on job driver").WithCausef(err.Error())
+					return errors.ErrInternal.WithMsgf("failed to suspend the job").WithCausef(err.Error())
 				}
 				processor, err := kubeCl.GetJobProcessor(j)
 				if err != nil {
@@ -87,7 +87,7 @@ var Module = module.Descriptor{
 			DeleteJob: func(ctx context.Context, conf kube.Config, j *job.Job) error {
 				kubeCl, err := kube.NewClient(ctx, conf)
 				if err != nil {
-					return errors.ErrInternal.WithMsgf("failed to create new kube client on job driver").WithCausef(err.Error())
+					return errors.ErrInternal.WithMsgf("failed to delete the job").WithCausef(err.Error())
 				}
 				processor, err := kubeCl.GetJobProcessor(j)
 				if err != nil {
@@ -98,7 +98,7 @@ var Module = module.Descriptor{
 			StartJob: func(ctx context.Context, conf kube.Config, j *job.Job) error {
 				kubeCl, err := kube.NewClient(ctx, conf)
 				if err != nil {
-					return errors.ErrInternal.WithMsgf("failed to create new kube client on job driver").WithCausef(err.Error())
+					return errors.ErrInternal.WithMsgf("failed to start the job").WithCausef(err.Error())
 				}
 				processor, err := kubeCl.GetJobProcessor(j)
 				if err != nil {
