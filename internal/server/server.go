@@ -98,7 +98,7 @@ func Serve(ctx context.Context, httpAddr, grpcAddr string, nrApp *newrelic.Appli
 	httpRouter.Use(
 		requestID(),
 		withOpenCensus(),
-		requestLogger(), // nolint
+		requestLogger(),
 	)
 
 	zap.L().Info("starting http & grpc servers",
