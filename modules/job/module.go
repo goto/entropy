@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/modules/job/config"
 	"github.com/goto/entropy/modules/job/driver"
@@ -105,6 +107,16 @@ var Module = module.Descriptor{
 					return err
 				}
 				return processor.UpdateJob(false)
+			},
+			GetJobPods: func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error) {
+				kubeCl, err := kube.NewClient(ctx, conf)
+				if err != nil {
+					return nil, errors.ErrInternal.WithMsgf("failed to create new kube client on driver").WithCausef(err.Error())
+				}
+				return kubeCl.GetPodDetails(ctx, ns, labels, func(pod v1.Pod) bool {
+					// allow all pods
+					return true
+				})
 			},
 		}, nil
 	},
