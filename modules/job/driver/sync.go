@@ -108,6 +108,8 @@ func getJob(res resource.Resource, conf *config.Config) *job.Job {
 		Name:       conf.Name,
 		Containers: containers,
 		Volumes:    volumes,
+		// This to support app filter on pod for logging until we find better solution
+		Labels: map[string]string{"app": conf.Name},
 	}
 	limit := backoffLimit
 	j := &job.Job{
