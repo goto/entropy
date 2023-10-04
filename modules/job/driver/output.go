@@ -19,7 +19,7 @@ type Output struct {
 }
 
 func (driver *Driver) refreshOutput(ctx context.Context, conf config.Config, output Output, kubeOut kubernetes.Output) (json.RawMessage, error) {
-	pods, err := driver.GetJobPods(ctx, kubeOut.Configs, conf.Namespace, map[string]string{"job-name": conf.Name})
+	pods, err := driver.GetJobPods(ctx, kubeOut.Configs, map[string]string{"job-name": conf.Name})
 	if err != nil {
 		return nil, errors.ErrInternal.WithCausef(err.Error())
 	}
