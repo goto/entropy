@@ -55,6 +55,35 @@ func (q *Queries) DeleteResourceTagsByURN(ctx context.Context, urn string) error
 	return err
 }
 
+const extendWaitTime = `-- name: ExtendWaitTime :exec
+UPDATE resources
+SET state_next_sync = current_timestamp + ($2 ||' seconds')::interval
+WHERE urn = $1
+`
+
+type ExtendWaitTimeParams struct {
+	Urn     string
+	Column2 pgtype.Text
+}
+
+func (q *Queries) ExtendWaitTime(ctx context.Context, arg ExtendWaitTimeParams) error {
+	_, err := q.db.Exec(ctx, extendWaitTime, arg.Urn, arg.Column2)
+	return err
+}
+
+const fetchResourceForSync = `-- name: FetchResourceForSync :one
+SELECT urn FROM resources
+Where state_next_sync <= current_timestamp
+FOR UPDATE SKIP LOCKED
+`
+
+func (q *Queries) FetchResourceForSync(ctx context.Context) (string, error) {
+	row := q.db.QueryRow(ctx, fetchResourceForSync)
+	var urn string
+	err := row.Scan(&urn)
+	return urn, err
+}
+
 const getModuleByURN = `-- name: GetModuleByURN :one
 
 SELECT urn, name, project, configs, created_at, updated_at
@@ -81,7 +110,7 @@ const getResourceByURN = `-- name: GetResourceByURN :one
 
 SELECT r.id, r.urn, r.kind, r.name, r.project, r.created_at, r.updated_at, r.spec_configs, r.state_status, r.state_output, r.state_module_data, r.state_next_sync, r.state_sync_result, r.created_by, r.updated_by,
        array_agg(rt.tag)::text[] AS tags,
-        jsonb_object_agg(COALESCE(rd.dependency_key, ''), d.urn) AS dependencies
+       jsonb_object_agg(COALESCE(rd.dependency_key, ''), d.urn) AS dependencies
 FROM resources r
          LEFT JOIN resource_tags rt ON r.id = rt.resource_id
          LEFT JOIN resource_dependencies rd ON r.id = rd.resource_id
@@ -137,12 +166,7 @@ func (q *Queries) GetResourceByURN(ctx context.Context, urn string) (GetResource
 }
 
 const getResourceDependencies = `-- name: GetResourceDependencies :one
-SELECT (CASE
-            WHEN COUNT(rd.dependency_key) > 0 THEN
-                json_object_agg(rd.dependency_key, d.urn)
-            ELSE
-                '{}'::json
-    END) AS dependencies
+SELECT jsonb_object_agg(COALESCE(rd.dependency_key, ''), d.urn) AS dependencies
 FROM resources r
          LEFT JOIN resource_dependencies rd ON r.id = rd.resource_id
          LEFT JOIN resources d ON rd.depends_on = d.id

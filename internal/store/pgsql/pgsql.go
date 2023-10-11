@@ -26,8 +26,10 @@ import (
 var schema string
 
 type Store struct {
-	qu  *queries.Queries
-	pgx *pgx.Conn
+	qu              *queries.Queries
+	pgx             *pgx.Conn
+	extendInterval  time.Duration
+	refreshInterval time.Duration
 }
 
 func (st *Store) Migrate(ctx context.Context) error {
@@ -52,8 +54,10 @@ func Open(conStr string, refreshInterval, extendInterval time.Duration) (*Store,
 	}
 
 	return &Store{
-		qu:  queries.New(conn),
-		pgx: conn,
+		qu:              queries.New(conn),
+		pgx:             conn,
+		extendInterval:  extendInterval,
+		refreshInterval: refreshInterval,
 	}, nil
 }
 

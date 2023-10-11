@@ -30,7 +30,7 @@ WHERE urn = $1;
 -- name: GetResourceByURN :one
 SELECT r.*,
        array_agg(rt.tag)::text[] AS tags,
-        jsonb_object_agg(COALESCE(rd.dependency_key, ''), d.urn) AS dependencies
+       jsonb_object_agg(COALESCE(rd.dependency_key, ''), d.urn) AS dependencies
 FROM resources r
          LEFT JOIN resource_tags rt ON r.id = rt.resource_id
          LEFT JOIN resource_dependencies rd ON r.id = rd.resource_id
@@ -39,12 +39,7 @@ WHERE r.urn = $1
 GROUP BY r.id;
 
 -- name: GetResourceDependencies :one
-SELECT (CASE
-            WHEN COUNT(rd.dependency_key) > 0 THEN
-                json_object_agg(rd.dependency_key, d.urn)
-            ELSE
-                '{}'::json
-    END) AS dependencies
+SELECT jsonb_object_agg(COALESCE(rd.dependency_key, ''), d.urn) AS dependencies
 FROM resources r
          LEFT JOIN resource_dependencies rd ON r.id = rd.resource_id
          LEFT JOIN resources d ON rd.depends_on = d.id
@@ -84,6 +79,16 @@ INSERT INTO resources ("urn", "kind", "project", "name", "created_at", "updated_
                        "state_next_sync", "state_sync_result")
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 RETURNING id;
+
+-- name: FetchResourceForSync :one
+SELECT urn FROM resources
+Where state_next_sync <= current_timestamp
+FOR UPDATE SKIP LOCKED;
+
+-- name: ExtendWaitTime :exec
+UPDATE resources
+SET state_next_sync = current_timestamp + ($2 ||' seconds')::interval
+WHERE urn = $1;
 
 -- name: InsertResourceTags :copyfrom
 INSERT INTO resource_tags (resource_id, tag)

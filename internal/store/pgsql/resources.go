@@ -10,6 +10,7 @@ import (
 
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/internal/store/pgsql/queries"
+	"github.com/goto/entropy/pkg/errors"
 )
 
 func (st *Store) GetByURN(ctx context.Context, urn string) (*resource.Resource, error) {
@@ -299,8 +300,90 @@ func (st *Store) Revisions(ctx context.Context, selector resource.RevisionsSelec
 }
 
 func (st *Store) SyncOne(ctx context.Context, syncFn resource.SyncFn) error {
-	// TODO implement me
-	panic("implement me")
+	urn, err := st.fetchResourceForSync(ctx)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// No resource available for sync.
+			return nil
+		}
+		return err
+	}
+
+	cur, err := st.GetByURN(ctx, urn)
+	if err != nil {
+		return err
+	}
+
+	synced, err := st.handleDequeued(ctx, *cur, syncFn)
+	if err != nil {
+		return err
+	}
+
+	return st.Update(ctx, *synced, false, "sync")
+}
+
+func (st *Store) fetchResourceForSync(ctx context.Context) (string, error) {
+	var urn string
+
+	err := withinTx(ctx, st.pgx, false, func(ctx context.Context, tx pgx.Tx) error {
+		// find a resource ready for sync, extend it next sync time atomically.
+		// this ensures multiple workers do not pick up same resources for sync.
+		u, err := st.qu.FetchResourceForSync(ctx)
+		if err != nil {
+			return err
+		}
+		urn = u
+
+		return st.extendWaitTime(ctx, urn)
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return urn, nil
+}
+
+func (st *Store) handleDequeued(baseCtx context.Context, res resource.Resource, fn resource.SyncFn) (*resource.Resource, error) {
+	runCtx, cancel := context.WithCancel(baseCtx)
+	defer cancel()
+
+	// Run heartbeat to keep the resource being picked up by some other syncer
+	// thread. If heartbeat exits, runCtx will be cancelled and fn should exit.
+	go st.runHeartbeat(runCtx, cancel, res.URN)
+
+	return fn(runCtx, res)
+}
+
+func (st *Store) runHeartbeat(ctx context.Context, cancel context.CancelFunc, id string) {
+	defer cancel()
+
+	tick := time.NewTicker(st.refreshInterval)
+	defer tick.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+
+		case <-tick.C:
+			if err := st.extendWaitTime(ctx, id); err != nil {
+				return
+			}
+		}
+	}
+}
+
+func (st *Store) extendWaitTime(ctx context.Context, urn string) error {
+	var column2 pgtype.Text
+	err := column2.Scan(st.extendInterval.String())
+	if err != nil {
+		return err
+	}
+
+	return st.qu.ExtendWaitTime(ctx, queries.ExtendWaitTimeParams{
+		Urn:     urn,
+		Column2: column2,
+	})
 }
 
 func depsBytesToMap(dependencies []byte) (map[string]string, error) {
@@ -310,7 +393,7 @@ func depsBytesToMap(dependencies []byte) (map[string]string, error) {
 			return nil, err
 		}
 
-		for k, _ := range deps {
+		for k := range deps {
 			if k != "" {
 				break
 			}
