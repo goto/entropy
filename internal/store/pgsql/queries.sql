@@ -30,12 +30,7 @@ WHERE urn = $1;
 -- name: GetResourceByURN :one
 SELECT r.*,
        array_agg(rt.tag)::text[] AS tags,
-       (CASE
-            WHEN COUNT(rd.dependency_key) > 0 THEN
-                json_object_agg(rd.dependency_key, d.urn)
-            ELSE
-                '{}'::json
-           END)                  AS dependencies
+        jsonb_object_agg(COALESCE(rd.dependency_key, ''), d.urn) AS dependencies
 FROM resources r
          LEFT JOIN resource_tags rt ON r.id = rt.resource_id
          LEFT JOIN resource_dependencies rd ON r.id = rd.resource_id
@@ -58,9 +53,12 @@ GROUP BY r.id;
 
 -- name: ListResourceURNsByFilter :many
 SELECT r.*,
-       array_agg(rt.tag)::text[] AS tags
+       array_agg(rt.tag)::text[] AS tags,
+       jsonb_object_agg(COALESCE(rd.dependency_key, ''), d.urn) AS dependencies
 FROM resources r
-         JOIN resource_tags rt ON r.id = rt.resource_id
+         LEFT JOIN resource_dependencies rd ON r.id = rd.resource_id
+         LEFT JOIN resources d ON rd.depends_on = d.id
+         LEFT JOIN resource_tags rt ON r.id = rt.resource_id
 WHERE (sqlc.narg('project')::text IS NULL OR r.project = sqlc.narg('project'))
   AND (sqlc.narg('kind')::text IS NULL OR r.kind = sqlc.narg('kind'))
 GROUP BY r.id;

@@ -10,7 +10,7 @@ import (
 	"github.com/goto/entropy/core"
 	"github.com/goto/entropy/core/module"
 	entropyserver "github.com/goto/entropy/internal/server"
-	"github.com/goto/entropy/internal/store/postgres"
+	"github.com/goto/entropy/internal/store/pgsql"
 	"github.com/goto/entropy/modules"
 	"github.com/goto/entropy/modules/firehose"
 	"github.com/goto/entropy/modules/job"
@@ -96,8 +96,8 @@ func setupRegistry() module.Registry {
 	return registry
 }
 
-func setupStorage(pgConStr string, syncCfg syncerConf) *postgres.Store {
-	store, err := postgres.Open(pgConStr, syncCfg.RefreshInterval, syncCfg.ExtendLockBy)
+func setupStorage(pgConStr string, syncCfg syncerConf) *pgsql.Store {
+	store, err := pgsql.Open(pgConStr, syncCfg.RefreshInterval, syncCfg.ExtendLockBy)
 	if err != nil {
 		zap.L().Fatal("failed to connect to Postgres database",
 			zap.Error(err), zap.String("conn_str", pgConStr))

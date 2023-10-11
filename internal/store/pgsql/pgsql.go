@@ -3,6 +3,7 @@ package pgsql
 import (
 	"context"
 	"database/sql"
+	_ "embed"
 	"fmt"
 	"strings"
 	"time"
@@ -18,9 +19,20 @@ import (
 
 //go:generate sqlc generate
 
+// schema represents the storage schema.
+// Note: Update the constants above if the table name is changed.
+//
+//go:embed schema.sql
+var schema string
+
 type Store struct {
 	qu  *queries.Queries
 	pgx *pgx.Conn
+}
+
+func (st *Store) Migrate(ctx context.Context) error {
+	err := st.qu.Migrate(ctx, schema)
+	return err
 }
 
 func (st *Store) Close() error { return st.pgx.Close(context.Background()) }

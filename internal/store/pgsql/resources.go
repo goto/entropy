@@ -30,11 +30,9 @@ func (st *Store) GetByURN(ctx context.Context, urn string) (*resource.Resource, 
 		}
 	}
 
-	var deps map[string]string
-	if len(res.Dependencies) > 0 {
-		if err := json.Unmarshal(res.Dependencies, &deps); err != nil {
-			return nil, err
-		}
+	deps, err := depsBytesToMap(res.Dependencies)
+	if err != nil {
+		return nil, err
 	}
 
 	return &resource.Resource{
@@ -92,6 +90,11 @@ func (st *Store) List(ctx context.Context, filter resource.Filter) ([]resource.R
 			}
 		}
 
+		deps, err := depsBytesToMap(res.Dependencies)
+		if err != nil {
+			return nil, err
+		}
+
 		result = append(result, resource.Resource{
 			URN:       res.Urn,
 			Kind:      res.Kind,
@@ -104,7 +107,7 @@ func (st *Store) List(ctx context.Context, filter resource.Filter) ([]resource.R
 			CreatedBy: res.CreatedBy,
 			Spec: resource.Spec{
 				Configs:      res.SpecConfigs,
-				Dependencies: nil,
+				Dependencies: deps,
 			},
 			State: resource.State{
 				Status:     res.StateStatus,
@@ -298,4 +301,22 @@ func (st *Store) Revisions(ctx context.Context, selector resource.RevisionsSelec
 func (st *Store) SyncOne(ctx context.Context, syncFn resource.SyncFn) error {
 	// TODO implement me
 	panic("implement me")
+}
+
+func depsBytesToMap(dependencies []byte) (map[string]string, error) {
+	deps := map[string]string{}
+	if len(dependencies) > 0 {
+		if err := json.Unmarshal(dependencies, &deps); err != nil {
+			return nil, err
+		}
+
+		for k, _ := range deps {
+			if k != "" {
+				break
+			}
+			deps = map[string]string{}
+		}
+	}
+
+	return deps, nil
 }
