@@ -62,8 +62,8 @@ type ListResourceURNsByFilterRow struct {
 	Dependencies    []byte
 }
 
-func listResourceURNsByFilter(ctx context.Context, db *sqlx.DB, Project, Kind string) ([]ListResourceURNsByFilterRow, error) {
-	rows, err := db.QueryContext(ctx, listResourceURNsByFilterQuery, Project, Kind)
+func listResourceURNsByFilter(ctx context.Context, db *sqlx.DB, project, kind string) ([]ListResourceURNsByFilterRow, error) {
+	rows, err := db.QueryContext(ctx, listResourceURNsByFilterQuery, project, kind)
 	if err != nil {
 		return nil, err
 	}
