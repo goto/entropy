@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -410,20 +411,21 @@ func syncResultAsJSON(syncRes resource.SyncResult) json.RawMessage {
 }
 
 func byteArrayToMap(data []uint8) (map[string]string, error) {
+	if bytes.Equal(data, []byte("{NULL}")) {
+		return make(map[string]string), nil
+	}
+
 	re := regexp.MustCompile(`(\w+)=(\S+?)(?:,|\}|$)`)
 	matches := re.FindAllStringSubmatch(string(data), -1)
-
-	// Map to store key-value pairs
-	keyValueMap := make(map[string]string)
 
 	if len(matches) == 0 {
 		if len(data) > 0 {
 			return nil, errors.New("labels not in the expected format")
 		}
-		return keyValueMap, nil
+		return make(map[string]string), nil
 	}
 
-	// Iterate through matches and populate the map
+	keyValueMap := make(map[string]string)
 	for _, match := range matches {
 		key := match[1]
 		value := match[2]
