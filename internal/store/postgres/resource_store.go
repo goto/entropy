@@ -98,12 +98,17 @@ func (st *Store) List(ctx context.Context, filter resource.Filter) ([]resource.R
 			return nil, err
 		}
 
+		tagsMap, err := byteArrayToMap(res.Tags)
+		if err != nil {
+			return nil, err
+		}
+
 		result = append(result, resource.Resource{
 			URN:       res.Urn,
 			Kind:      res.Kind,
 			Name:      res.Name,
 			Project:   res.Project,
-			Labels:    byteArrayToMap(res.Tags),
+			Labels:    tagsMap,
 			CreatedAt: *res.CreatedAt,
 			UpdatedAt: *res.UpdatedAt,
 			UpdatedBy: res.UpdatedBy,
@@ -404,12 +409,19 @@ func syncResultAsJSON(syncRes resource.SyncResult) json.RawMessage {
 	return val
 }
 
-func byteArrayToMap(data []uint8) map[string]string {
-	re := regexp.MustCompile(`(\w+)=([^,]+)`)
+func byteArrayToMap(data []uint8) (map[string]string, error) {
+	re := regexp.MustCompile(`(\w+)=(\S+?)(?:,|\}|$)`)
 	matches := re.FindAllStringSubmatch(string(data), -1)
 
 	// Map to store key-value pairs
 	keyValueMap := make(map[string]string)
+
+	if len(matches) == 0 {
+		if len(data) > 0 {
+			return nil, errors.New("labels not in the expected format")
+		}
+		return keyValueMap, nil
+	}
 
 	// Iterate through matches and populate the map
 	for _, match := range matches {
@@ -422,7 +434,7 @@ func byteArrayToMap(data []uint8) map[string]string {
 		keyValueMap[key] = value
 	}
 
-	return keyValueMap
+	return keyValueMap, nil
 }
 
 func depsBytesToMap(dependencies []byte) (map[string]string, error) {
