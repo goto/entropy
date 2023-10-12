@@ -12,7 +12,7 @@ import (
 	"github.com/goto/entropy/pkg/errors"
 )
 
-const listResourceURNsByFilterQuery = `SELECT r.id, r.urn, r.kind, r.name, r.project, r.created_at, r.updated_at, r.spec_configs, r.state_status, r.state_output, r.state_module_data, r.state_next_sync, r.state_sync_result, r.created_by, r.updated_by,
+const listResourceByFilterQuery = `SELECT r.id, r.urn, r.kind, r.name, r.project, r.created_at, r.updated_at, r.spec_configs, r.state_status, r.state_output, r.state_module_data, r.state_next_sync, r.state_sync_result, r.created_by, r.updated_by,
        array_agg(rt.tag)::text[] AS tags,
        jsonb_object_agg(COALESCE(rd.dependency_key, ''), d.urn) AS dependencies
 FROM resources r
@@ -42,7 +42,7 @@ type resourceModel struct {
 	StateSyncResult json.RawMessage `db:"state_sync_result"`
 }
 
-type ListResourceURNsByFilterRow struct {
+type ListResourceByFilterRow struct {
 	ID              int64
 	Urn             string
 	Kind            string
@@ -62,15 +62,15 @@ type ListResourceURNsByFilterRow struct {
 	Dependencies    []byte
 }
 
-func listResourceURNsByFilter(ctx context.Context, db *sqlx.DB, project, kind string) ([]ListResourceURNsByFilterRow, error) {
-	rows, err := db.QueryContext(ctx, listResourceURNsByFilterQuery, project, kind)
+func listResourceByFilter(ctx context.Context, db *sqlx.DB, project, kind string) ([]ListResourceByFilterRow, error) {
+	rows, err := db.QueryContext(ctx, listResourceByFilterQuery, project, kind)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListResourceURNsByFilterRow
+	var items []ListResourceByFilterRow
 	for rows.Next() {
-		var i ListResourceURNsByFilterRow
+		var i ListResourceByFilterRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Urn,
