@@ -1,12 +1,9 @@
 package postgres
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
-	"regexp"
-	"strings"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -105,17 +102,12 @@ func (st *Store) List(ctx context.Context, filter resource.Filter, withSpecConfi
 			return nil, err
 		}
 
-		tagsMap, err := byteArrayToMap(res.Tags)
-		if err != nil {
-			return nil, err
-		}
-
 		result = append(result, resource.Resource{
 			URN:       res.Urn,
 			Kind:      res.Kind,
 			Name:      res.Name,
 			Project:   res.Project,
-			Labels:    tagsMap,
+			Labels:    tagsToLabelMap(res.Tags),
 			CreatedAt: *res.CreatedAt,
 			UpdatedAt: *res.UpdatedAt,
 			UpdatedBy: res.UpdatedBy,
@@ -414,35 +406,6 @@ func syncResultAsJSON(syncRes resource.SyncResult) json.RawMessage {
 		panic(err)
 	}
 	return val
-}
-
-func byteArrayToMap(data []uint8) (map[string]string, error) {
-	if bytes.Equal(data, []byte("{NULL}")) {
-		return make(map[string]string), nil
-	}
-
-	re := regexp.MustCompile(`(\w+)=(\S+?)(?:,|\}|$)`)
-	matches := re.FindAllStringSubmatch(string(data), -1)
-
-	if len(matches) == 0 {
-		if len(data) > 0 {
-			return nil, errors.New("labels not in the expected format")
-		}
-		return make(map[string]string), nil
-	}
-
-	keyValueMap := make(map[string]string)
-	for _, match := range matches {
-		key := match[1]
-		value := match[2]
-
-		// Remove quotes from the value if present
-		value = strings.Trim(value, `"`)
-
-		keyValueMap[key] = value
-	}
-
-	return keyValueMap, nil
 }
 
 func depsBytesToMap(dependencies []byte) (map[string]string, error) {

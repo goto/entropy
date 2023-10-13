@@ -8,6 +8,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 
 	"github.com/goto/entropy/pkg/errors"
 )
@@ -70,7 +71,7 @@ type ListResourceByFilterRow struct {
 	StateSyncResult []byte
 	CreatedBy       string
 	UpdatedBy       string
-	Tags            []byte
+	Tags            pq.StringArray
 	Dependencies    []byte
 }
 
