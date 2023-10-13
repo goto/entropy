@@ -74,14 +74,20 @@ func (st *Store) GetByURN(ctx context.Context, urn string) (*resource.Resource, 
 	}, nil
 }
 
-func (st *Store) List(ctx context.Context, filter resource.Filter) ([]resource.Resource, error) {
-	ListResourceByFilterRows, err := listResourceByFilter(ctx, st.db, filter.Project, filter.Kind)
+func (st *Store) List(ctx context.Context, filter resource.Filter, withSpecConfigs bool) ([]resource.Resource, error) {
+	var resourceList []ListResourceByFilterRow
+	var err error
+	if withSpecConfigs {
+		resourceList, err = listResourceWithSpecConfigsByFilter(ctx, st.db, filter.Project, filter.Kind)
+	} else {
+		resourceList, err = listResourceByFilter(ctx, st.db, filter.Project, filter.Kind)
+	}
 	if err != nil {
 		return nil, err
 	}
 
 	var result []resource.Resource
-	for _, res := range ListResourceByFilterRows {
+	for _, res := range resourceList {
 		var nextSyncAt *time.Time
 		if res.StateNextSync != nil && !res.StateNextSync.IsZero() {
 			nextSyncAt = res.StateNextSync
