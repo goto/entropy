@@ -38,6 +38,7 @@ const (
 	labelOrchestrator = "orchestrator"
 	labelURN          = "urn"
 	labelName         = "name"
+	labelNamespace    = "namespace"
 
 	orchestratorLabelValue = "entropy"
 )
@@ -185,11 +186,12 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 	}
 
 	otherLabels := map[string]string{
-		labelURN:  res.URN,
-		labelName: res.Name,
+		labelURN:       res.URN,
+		labelName:      res.Name,
+		labelNamespace: conf.Namespace,
 	}
 
-	deploymentLabels, err := renderTpl(fd.conf.Labels, modules.CloneAndMergeMaps(res.Labels, entropyLabels))
+	deploymentLabels, err := renderTpl(fd.conf.Labels, modules.CloneAndMergeMaps(res.Labels, modules.CloneAndMergeMaps(entropyLabels, otherLabels)))
 	if err != nil {
 		return nil, err
 	}
