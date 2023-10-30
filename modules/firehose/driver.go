@@ -45,7 +45,9 @@ const (
 const defaultKey = "default"
 
 var defaultDriverConf = driverConf{
-	Namespace: "firehose",
+	Namespace: map[string]string{
+		defaultKey: "firehose",
+	},
 	ChartValues: ChartValues{
 		ImageTag:        "latest",
 		ChartVersion:    "0.1.3",
@@ -87,7 +89,7 @@ type driverConf struct {
 	Telegraf *Telegraf `json:"telegraf"`
 
 	// Namespace is the kubernetes namespace where firehoses will be deployed.
-	Namespace string `json:"namespace" validate:"required"`
+	Namespace map[string]string `json:"namespace" validate:"required"`
 
 	// ChartValues is the chart and image version information.
 	ChartValues ChartValues `json:"chart_values" validate:"required"`
