@@ -519,7 +519,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 				Name: module.UpdateAction,
 				Params: modules.MustJSON(map[string]any{
 					"replicas": 10,
-					"stopped":  true,
+					"stopped":  false, // shall allow starting at the time of update
 					"env_variables": map[string]string{
 						"SINK_TYPE":                      "BIGQUERY", // the change being applied
 						"INPUT_SCHEMA_PROTO_CLASS":       "com.foo.Bar",
@@ -537,7 +537,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 				Spec: resource.Spec{
 					Configs: modules.MustJSON(map[string]any{
 						"namespace":     "bigquery-firehose",
-						"stopped":       true,
+						"stopped":       false,
 						"replicas":      10,
 						"deployment_id": "firehose-deployment-x",
 						"env_variables": map[string]string{

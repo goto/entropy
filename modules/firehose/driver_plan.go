@@ -67,7 +67,7 @@ func (fd *firehoseDriver) planChange(exr module.ExpandedResource, act module.Act
 			ns = override
 		}
 		if curConf.Namespace != ns {
-			if !newConf.Stopped {
+			if !curConf.Stopped {
 				return nil, errors.ErrInvalid.WithMsgf(ErrInvalidNamespaceUpdate.Error())
 			}
 			newConf.Namespace = ns
