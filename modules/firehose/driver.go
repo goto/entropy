@@ -209,19 +209,18 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 			return nil, err
 		}
 
-		promRemoteWrite, exist := conf.Telegraf.Config.Output["prometheus_remote_write"]
-		if exist {
-			promRemoteWrite, ok := promRemoteWrite.(map[string]interface{})
+		for key, val := range conf.Telegraf.Config.Output {
+			valAsMap, ok := val.(map[string]interface{})
 			if !ok {
-				return nil, errors.New("prometheus_remote_write is not of type map[string]interface")
+				continue
 			}
 
-			promRemoteWrite, err = renderTplOfMapStringAny(promRemoteWrite, mergedLabelsAndEnvVariablesMap)
+			valAsMap, err = renderTplOfMapStringAny(valAsMap, mergedLabelsAndEnvVariablesMap)
 			if err != nil {
 				return nil, err
 			}
 
-			conf.Telegraf.Config.Output["prometheus_remote_write"] = promRemoteWrite
+			conf.Telegraf.Config.Output[key] = valAsMap
 		}
 
 		telegrafConf = Telegraf{
