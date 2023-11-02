@@ -20,7 +20,7 @@ var (
 	suffixRegex = regexp.MustCompile(`^([A-Za-z0-9-]+)-([0-9]+)$`)
 )
 
-var ErrInvalidNamespaceUpdate = errors.New("cannot update kube namespace of a running firehose")
+var ErrMsgInvalidNamespaceUpdate = "cannot update kube namespace of a running firehose"
 
 func (fd *firehoseDriver) Plan(_ context.Context, exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
 	switch act.Name {
@@ -68,7 +68,7 @@ func (fd *firehoseDriver) planChange(exr module.ExpandedResource, act module.Act
 		}
 		if curConf.Namespace != ns {
 			if !curConf.Stopped {
-				return nil, errors.ErrInvalid.WithMsgf(ErrInvalidNamespaceUpdate.Error())
+				return nil, errors.ErrInvalid.WithCausef(ErrMsgInvalidNamespaceUpdate)
 			}
 			newConf.Namespace = ns
 		}
