@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -12,7 +13,24 @@ import (
 
 // RunSyncer runs the syncer thread that keeps performing resource-sync at
 // regular intervals.
-func (svc *Service) RunSyncer(ctx context.Context, interval time.Duration) error {
+func (svc *Service) RunSyncer(ctx context.Context, workerCount int, interval time.Duration) {
+	wg := &sync.WaitGroup{}
+	for i := 0; i < workerCount; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+
+			if err := svc.runWorker(ctx, id, interval); err != nil {
+				zap.L().Error("worker-%d failed", zap.Error(err))
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	zap.L().Info("all syncer workers exited")
+}
+
+func (svc *Service) runWorker(ctx context.Context, _ int, interval time.Duration) error {
 	tick := time.NewTimer(interval)
 	defer tick.Stop()
 
@@ -27,6 +45,7 @@ func (svc *Service) RunSyncer(ctx context.Context, interval time.Duration) error
 			err := svc.store.SyncOne(ctx, svc.handleSync)
 			if err != nil {
 				zap.L().Warn("SyncOne() failed", zap.Error(err))
+				continue
 			}
 		}
 	}
