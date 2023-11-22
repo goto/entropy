@@ -38,6 +38,7 @@ const (
 	labelOrchestrator = "orchestrator"
 	labelURN          = "urn"
 	labelName         = "name"
+	labelNamespace    = "namespace"
 
 	orchestratorLabelValue = "entropy"
 )
@@ -45,7 +46,9 @@ const (
 const defaultKey = "default"
 
 var defaultDriverConf = driverConf{
-	Namespace: "firehose",
+	Namespace: map[string]string{
+		defaultKey: "firehose",
+	},
 	ChartValues: ChartValues{
 		ImageTag:        "latest",
 		ChartVersion:    "0.1.3",
@@ -87,7 +90,7 @@ type driverConf struct {
 	Telegraf *Telegraf `json:"telegraf"`
 
 	// Namespace is the kubernetes namespace where firehoses will be deployed.
-	Namespace string `json:"namespace" validate:"required"`
+	Namespace map[string]string `json:"namespace" validate:"required"`
 
 	// ChartValues is the chart and image version information.
 	ChartValues ChartValues `json:"chart_values" validate:"required"`
@@ -183,11 +186,12 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 	}
 
 	otherLabels := map[string]string{
-		labelURN:  res.URN,
-		labelName: res.Name,
+		labelURN:       res.URN,
+		labelName:      res.Name,
+		labelNamespace: conf.Namespace,
 	}
 
-	deploymentLabels, err := renderTpl(fd.conf.Labels, modules.CloneAndMergeMaps(res.Labels, entropyLabels))
+	deploymentLabels, err := renderTpl(fd.conf.Labels, modules.CloneAndMergeMaps(res.Labels, modules.CloneAndMergeMaps(entropyLabels, otherLabels)))
 	if err != nil {
 		return nil, err
 	}
@@ -203,6 +207,20 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		telegrafTags, err := renderTpl(conf.Telegraf.Config.AdditionalGlobalTags, mergedLabelsAndEnvVariablesMap)
 		if err != nil {
 			return nil, err
+		}
+
+		for key, val := range conf.Telegraf.Config.Output {
+			valAsMap, ok := val.(map[string]interface{})
+			if !ok {
+				continue
+			}
+
+			valAsMap, err = renderTplOfMapStringAny(valAsMap, mergedLabelsAndEnvVariablesMap)
+			if err != nil {
+				return nil, err
+			}
+
+			conf.Telegraf.Config.Output[key] = valAsMap
 		}
 
 		telegrafConf = Telegraf{
@@ -415,4 +433,25 @@ func (us UsageSpec) merge(overide UsageSpec) UsageSpec {
 	}
 
 	return clone
+}
+
+func renderTplOfMapStringAny(labelsTpl map[string]any, labelsValues map[string]string) (map[string]any, error) {
+	outputMap := make(map[string]string)
+
+	for key, value := range labelsTpl {
+		if strValue, ok := value.(string); ok {
+			outputMap[key] = strValue
+		}
+	}
+
+	outputMap, err := renderTpl(outputMap, labelsValues)
+	if err != nil {
+		return nil, err
+	}
+
+	for key, val := range outputMap {
+		labelsTpl[key] = val
+	}
+
+	return labelsTpl, nil
 }
