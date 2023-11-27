@@ -49,6 +49,9 @@ func cmdServe() *cobra.Command {
 			newrelic.ConfigAppName(cfg.Telemetry.ServiceName),
 			newrelic.ConfigLicense(cfg.Telemetry.NewRelicAPIKey),
 		)
+		if err != nil {
+			return err
+		}
 
 		store := setupStorage(cfg.PGConnStr, cfg.Syncer)
 		moduleService := module.NewService(setupRegistry(), store)
@@ -61,11 +64,11 @@ func cmdServe() *cobra.Command {
 		}
 
 		if spawnWorker {
-			go func() {
-				if runErr := resourceService.RunSyncer(cmd.Context(), cfg.Syncer.SyncInterval); runErr != nil {
-					zap.L().Error("syncer exited with error", zap.Error(err))
-				}
-			}()
+			go resourceService.RunSyncer(
+				cmd.Context(),
+				cfg.Syncer.WorkerCount,
+				cfg.Syncer.SyncInterval,
+			)
 		}
 
 		return entropyserver.Serve(cmd.Context(),
