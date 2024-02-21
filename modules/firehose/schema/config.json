@@ -43,6 +43,7 @@
           "enum": [
             "JDBC",
             "HTTP",
+            "HTTPV2",
             "INFLUXDB",
             "ELASTICSEARCH",
             "GRPC",
