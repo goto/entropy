@@ -34,7 +34,7 @@ import (
 const (
 	gracePeriod    = 5 * time.Second
 	readTimeout    = 120 * time.Second
-	writeTimeout   = 120 * time.Second
+	writeTimeout   = 600 * time.Second
 	maxHeaderBytes = 1 << 20
 )
 
