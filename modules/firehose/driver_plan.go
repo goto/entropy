@@ -10,6 +10,7 @@ import (
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/modules"
+	"github.com/goto/entropy/modules/kubernetes"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/kafka"
 )
@@ -105,6 +106,12 @@ func (fd *firehoseDriver) planChange(exr module.ExpandedResource, act module.Act
 	immediately := fd.timeNow()
 
 	exr.Resource.Spec.Configs = modules.MustJSON(curConf)
+
+	err = fd.validateHelmReleaseConfigs(exr, *curConf)
+	if err != nil {
+		return nil, err
+	}
+
 	exr.Resource.State = resource.State{
 		Status: resource.StatusPending,
 		Output: exr.Resource.State.Output,
@@ -135,6 +142,12 @@ func (fd *firehoseDriver) planCreate(exr module.ExpandedResource, act module.Act
 	immediately := fd.timeNow()
 
 	exr.Resource.Spec.Configs = modules.MustJSON(conf)
+
+	err = fd.validateHelmReleaseConfigs(exr, *conf)
+	if err != nil {
+		return nil, err
+	}
+
 	exr.Resource.State = resource.State{
 		Status: resource.StatusPending,
 		Output: modules.MustJSON(Output{
@@ -232,4 +245,14 @@ func getNewConsumerGroupID(curGroup string) (string, error) {
 	}
 
 	return fmt.Sprintf("%s-%d", prefix, seq), nil
+}
+
+func (fd *firehoseDriver) validateHelmReleaseConfigs(expandedResource module.ExpandedResource, config Config) error {
+	var kubeOut kubernetes.Output
+	if err := json.Unmarshal(expandedResource.Dependencies[keyKubeDependency].Output, &kubeOut); err != nil {
+		return errors.ErrInternal.WithMsgf("invalid kube state").WithCausef(err.Error())
+	}
+
+	_, err := fd.getHelmRelease(expandedResource.Resource, config, kubeOut)
+	return err
 }
