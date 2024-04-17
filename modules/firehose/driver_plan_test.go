@@ -11,6 +11,7 @@ import (
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/modules"
+	"github.com/goto/entropy/modules/kubernetes"
 	"github.com/goto/entropy/pkg/errors"
 )
 
@@ -53,6 +54,12 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 					Kind:    "firehose",
 					Name:    "abcdefghijklmnopqrstuvwxyz",
 					Project: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+				},
+				Dependencies: map[string]module.ResolvedDependency{
+					"kube_cluster": {
+						Kind:   "kubernetes",
+						Output: modules.MustJSON(kubernetes.Output{}),
+					},
 				},
 			},
 			act: module.ActionRequest{
@@ -124,6 +131,12 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 					Name:    "fh1",
 					Project: "foo",
 				},
+				Dependencies: map[string]module.ResolvedDependency{
+					"kube_cluster": {
+						Kind:   "kubernetes",
+						Output: modules.MustJSON(kubernetes.Output{}),
+					},
+				},
 			},
 			act: module.ActionRequest{
 				Name: module.CreateAction,
@@ -194,6 +207,12 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 					Kind:    "firehose",
 					Name:    "fh1",
 					Project: "foo",
+				},
+				Dependencies: map[string]module.ResolvedDependency{
+					"kube_cluster": {
+						Kind:   "kubernetes",
+						Output: modules.MustJSON(kubernetes.Output{}),
+					},
 				},
 			},
 			act: module.ActionRequest{
@@ -271,6 +290,11 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 						Configs: modules.MustJSON(map[string]any{
 							"replicas":      1,
 							"deployment_id": "firehose-deployment-x",
+							"chart_values": map[string]string{
+								"chart_version":     "1.0.0",
+								"image_pull_policy": "",
+								"image_tag":         "1.0.0",
+							},
 							"env_variables": map[string]string{
 								"SINK_TYPE":                "LOG",
 								"INPUT_SCHEMA_PROTO_CLASS": "com.foo.Bar",
@@ -284,6 +308,14 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 						Output: modules.MustJSON(Output{
 							Namespace:   "firehose",
 							ReleaseName: "bar",
+						}),
+					},
+				},
+				Dependencies: map[string]module.ResolvedDependency{
+					"kube_cluster": {
+						Kind: "kubernetes",
+						Output: modules.MustJSON(kubernetes.Output{
+							Tolerations: map[string][]kubernetes.Toleration{},
 						}),
 					},
 				},
@@ -312,6 +344,11 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 						"stopped":       false,
 						"replicas":      10,
 						"deployment_id": "firehose-deployment-x",
+						"chart_values": map[string]string{
+							"chart_version":     "1.0.0",
+							"image_pull_policy": "",
+							"image_tag":         "1.0.0",
+						},
 						"env_variables": map[string]string{
 							"SINK_TYPE":                      "HTTP",
 							"INPUT_SCHEMA_PROTO_CLASS":       "com.foo.Bar",
@@ -356,6 +393,11 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 						Configs: modules.MustJSON(map[string]any{
 							"replicas":      1,
 							"deployment_id": "firehose-deployment-x",
+							"chart_values": map[string]string{
+								"chart_version":     "1.0.0",
+								"image_pull_policy": "",
+								"image_tag":         "1.0.0",
+							},
 							"env_variables": map[string]string{
 								"SINK_TYPE":                "LOG",
 								"INPUT_SCHEMA_PROTO_CLASS": "com.foo.Bar",
@@ -370,6 +412,12 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 							Namespace:   "firehose",
 							ReleaseName: "bar",
 						}),
+					},
+				},
+				Dependencies: map[string]module.ResolvedDependency{
+					"kube_cluster": {
+						Kind:   "kubernetes",
+						Output: modules.MustJSON(kubernetes.Output{}),
 					},
 				},
 			},
@@ -405,6 +453,11 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 						"stopped":       false,
 						"replicas":      10,
 						"deployment_id": "firehose-deployment-x",
+						"chart_values": map[string]string{
+							"chart_version":     "1.0.0",
+							"image_pull_policy": "",
+							"image_tag":         "1.0.0",
+						},
 						"env_variables": map[string]string{
 							"SINK_TYPE":                      "HTTP",
 							"INPUT_SCHEMA_PROTO_CLASS":       "com.foo.Bar",
@@ -498,6 +551,11 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 							"replicas":      1,
 							"stopped":       true,
 							"deployment_id": "firehose-deployment-x",
+							"chart_values": map[string]string{
+								"chart_version":     "1.0.0",
+								"image_pull_policy": "",
+								"image_tag":         "1.0.0",
+							},
 							"env_variables": map[string]string{
 								"SINK_TYPE":                "LOG",
 								"INPUT_SCHEMA_PROTO_CLASS": "com.foo.Bar",
@@ -512,6 +570,12 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 							Namespace:   "firehose",
 							ReleaseName: "bar",
 						}),
+					},
+				},
+				Dependencies: map[string]module.ResolvedDependency{
+					"kube_cluster": {
+						Kind:   "kubernetes",
+						Output: modules.MustJSON(kubernetes.Output{}),
 					},
 				},
 			},
@@ -540,6 +604,11 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 						"stopped":       false,
 						"replicas":      10,
 						"deployment_id": "firehose-deployment-x",
+						"chart_values": map[string]string{
+							"chart_version":     "1.0.0",
+							"image_pull_policy": "",
+							"image_tag":         "1.0.0",
+						},
 						"env_variables": map[string]string{
 							"SINK_TYPE":                      "BIGQUERY",
 							"INPUT_SCHEMA_PROTO_CLASS":       "com.foo.Bar",
@@ -739,6 +808,12 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 							Namespace:   "firehose",
 							ReleaseName: "bar",
 						}),
+					},
+				},
+				Dependencies: map[string]module.ResolvedDependency{
+					"kube_cluster": {
+						Kind:   "kubernetes",
+						Output: modules.MustJSON(kubernetes.Output{}),
 					},
 				},
 			},
