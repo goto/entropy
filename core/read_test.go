@@ -93,7 +93,7 @@ func TestService_ListResources(t *testing.T) {
 		name    string
 		setup   func(t *testing.T) *core.Service
 		filter  resource.Filter
-		want    []resource.Resource
+		want    resource.PagedResource
 		wantErr error
 	}{
 		{
@@ -107,7 +107,7 @@ func TestService_ListResources(t *testing.T) {
 					Once()
 				return core.New(repo, nil, deadClock, defaultSyncBackoff, defaultMaxRetries)
 			},
-			want:    nil,
+			want:    resource.PagedResource{},
 			wantErr: nil,
 		},
 		{
@@ -121,7 +121,7 @@ func TestService_ListResources(t *testing.T) {
 					Once()
 				return core.New(repo, nil, deadClock, defaultSyncBackoff, defaultMaxRetries)
 			},
-			want:    nil,
+			want:    resource.PagedResource{},
 			wantErr: errors.ErrInternal,
 		},
 		{
@@ -135,7 +135,10 @@ func TestService_ListResources(t *testing.T) {
 					Once()
 				return core.New(repo, nil, deadClock, defaultSyncBackoff, defaultMaxRetries)
 			},
-			want:    []resource.Resource{sampleResource},
+			want: resource.PagedResource{
+				Count:     1,
+				Resources: []resource.Resource{sampleResource},
+			},
 			wantErr: nil,
 		},
 	}

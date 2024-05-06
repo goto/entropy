@@ -16,6 +16,7 @@ import (
 
 func cmdViewResource() *cobra.Command {
 	var kind, project string
+	var pageNum, pageSize int32
 	cmd := &cobra.Command{
 		Use:     "get [resource-urn]",
 		Args:    cobra.MaximumNArgs(1),
@@ -54,8 +55,10 @@ func cmdViewResource() *cobra.Command {
 
 			// list resource
 			req := entropyv1beta1.ListResourcesRequest{
-				Kind:    kind,
-				Project: project,
+				Kind:     kind,
+				Project:  project,
+				PageNum:  pageNum,
+				PageSize: pageSize,
 			}
 
 			spinner := printer.Spin("Listing resources...")
@@ -82,6 +85,8 @@ func cmdViewResource() *cobra.Command {
 
 	cmd.Flags().StringVarP(&kind, "kind", "k", "", "kind of resources")
 	cmd.Flags().StringVarP(&project, "project", "p", "", "project of resources")
+	cmd.Flags().Int32Var(&pageNum, "page-num", 1, "resources page number")
+	cmd.Flags().Int32Var(&pageSize, "page-size", 50, "resources page size")
 
 	return cmd
 }

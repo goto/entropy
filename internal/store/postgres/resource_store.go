@@ -73,11 +73,23 @@ func (st *Store) GetByURN(ctx context.Context, urn string) (*resource.Resource, 
 
 func (st *Store) List(ctx context.Context, filter resource.Filter, withSpecConfigs bool) ([]resource.Resource, error) {
 	var resourceList []ListResourceByFilterRow
+
+	var defaultLimit int32 = 50
+	var defaultPage int32 = 1
+	if filter.Limit < 1 {
+		filter.Limit = defaultLimit
+	}
+	if filter.Page < 1 {
+		filter.Page = defaultPage
+	}
+
+	offset := (filter.Page - 1) * filter.Limit
+
 	var err error
 	if withSpecConfigs {
-		resourceList, err = listResourceWithSpecConfigsByFilter(ctx, st.db, filter.Project, filter.Kind)
+		resourceList, err = listResourceWithSpecConfigsByFilter(ctx, st.db, filter.Project, filter.Kind, filter.Limit, offset)
 	} else {
-		resourceList, err = listResourceByFilter(ctx, st.db, filter.Project, filter.Kind)
+		resourceList, err = listResourceByFilter(ctx, st.db, filter.Project, filter.Kind, filter.Limit, offset)
 	}
 	if err != nil {
 		return nil, err

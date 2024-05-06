@@ -39,12 +39,17 @@ func (svc *Service) GetResource(ctx context.Context, urn string) (*resource.Reso
 	return res, nil
 }
 
-func (svc *Service) ListResources(ctx context.Context, filter resource.Filter, withSpecConfigs bool) ([]resource.Resource, error) {
+func (svc *Service) ListResources(ctx context.Context, filter resource.Filter, withSpecConfigs bool) (resource.PagedResource, error) {
 	resources, err := svc.store.List(ctx, filter, withSpecConfigs)
 	if err != nil {
-		return nil, errors.ErrInternal.WithCausef(err.Error())
+		return resource.PagedResource{}, errors.ErrInternal.WithCausef(err.Error())
 	}
-	return filter.Apply(resources), nil
+
+	resources = filter.Apply(resources)
+	return resource.PagedResource{
+		Count:     int32(len(resources)),
+		Resources: resources,
+	}, nil
 }
 
 func (svc *Service) GetLog(ctx context.Context, urn string, filter map[string]string) (<-chan module.LogChunk, error) {

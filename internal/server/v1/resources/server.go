@@ -13,7 +13,7 @@ import (
 
 type ResourceService interface {
 	GetResource(ctx context.Context, urn string) (*resource.Resource, error)
-	ListResources(ctx context.Context, filter resource.Filter, withSpecConfigs bool) ([]resource.Resource, error)
+	ListResources(ctx context.Context, filter resource.Filter, withSpecConfigs bool) (resource.PagedResource, error)
 	CreateResource(ctx context.Context, res resource.Resource) (*resource.Resource, error)
 	UpdateResource(ctx context.Context, urn string, req resource.UpdateRequest) (*resource.Resource, error)
 	DeleteResource(ctx context.Context, urn string) error
@@ -116,6 +116,8 @@ func (server APIServer) ListResources(ctx context.Context, request *entropyv1bet
 		Kind:    request.GetKind(),
 		Project: request.GetProject(),
 		Labels:  request.Labels,
+		Limit:   request.PageSize,
+		Page:    request.PageNum,
 	}
 
 	withSpecConfigs := request.GetWithSpecConfigs()
@@ -126,7 +128,7 @@ func (server APIServer) ListResources(ctx context.Context, request *entropyv1bet
 	}
 
 	var responseResources []*entropyv1beta1.Resource
-	for _, res := range resources {
+	for _, res := range resources.Resources {
 		responseResource, err := resourceToProto(res)
 		if err != nil {
 			return nil, serverutils.ToRPCError(err)
@@ -135,6 +137,7 @@ func (server APIServer) ListResources(ctx context.Context, request *entropyv1bet
 	}
 
 	return &entropyv1beta1.ListResourcesResponse{
+		Count:     int32(len(responseResources)),
 		Resources: responseResources,
 	}, nil
 }
