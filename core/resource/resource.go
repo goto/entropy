@@ -66,8 +66,8 @@ type Filter struct {
 	Kind     string            `json:"kind"`
 	Project  string            `json:"project"`
 	Labels   map[string]string `json:"labels"`
-	PageSize int32             `json:"limit"`
-	PageNum  int32             `json:"page"`
+	PageSize int32             `json:"page_size"`
+	PageNum  int32             `json:"page_num"`
 }
 
 type UpdateRequest struct {
