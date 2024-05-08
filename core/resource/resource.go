@@ -63,11 +63,11 @@ type Spec struct {
 }
 
 type Filter struct {
-	Kind    string            `json:"kind"`
-	Project string            `json:"project"`
-	Labels  map[string]string `json:"labels"`
-	Limit   int32             `json:"limit"`
-	Page    int32             `json:"page"`
+	Kind     string            `json:"kind"`
+	Project  string            `json:"project"`
+	Labels   map[string]string `json:"labels"`
+	PageSize int32             `json:"limit"`
+	PageNum  int32             `json:"page"`
 }
 
 type UpdateRequest struct {

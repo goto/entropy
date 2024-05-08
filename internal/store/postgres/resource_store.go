@@ -76,20 +76,20 @@ func (st *Store) List(ctx context.Context, filter resource.Filter, withSpecConfi
 
 	var defaultLimit int32 = 50
 	var defaultPage int32 = 1
-	if filter.Limit < 1 {
-		filter.Limit = defaultLimit
+	if filter.PageSize < 1 {
+		filter.PageSize = defaultLimit
 	}
-	if filter.Page < 1 {
-		filter.Page = defaultPage
+	if filter.PageNum < 1 {
+		filter.PageNum = defaultPage
 	}
 
-	offset := (filter.Page - 1) * filter.Limit
+	offset := (filter.PageNum - 1) * filter.PageSize
 
 	var err error
 	if withSpecConfigs {
-		resourceList, err = listResourceWithSpecConfigsByFilter(ctx, st.db, filter.Project, filter.Kind, filter.Limit, offset)
+		resourceList, err = listResourceWithSpecConfigsByFilter(ctx, st.db, filter.Project, filter.Kind, filter.PageSize, offset)
 	} else {
-		resourceList, err = listResourceByFilter(ctx, st.db, filter.Project, filter.Kind, filter.Limit, offset)
+		resourceList, err = listResourceByFilter(ctx, st.db, filter.Project, filter.Kind, filter.PageSize, offset)
 	}
 	if err != nil {
 		return nil, err

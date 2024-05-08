@@ -113,11 +113,11 @@ func (server APIServer) GetResource(ctx context.Context, request *entropyv1beta1
 
 func (server APIServer) ListResources(ctx context.Context, request *entropyv1beta1.ListResourcesRequest) (*entropyv1beta1.ListResourcesResponse, error) {
 	filter := resource.Filter{
-		Kind:    request.GetKind(),
-		Project: request.GetProject(),
-		Labels:  request.Labels,
-		Limit:   request.PageSize,
-		Page:    request.PageNum,
+		Kind:     request.GetKind(),
+		Project:  request.GetProject(),
+		Labels:   request.Labels,
+		PageSize: request.PageSize,
+		PageNum:  request.PageNum,
 	}
 
 	withSpecConfigs := request.GetWithSpecConfigs()
