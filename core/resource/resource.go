@@ -52,15 +52,22 @@ type Resource struct {
 	State     State             `json:"state"`
 }
 
+type PagedResource struct {
+	Count     int32
+	Resources []Resource
+}
+
 type Spec struct {
 	Configs      json.RawMessage   `json:"configs"`
 	Dependencies map[string]string `json:"dependencies"`
 }
 
 type Filter struct {
-	Kind    string            `json:"kind"`
-	Project string            `json:"project"`
-	Labels  map[string]string `json:"labels"`
+	Kind     string            `json:"kind"`
+	Project  string            `json:"project"`
+	Labels   map[string]string `json:"labels"`
+	PageSize int32             `json:"page_size"`
+	PageNum  int32             `json:"page_num"`
 }
 
 type UpdateRequest struct {

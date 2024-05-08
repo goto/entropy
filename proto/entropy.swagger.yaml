@@ -141,6 +141,16 @@ paths:
           in: query
           required: false
           type: boolean
+        - name: page_size
+          in: query
+          required: false
+          type: integer
+          format: int32
+        - name: page_num
+          in: query
+          required: false
+          type: integer
+          format: int32
       tags:
         - ResourceService
     post:
@@ -395,6 +405,9 @@ definitions:
         items:
           type: object
           $ref: '#/definitions/Resource'
+      count:
+        type: integer
+        format: int32
   ListString:
     type: object
     properties:
@@ -444,7 +457,7 @@ definitions:
       `NullValue` is a singleton enumeration to represent the null value for the
       `Value` type union.
 
-       The JSON representation for `NullValue` is JSON `null`.
+      The JSON representation for `NullValue` is JSON `null`.
 
        - NULL_VALUE: Null value.
   Resource:

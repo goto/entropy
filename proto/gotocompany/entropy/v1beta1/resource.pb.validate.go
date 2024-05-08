@@ -1001,6 +1001,10 @@ func (m *ListResourcesRequest) validate(all bool) error {
 
 	// no validation rules for WithSpecConfigs
 
+	// no validation rules for PageSize
+
+	// no validation rules for PageNum
+
 	if len(errors) > 0 {
 		return ListResourcesRequestMultiError(errors)
 	}
@@ -1136,6 +1140,8 @@ func (m *ListResourcesResponse) validate(all bool) error {
 		}
 
 	}
+
+	// no validation rules for Count
 
 	if len(errors) > 0 {
 		return ListResourcesResponseMultiError(errors)

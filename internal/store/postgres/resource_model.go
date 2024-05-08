@@ -23,6 +23,8 @@ FROM resources r
 WHERE ($1 = '' OR r.project = $1)
   AND ($2 = '' OR r.kind = $2)
 GROUP BY r.id
+LIMIT $3
+OFFSET $4
 `
 
 const listResourceWithSpecConfigsByFilterQuery = `SELECT r.id, r.urn, r.kind, r.name, r.project, r.created_at, r.updated_at, r.spec_configs, r.state_status, r.state_output, r.state_module_data, r.state_next_sync, r.state_sync_result, r.created_by, r.updated_by,
@@ -35,6 +37,8 @@ FROM resources r
 WHERE ($1 = '' OR r.project = $1)
   AND ($2 = '' OR r.kind = $2)
 GROUP BY r.id
+LIMIT $3
+OFFSET $4
 `
 
 type resourceModel struct {
@@ -75,8 +79,8 @@ type ListResourceByFilterRow struct {
 	Dependencies    []byte
 }
 
-func listResourceWithSpecConfigsByFilter(ctx context.Context, db *sqlx.DB, project, kind string) ([]ListResourceByFilterRow, error) {
-	rows, err := db.QueryContext(ctx, listResourceWithSpecConfigsByFilterQuery, project, kind)
+func listResourceWithSpecConfigsByFilter(ctx context.Context, db *sqlx.DB, project, kind string, limit int32, offset int32) ([]ListResourceByFilterRow, error) {
+	rows, err := db.QueryContext(ctx, listResourceWithSpecConfigsByFilterQuery, project, kind, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -115,8 +119,8 @@ func listResourceWithSpecConfigsByFilter(ctx context.Context, db *sqlx.DB, proje
 	return items, nil
 }
 
-func listResourceByFilter(ctx context.Context, db *sqlx.DB, project, kind string) ([]ListResourceByFilterRow, error) {
-	rows, err := db.QueryContext(ctx, listResourceByFilterQuery, project, kind)
+func listResourceByFilter(ctx context.Context, db *sqlx.DB, project, kind string, limit int32, offset int32) ([]ListResourceByFilterRow, error) {
+	rows, err := db.QueryContext(ctx, listResourceByFilterQuery, project, kind, limit, offset)
 	if err != nil {
 		return nil, err
 	}

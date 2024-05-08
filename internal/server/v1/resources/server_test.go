@@ -419,7 +419,7 @@ func TestAPIServer_ListResources(t *testing.T) {
 				resourceService := &mocks.ResourceService{}
 				resourceService.EXPECT().
 					ListResources(mock.Anything, mock.Anything, false).
-					Return(nil, errors.New("failed")).Once()
+					Return(resource.PagedResource{}, errors.New("failed")).Once()
 
 				return NewAPIServer(resourceService)
 			},
@@ -437,23 +437,25 @@ func TestAPIServer_ListResources(t *testing.T) {
 				resourceService := &mocks.ResourceService{}
 				resourceService.EXPECT().
 					ListResources(mock.Anything, mock.Anything, false).
-					Return([]resource.Resource{
-						{
-							URN:       "p-testdata-gl-testname-log",
-							Kind:      "log",
-							Name:      "testname",
-							Project:   "p-testdata-gl",
-							Labels:    nil,
-							CreatedAt: createdAt,
-							UpdatedAt: updatedAt,
-							Spec: resource.Spec{
-								Configs: []byte(`{"replicas": "10"}`),
+					Return(resource.PagedResource{
+						Count: 1,
+						Resources: []resource.Resource{
+							{
+								URN:       "p-testdata-gl-testname-log",
+								Kind:      "log",
+								Name:      "testname",
+								Project:   "p-testdata-gl",
+								Labels:    nil,
+								CreatedAt: createdAt,
+								UpdatedAt: updatedAt,
+								Spec: resource.Spec{
+									Configs: []byte(`{"replicas": "10"}`),
+								},
+								State: resource.State{
+									Status: resource.StatusPending,
+								},
 							},
-							State: resource.State{
-								Status: resource.StatusPending,
-							},
-						},
-					}, nil).Once()
+						}}, nil).Once()
 
 				return NewAPIServer(resourceService)
 			},
@@ -462,6 +464,7 @@ func TestAPIServer_ListResources(t *testing.T) {
 				Kind:    "log",
 			},
 			want: &entropyv1beta1.ListResourcesResponse{
+				Count: 1,
 				Resources: []*entropyv1beta1.Resource{
 					{
 						Urn:       "p-testdata-gl-testname-log",
