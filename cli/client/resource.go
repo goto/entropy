@@ -86,7 +86,7 @@ func cmdViewResource() *cobra.Command {
 	cmd.Flags().StringVarP(&kind, "kind", "k", "", "kind of resources")
 	cmd.Flags().StringVarP(&project, "project", "p", "", "project of resources")
 	cmd.Flags().Int32Var(&pageNum, "page-num", 1, "resources page number")
-	cmd.Flags().Int32Var(&pageSize, "page-size", 50, "resources page size")
+	cmd.Flags().Int32Var(&pageSize, "page-size", 0, "resources page size")
 
 	return cmd
 }

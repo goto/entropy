@@ -74,7 +74,7 @@ func (st *Store) GetByURN(ctx context.Context, urn string) (*resource.Resource, 
 func (st *Store) List(ctx context.Context, filter resource.Filter, withSpecConfigs bool) ([]resource.Resource, error) {
 	var resourceList []ListResourceByFilterRow
 
-	var defaultLimit int32 = 50
+	var defaultLimit int32 = 0
 	var defaultPage int32 = 1
 	if filter.PageSize < 1 {
 		filter.PageSize = defaultLimit

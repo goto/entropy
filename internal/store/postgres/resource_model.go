@@ -80,7 +80,12 @@ type ListResourceByFilterRow struct {
 }
 
 func listResourceWithSpecConfigsByFilter(ctx context.Context, db *sqlx.DB, project, kind string, limit int32, offset int32) ([]ListResourceByFilterRow, error) {
-	rows, err := db.QueryContext(ctx, listResourceWithSpecConfigsByFilterQuery, project, kind, limit, offset)
+	// Set limit default to nil
+	var limitPointers *int32
+	if limit != 0 {
+		limitPointers = &limit
+	}
+	rows, err := db.QueryContext(ctx, listResourceWithSpecConfigsByFilterQuery, project, kind, limitPointers, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +125,12 @@ func listResourceWithSpecConfigsByFilter(ctx context.Context, db *sqlx.DB, proje
 }
 
 func listResourceByFilter(ctx context.Context, db *sqlx.DB, project, kind string, limit int32, offset int32) ([]ListResourceByFilterRow, error) {
-	rows, err := db.QueryContext(ctx, listResourceByFilterQuery, project, kind, limit, offset)
+	// Set limit default to nil
+	var limitPointers *int32
+	if limit != 0 {
+		limitPointers = &limit
+	}
+	rows, err := db.QueryContext(ctx, listResourceByFilterQuery, project, kind, limitPointers, offset)
 	if err != nil {
 		return nil, err
 	}
