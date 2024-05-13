@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
+	"github.com/goto/entropy/cli/client"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/logger"
 	"github.com/goto/entropy/pkg/telemetry"
@@ -83,6 +84,9 @@ func loadConfig(cmd *cobra.Command) (Config, error) {
 	} else {
 		return cfg, err
 	}
+
+	client.PaginationSizeDefault = cfg.Service.PaginationSizeDefault
+	client.PaginationPageDefault = cfg.Service.PaginationPageDefault
 
 	return cfg, nil
 }
