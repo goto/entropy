@@ -31,6 +31,12 @@ type Store struct {
 	db              *sqlx.DB
 	extendInterval  time.Duration
 	refreshInterval time.Duration
+	config          Config
+}
+
+type Config struct {
+	PaginationSizeDefault int32
+	PaginationPageDefault int32
 }
 
 func (st *Store) Migrate(ctx context.Context) error {
@@ -41,7 +47,7 @@ func (st *Store) Migrate(ctx context.Context) error {
 func (st *Store) Close() error { return st.db.Close() }
 
 // Open returns store instance backed by PostgresQL.
-func Open(conStr string, refreshInterval, extendInterval time.Duration) (*Store, error) {
+func Open(conStr string, refreshInterval, extendInterval time.Duration, paginationSizeDefault, paginationPageDefault int32) (*Store, error) {
 	db, err := sqlx.Open("postgres", conStr)
 	if err != nil {
 		return nil, err
@@ -55,5 +61,9 @@ func Open(conStr string, refreshInterval, extendInterval time.Duration) (*Store,
 		db:              db,
 		extendInterval:  extendInterval,
 		refreshInterval: refreshInterval,
+		config: Config{
+			PaginationSizeDefault: paginationSizeDefault,
+			PaginationPageDefault: paginationPageDefault,
+		},
 	}, nil
 }

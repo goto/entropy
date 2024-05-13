@@ -38,7 +38,9 @@ type serveConfig struct {
 	Host string `mapstructure:"host" default:""`
 	Port int    `mapstructure:"port" default:"8080"`
 
-	HTTPAddr string `mapstructure:"http_addr" default:":8081"`
+	HTTPAddr              string `mapstructure:"http_addr" default:":8081"`
+	PaginationSizeDefault int32  `mapstructure:"pagination_size_default" default:"0"`
+	PaginationPageDefault int32  `mapstructure:"pagination_page_default" default:"1"`
 }
 
 func (serveCfg serveConfig) httpAddr() string { return serveCfg.HTTPAddr }
