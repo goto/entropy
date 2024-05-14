@@ -14,6 +14,8 @@ import (
 	entropyv1beta1 "github.com/goto/entropy/proto/gotocompany/entropy/v1beta1"
 )
 
+var PaginationSizeDefault, PaginationPageDefault int32
+
 func cmdViewResource() *cobra.Command {
 	var kind, project string
 	var pageNum, pageSize int32
@@ -85,8 +87,8 @@ func cmdViewResource() *cobra.Command {
 
 	cmd.Flags().StringVarP(&kind, "kind", "k", "", "kind of resources")
 	cmd.Flags().StringVarP(&project, "project", "p", "", "project of resources")
-	cmd.Flags().Int32Var(&pageNum, "page-num", 1, "resources page number")
-	cmd.Flags().Int32Var(&pageSize, "page-size", 50, "resources page size")
+	cmd.Flags().Int32Var(&pageNum, "page-num", PaginationPageDefault, "resources page number")
+	cmd.Flags().Int32Var(&pageSize, "page-size", PaginationSizeDefault, "resources page size")
 
 	return cmd
 }

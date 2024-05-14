@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
+	"github.com/goto/entropy/cli/client"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/logger"
 	"github.com/goto/entropy/pkg/telemetry"
@@ -38,7 +39,9 @@ type serveConfig struct {
 	Host string `mapstructure:"host" default:""`
 	Port int    `mapstructure:"port" default:"8080"`
 
-	HTTPAddr string `mapstructure:"http_addr" default:":8081"`
+	HTTPAddr              string `mapstructure:"http_addr" default:":8081"`
+	PaginationSizeDefault int32  `mapstructure:"pagination_size_default" default:"0"`
+	PaginationPageDefault int32  `mapstructure:"pagination_page_default" default:"1"`
 }
 
 func (serveCfg serveConfig) httpAddr() string { return serveCfg.HTTPAddr }
@@ -81,6 +84,9 @@ func loadConfig(cmd *cobra.Command) (Config, error) {
 	} else {
 		return cfg, err
 	}
+
+	client.PaginationSizeDefault = cfg.Service.PaginationSizeDefault
+	client.PaginationPageDefault = cfg.Service.PaginationPageDefault
 
 	return cfg, nil
 }

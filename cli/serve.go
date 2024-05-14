@@ -50,7 +50,7 @@ func cmdServe() *cobra.Command {
 			newrelic.ConfigLicense(cfg.Telemetry.NewRelicAPIKey),
 		)
 
-		store := setupStorage(cfg.PGConnStr, cfg.Syncer)
+		store := setupStorage(cfg.PGConnStr, cfg.Syncer, cfg.Service)
 		moduleService := module.NewService(setupRegistry(), store)
 		resourceService := core.New(store, moduleService, time.Now, cfg.Syncer.SyncBackoffInterval, cfg.Syncer.MaxRetries)
 
@@ -96,8 +96,8 @@ func setupRegistry() module.Registry {
 	return registry
 }
 
-func setupStorage(pgConStr string, syncCfg syncerConf) *postgres.Store {
-	store, err := postgres.Open(pgConStr, syncCfg.RefreshInterval, syncCfg.ExtendLockBy)
+func setupStorage(pgConStr string, syncCfg syncerConf, serveCfg serveConfig) *postgres.Store {
+	store, err := postgres.Open(pgConStr, syncCfg.RefreshInterval, syncCfg.ExtendLockBy, serveCfg.PaginationSizeDefault, serveCfg.PaginationPageDefault)
 	if err != nil {
 		zap.L().Fatal("failed to connect to Postgres database",
 			zap.Error(err), zap.String("conn_str", pgConStr))
