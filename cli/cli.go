@@ -23,7 +23,8 @@ func Execute(ctx context.Context) {
 		cmdMigrate(),
 		cmdVersion(),
 		cmdShowConfigs(),
-		client.Command(),
+		client.ResourceCommand(),
+		client.ModuleCommand(),
 	)
 
 	cmdx.SetHelp(rootCmd)

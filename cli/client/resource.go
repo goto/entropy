@@ -25,7 +25,7 @@ func cmdViewResource() *cobra.Command {
 		Short:   "List or View existing resource(s)",
 		Aliases: []string{"view"},
 		RunE: handleErr(func(cmd *cobra.Command, args []string) error {
-			client, cancel, err := createClient(cmd)
+			client, cancel, err := createResourceServiceClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -104,7 +104,7 @@ func cmdCreateResource() *cobra.Command {
 				return err
 			}
 
-			client, cancel, err := createClient(cmd)
+			client, cancel, err := createResourceServiceClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -154,7 +154,7 @@ func cmdEditResource() *cobra.Command {
 				return err
 			}
 
-			client, cancel, err := createClient(cmd)
+			client, cancel, err := createResourceServiceClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -207,7 +207,7 @@ func cmdApplyAction() *cobra.Command {
 				return err
 			}
 
-			client, cancel, err := createClient(cmd)
+			client, cancel, err := createResourceServiceClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -243,7 +243,7 @@ func cmdDeleteResource() *cobra.Command {
 		Short:   "Delete an existing resource.",
 		Aliases: []string{"rm", "del"},
 		RunE: handleErr(func(cmd *cobra.Command, args []string) error {
-			client, cancel, err := createClient(cmd)
+			client, cancel, err := createResourceServiceClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -275,7 +275,7 @@ func cmdListRevisions() *cobra.Command {
 			var reqBody entropyv1beta1.GetResourceRevisionsRequest
 			reqBody.Urn = args[0]
 
-			client, cancel, err := createClient(cmd)
+			client, cancel, err := createResourceServiceClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -316,7 +316,7 @@ func cmdStreamLogs() *cobra.Command {
 		Short:   "Stream real-time logs for an existing resource.",
 		Aliases: []string{"logs"},
 		RunE: handleErr(func(cmd *cobra.Command, args []string) error {
-			client, cancel, err := createClient(cmd)
+			client, cancel, err := createResourceServiceClient(cmd)
 			if err != nil {
 				return err
 			}

@@ -20,7 +20,7 @@ const (
 	dialTimeout = 5 * time.Second
 )
 
-func Command() *cobra.Command {
+func ResourceCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "resource",
 		Short: "Entropy client with resource management commands",
@@ -51,7 +51,31 @@ func Command() *cobra.Command {
 	return cmd
 }
 
-func createClient(cmd *cobra.Command) (entropyv1beta1.ResourceServiceClient, func(), error) {
+func ModuleCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "module",
+		Short: "Entropy client with module management commands",
+		Example: heredoc.Doc(`
+			$ entropy resource create <file>
+			$ entropy resource update <module-urn> <file>
+			$ entropy resource get <module-urn>
+		`),
+	}
+
+	cmd.PersistentFlags().StringP(entropyHostFlag, "E", "", "Entropy host to connect to")
+	cmd.PersistentFlags().DurationP(dialTimeoutFlag, "T", dialTimeout, "Dial timeout")
+	cmd.PersistentFlags().StringP(outFormatFlag, "F", "pretty", "output format (json, yaml, pretty)")
+
+	cmd.AddCommand(
+		cmdModuleCreate(),
+		cmdModuleUpdate(),
+		cmdModuleView(),
+	)
+
+	return cmd
+}
+
+func createResourceServiceClient(cmd *cobra.Command) (entropyv1beta1.ResourceServiceClient, func(), error) {
 	dialTimeoutVal, _ := cmd.Flags().GetDuration(dialTimeoutFlag)
 	entropyAddr, _ := cmd.Flags().GetString(entropyHostFlag)
 
@@ -67,4 +91,22 @@ func createClient(cmd *cobra.Command) (entropyv1beta1.ResourceServiceClient, fun
 		_ = conn.Close()
 	}
 	return entropyv1beta1.NewResourceServiceClient(conn), cancel, nil
+}
+
+func createModuleServiceClient(cmd *cobra.Command) (entropyv1beta1.ModuleServiceClient, func(), error) {
+	dialTimeoutVal, _ := cmd.Flags().GetDuration(dialTimeoutFlag)
+	entropyAddr, _ := cmd.Flags().GetString(entropyHostFlag)
+
+	dialCtx, dialCancel := context.WithTimeout(cmd.Context(), dialTimeoutVal)
+	conn, err := grpc.DialContext(dialCtx, entropyAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		dialCancel()
+		return nil, nil, err
+	}
+
+	cancel := func() {
+		dialCancel()
+		_ = conn.Close()
+	}
+	return entropyv1beta1.NewModuleServiceClient(conn), cancel, nil
 }
