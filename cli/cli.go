@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/goto/salt/cmdx"
 	"github.com/spf13/cobra"
@@ -23,7 +22,7 @@ func Execute(ctx context.Context) {
 		panic(err)
 	}
 	clientCfg := client.Config{
-		Host: fmt.Sprintf("%s:%d", cfg.Service.Host, cfg.Service.Port),
+		Host: cfg.Service.grpcAddr(),
 	}
 
 	rootCmd.PersistentFlags().StringP(configFlag, "c", "", "Override config file")
