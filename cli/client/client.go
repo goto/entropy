@@ -20,7 +20,11 @@ const (
 	dialTimeout = 5 * time.Second
 )
 
-func ResourceCommand() *cobra.Command {
+type Config struct {
+	Host string `mapstructure:"host"`
+}
+
+func ResourceCommand(cfg *Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "resource",
 		Short: "Entropy client with resource management commands",
@@ -34,9 +38,9 @@ func ResourceCommand() *cobra.Command {
 		`),
 	}
 
-	cmd.PersistentFlags().StringP(entropyHostFlag, "E", "", "Entropy host to connect to")
-	cmd.PersistentFlags().DurationP(dialTimeoutFlag, "T", dialTimeout, "Dial timeout")
-	cmd.PersistentFlags().StringP(outFormatFlag, "F", "pretty", "output format (json, yaml, pretty)")
+	cmd.PersistentFlags().StringP(entropyHostFlag, "h", cfg.Host, "Entropy host to connect to")
+	cmd.PersistentFlags().DurationP(dialTimeoutFlag, "", dialTimeout, "Dial timeout")
+	cmd.PersistentFlags().StringP(outFormatFlag, "o", "pretty", "output format (json, yaml, pretty)")
 
 	cmd.AddCommand(
 		cmdCreateResource(),
@@ -51,7 +55,7 @@ func ResourceCommand() *cobra.Command {
 	return cmd
 }
 
-func ModuleCommand() *cobra.Command {
+func ModuleCommand(cfg *Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "module",
 		Short: "Entropy client with module management commands",
@@ -62,9 +66,9 @@ func ModuleCommand() *cobra.Command {
 		`),
 	}
 
-	cmd.PersistentFlags().StringP(entropyHostFlag, "E", "", "Entropy host to connect to")
-	cmd.PersistentFlags().DurationP(dialTimeoutFlag, "T", dialTimeout, "Dial timeout")
-	cmd.PersistentFlags().StringP(outFormatFlag, "F", "pretty", "output format (json, yaml, pretty)")
+	cmd.PersistentFlags().StringP(entropyHostFlag, "h", cfg.Host, "Entropy host to connect to")
+	cmd.PersistentFlags().DurationP(dialTimeoutFlag, "", dialTimeout, "Dial timeout")
+	cmd.PersistentFlags().StringP(outFormatFlag, "o", "pretty", "output format (json, yaml, pretty)")
 
 	cmd.AddCommand(
 		cmdModuleCreate(),

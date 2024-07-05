@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/goto/salt/cmdx"
 	"github.com/goto/salt/config"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -48,6 +49,24 @@ func (serveCfg serveConfig) httpAddr() string { return serveCfg.HTTPAddr }
 
 func (serveCfg serveConfig) grpcAddr() string {
 	return fmt.Sprintf("%s:%d", serveCfg.Host, serveCfg.Port)
+}
+
+func cmdInitConfig() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "config init",
+		Short: "Initialize new client configuration",
+		RunE: handleErr(func(cmd *cobra.Command, args []string) error {
+			cfg := cmdx.SetConfig("entropy")
+
+			if err := cfg.Init(&Config{}); err != nil {
+				return err
+			}
+
+			fmt.Printf("config created: %v\n", cfg.File())
+			return nil
+		}),
+	}
+	return cmd
 }
 
 func cmdShowConfigs() *cobra.Command {
