@@ -1,4 +1,4 @@
-package client
+package cli
 
 import (
 	"fmt"
@@ -56,7 +56,7 @@ func cmdModuleCreate() *cobra.Command {
 		module := mod.GetModule()
 		return Display(cmd, module, func(w io.Writer, v any) error {
 			_, _ = fmt.Fprintf(w, "Module created with URN '%s'.\n", module.Urn)
-			_, _ = fmt.Fprintln(w, "Use 'entropy module get <urn>' to view module.")
+			_, _ = fmt.Fprintln(w, "Use 'entropy module view <urn>' to view module.")
 			return nil
 		})
 	})
@@ -110,7 +110,7 @@ func cmdModuleUpdate() *cobra.Command {
 		module := mod.GetModule()
 		return Display(cmd, module, func(w io.Writer, v any) error {
 			_, _ = fmt.Fprintf(w, "Module updated with URN '%s'.\n", module.Urn)
-			_, _ = fmt.Fprintln(w, "Use 'entropy module get <urn>' to view module.")
+			_, _ = fmt.Fprintln(w, "Use 'entropy module view <urn>' to view module.")
 			return nil
 		})
 	})

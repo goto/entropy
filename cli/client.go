@@ -1,4 +1,4 @@
-package client
+package cli
 
 import (
 	"context"
@@ -20,11 +20,7 @@ const (
 	dialTimeout = 5 * time.Second
 )
 
-type Config struct {
-	Host string `mapstructure:"host"`
-}
-
-func ResourceCommand(cfg *Config) *cobra.Command {
+func ResourceCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "resource",
 		Short: "Entropy client with resource management commands",
@@ -37,6 +33,8 @@ func ResourceCommand(cfg *Config) *cobra.Command {
 			$ entropy resource revisions <resource-urn>
 		`),
 	}
+
+	cfg, _ := loadClientConfig()
 
 	cmd.PersistentFlags().StringP(entropyHostFlag, "h", cfg.Host, "Entropy host to connect to")
 	cmd.PersistentFlags().DurationP(dialTimeoutFlag, "", dialTimeout, "Dial timeout")
@@ -55,7 +53,7 @@ func ResourceCommand(cfg *Config) *cobra.Command {
 	return cmd
 }
 
-func ModuleCommand(cfg *Config) *cobra.Command {
+func ModuleCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "module",
 		Short: "Entropy client with module management commands",
@@ -65,6 +63,8 @@ func ModuleCommand(cfg *Config) *cobra.Command {
 			$ entropy resource get <module-urn>
 		`),
 	}
+
+	cfg, _ := loadClientConfig()
 
 	cmd.PersistentFlags().StringP(entropyHostFlag, "h", cfg.Host, "Entropy host to connect to")
 	cmd.PersistentFlags().DurationP(dialTimeoutFlag, "", dialTimeout, "Dial timeout")

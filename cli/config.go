@@ -6,12 +6,13 @@ import (
 	"os"
 	"time"
 
+	"github.com/MakeNowJust/heredoc"
 	"github.com/goto/salt/cmdx"
 	"github.com/goto/salt/config"
+	"github.com/goto/salt/printer"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
-	"github.com/goto/entropy/cli/client"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/logger"
 	"github.com/goto/entropy/pkg/telemetry"
@@ -45,20 +46,39 @@ type serveConfig struct {
 	PaginationPageDefault int32  `mapstructure:"pagination_page_default" default:"1"`
 }
 
+type clientConfig struct {
+	Host string `mapstructure:"host" default:"localhost:8080"`
+}
+
 func (serveCfg serveConfig) httpAddr() string { return serveCfg.HTTPAddr }
 
 func (serveCfg serveConfig) grpcAddr() string {
 	return fmt.Sprintf("%s:%d", serveCfg.Host, serveCfg.Port)
 }
 
-func cmdInitConfig() *cobra.Command {
+func cmdConfig() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "config init",
-		Short: "Initialize new client configuration",
+		Use:   "config",
+		Short: "Manage configuration",
+		Example: heredoc.Doc(`
+			$ entropy config init
+			$ entropy config view
+		`),
+	}
+
+	cmd.AddCommand(cmdInitConfig(), cmdShowConfigs())
+
+	return cmd
+}
+
+func cmdInitConfig() *cobra.Command {
+	return &cobra.Command{
+		Use:   "init",
+		Short: "Initialize client configuration",
 		RunE: handleErr(func(cmd *cobra.Command, args []string) error {
 			cfg := cmdx.SetConfig("entropy")
 
-			if err := cfg.Init(&Config{}); err != nil {
+			if err := cfg.Init(&clientConfig{}); err != nil {
 				return err
 			}
 
@@ -66,18 +86,26 @@ func cmdInitConfig() *cobra.Command {
 			return nil
 		}),
 	}
-	return cmd
 }
 
 func cmdShowConfigs() *cobra.Command {
 	return &cobra.Command{
-		Use:   "configs",
+		Use:   "view",
 		Short: "Display configurations currently loaded",
 		RunE: handleErr(func(cmd *cobra.Command, args []string) error {
+			clientCfg := cmdx.SetConfig("entropy")
+			data, err := clientCfg.Read()
+			if err != nil {
+				fatalExitf("failed to read client configs: %v", err)
+			}
+			printer.Textln("Client config")
+			yaml.NewEncoder(os.Stdout).Encode(data)
+
 			cfg, err := loadConfig(cmd)
 			if err != nil {
 				fatalExitf("failed to read configs: %v", err)
 			}
+			printer.Textln("Config")
 			return yaml.NewEncoder(os.Stdout).Encode(cfg)
 		}),
 	}
@@ -104,8 +132,17 @@ func loadConfig(cmd *cobra.Command) (Config, error) {
 		return cfg, err
 	}
 
-	client.PaginationSizeDefault = cfg.Service.PaginationSizeDefault
-	client.PaginationPageDefault = cfg.Service.PaginationPageDefault
+	PaginationSizeDefault = cfg.Service.PaginationSizeDefault
+	PaginationPageDefault = cfg.Service.PaginationPageDefault
 
 	return cfg, nil
+}
+
+func loadClientConfig() (*clientConfig, error) {
+	var config clientConfig
+
+	cfg := cmdx.SetConfig("entropy")
+	err := cfg.Load(&config)
+
+	return &config, err
 }

@@ -5,8 +5,6 @@ import (
 
 	"github.com/goto/salt/cmdx"
 	"github.com/spf13/cobra"
-
-	"github.com/goto/entropy/cli/client"
 )
 
 var rootCmd = &cobra.Command{
@@ -17,23 +15,14 @@ familiar languages, tools, and engineering practices.`,
 }
 
 func Execute(ctx context.Context) {
-	cfg, err := loadConfig(rootCmd)
-	if err != nil {
-		panic(err)
-	}
-	clientCfg := client.Config{
-		Host: cfg.Service.grpcAddr(),
-	}
-
 	rootCmd.PersistentFlags().StringP(configFlag, "c", "", "Override config file")
 	rootCmd.AddCommand(
 		cmdServe(),
 		cmdMigrate(),
 		cmdVersion(),
-		cmdShowConfigs(),
-		cmdInitConfig(),
-		client.ResourceCommand(&clientCfg),
-		client.ModuleCommand(&clientCfg),
+		cmdConfig(),
+		ResourceCommand(),
+		ModuleCommand(),
 	)
 
 	cmdx.SetHelp(rootCmd)
