@@ -60,7 +60,7 @@ func ModuleCommand() *cobra.Command {
 		Example: heredoc.Doc(`
 			$ entropy resource create <file>
 			$ entropy resource update <module-urn> <file>
-			$ entropy resource get <module-urn>
+			$ entropy resource view <module-urn>
 		`),
 	}
 
