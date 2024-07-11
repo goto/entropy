@@ -17,11 +17,10 @@ import (
 var PaginationSizeDefault, PaginationPageDefault int32
 
 func cmdViewResource() *cobra.Command {
-	var kind, project string
+	var kind, project, urn string
 	var pageNum, pageSize int32
 	cmd := &cobra.Command{
-		Use:     "get [resource-urn]",
-		Args:    cobra.MaximumNArgs(1),
+		Use:     "get",
 		Short:   "List or View existing resource(s)",
 		Aliases: []string{"view"},
 		RunE: handleErr(func(cmd *cobra.Command, args []string) error {
@@ -31,10 +30,10 @@ func cmdViewResource() *cobra.Command {
 			}
 			defer cancel()
 
-			if len(args) == 1 {
+			if urn != "" {
 				// get resource
 				req := entropyv1beta1.GetResourceRequest{
-					Urn: args[0],
+					Urn: urn,
 				}
 				spinner := printer.Spin("Getting resource...")
 				defer spinner.Stop()
@@ -89,18 +88,19 @@ func cmdViewResource() *cobra.Command {
 	cmd.Flags().StringVarP(&project, "project", "p", "", "project of resources")
 	cmd.Flags().Int32Var(&pageNum, "page-num", PaginationPageDefault, "resources page number")
 	cmd.Flags().Int32Var(&pageSize, "page-size", PaginationSizeDefault, "resources page size")
+	cmd.Flags().StringVarP(&urn, "urn", "u", "", "URN of the module to view")
 
 	return cmd
 }
 
 func cmdCreateResource() *cobra.Command {
+	var file string
 	cmd := &cobra.Command{
-		Use:   "create <file>",
+		Use:   "create",
 		Short: "Create a new resource on Entropy.",
-		Args:  cobra.ExactArgs(1),
 		RunE: handleErr(func(cmd *cobra.Command, args []string) error {
 			var reqBody entropyv1beta1.Resource
-			if err := parseFile(args[0], &reqBody); err != nil {
+			if err := parseFile(file, &reqBody); err != nil {
 				return err
 			}
 
@@ -131,14 +131,16 @@ func cmdCreateResource() *cobra.Command {
 		}),
 	}
 
+	cmd.Flags().StringVarP(&file, "file", "f", "", "path to the updated spec of resource")
+	cmd.MarkFlagRequired("file")
+
 	return cmd
 }
 
 func cmdEditResource() *cobra.Command {
-	var file string
+	var file, urn string
 	cmd := &cobra.Command{
-		Use:   "edit <resource-urn>",
-		Args:  cobra.ExactArgs(1),
+		Use:   "edit",
 		Short: "Make updates to an existing resource",
 		RunE: handleErr(func(cmd *cobra.Command, args []string) error {
 			var newSpec entropyv1beta1.ResourceSpec
@@ -147,7 +149,7 @@ func cmdEditResource() *cobra.Command {
 			}
 
 			reqBody := entropyv1beta1.UpdateResourceRequest{
-				Urn:     args[0],
+				Urn:     urn,
 				NewSpec: &newSpec,
 			}
 			if err := reqBody.ValidateAll(); err != nil {
@@ -178,14 +180,16 @@ func cmdEditResource() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&file, "file", "f", "", "path to the updated spec of resource")
+	cmd.MarkFlagRequired("file")
+	cmd.Flags().StringVarP(&urn, "urn", "u", "", "URN of the resource to update")
+	cmd.MarkFlagRequired("urn")
 	return cmd
 }
 
 func cmdApplyAction() *cobra.Command {
-	var urn, file string
+	var urn, file, actionName string
 	cmd := &cobra.Command{
-		Use:     "action <action-name>",
-		Args:    cobra.ExactArgs(1),
+		Use:     "action",
 		Short:   "Apply an action on an existing resource",
 		Aliases: []string{"execute"},
 		RunE: handleErr(func(cmd *cobra.Command, args []string) error {
@@ -198,7 +202,7 @@ func cmdApplyAction() *cobra.Command {
 
 			reqBody := entropyv1beta1.ApplyActionRequest{
 				Urn:    urn,
-				Action: args[0],
+				Action: actionName,
 				Params: &params,
 			}
 
@@ -232,14 +236,16 @@ func cmdApplyAction() *cobra.Command {
 
 	cmd.Flags().StringVarP(&urn, "urn", "u", "", "urn of the resource")
 	cmd.Flags().StringVarP(&file, "file", "f", "", "path to the params file")
+	cmd.Flags().StringVarP(&actionName, "action", "a", "", "action to apply")
+	cmd.MarkFlagRequired("action")
 
 	return cmd
 }
 
 func cmdDeleteResource() *cobra.Command {
+	var urn string
 	cmd := &cobra.Command{
-		Use:     "delete <resource-urn>",
-		Args:    cobra.ExactArgs(1),
+		Use:     "delete",
 		Short:   "Delete an existing resource.",
 		Aliases: []string{"rm", "del"},
 		RunE: handleErr(func(cmd *cobra.Command, args []string) error {
@@ -251,7 +257,7 @@ func cmdDeleteResource() *cobra.Command {
 
 			spinner := printer.Spin("Deleting resource...")
 			defer spinner.Stop()
-			_, err = client.DeleteResource(cmd.Context(), &entropyv1beta1.DeleteResourceRequest{Urn: args[0]})
+			_, err = client.DeleteResource(cmd.Context(), &entropyv1beta1.DeleteResourceRequest{Urn: urn})
 			if err != nil {
 				return err
 			}
@@ -263,17 +269,22 @@ func cmdDeleteResource() *cobra.Command {
 			})
 		}),
 	}
+
+	cmd.Flags().StringVarP(&urn, "urn", "u", "", "URN of the resource to delete")
+	cmd.MarkFlagRequired("urn")
+
 	return cmd
 }
 
 func cmdListRevisions() *cobra.Command {
+	var urn string
 	cmd := &cobra.Command{
 		Use:     "revisions",
 		Short:   "List revisions of a resource.",
 		Aliases: []string{"revs"},
 		RunE: handleErr(func(cmd *cobra.Command, args []string) error {
 			var reqBody entropyv1beta1.GetResourceRevisionsRequest
-			reqBody.Urn = args[0]
+			reqBody.Urn = urn
 
 			client, cancel, err := createResourceServiceClient(cmd)
 			if err != nil {
@@ -281,7 +292,7 @@ func cmdListRevisions() *cobra.Command {
 			}
 			defer cancel()
 
-			req := &entropyv1beta1.GetResourceRevisionsRequest{Urn: args[0]}
+			req := &entropyv1beta1.GetResourceRevisionsRequest{Urn: urn}
 
 			spinner := printer.Spin("Retrieving resource revisions...")
 			defer spinner.Stop()
@@ -305,14 +316,17 @@ func cmdListRevisions() *cobra.Command {
 		}),
 	}
 
+	cmd.Flags().StringVarP(&urn, "urn", "u", "", "URN of the resource to view revisions")
+	cmd.MarkFlagRequired("urn")
+
 	return cmd
 }
 
 func cmdStreamLogs() *cobra.Command {
+	var urn string
 	var filter []string
 	cmd := &cobra.Command{
-		Use:     "logs <resource-urn>",
-		Args:    cobra.ExactArgs(1),
+		Use:     "logs",
 		Short:   "Stream real-time logs for an existing resource.",
 		Aliases: []string{"logs"},
 		RunE: handleErr(func(cmd *cobra.Command, args []string) error {
@@ -329,7 +343,7 @@ func cmdStreamLogs() *cobra.Command {
 			}
 
 			reqBody := &entropyv1beta1.GetLogRequest{
-				Urn:    args[0],
+				Urn:    urn,
 				Filter: filters,
 			}
 
@@ -366,5 +380,8 @@ func cmdStreamLogs() *cobra.Command {
 	}
 
 	cmd.Flags().StringSliceVarP(&filter, "filter", "f", nil, "Filter. (e.g., --filter=\"key:value\")")
+	cmd.Flags().StringVarP(&urn, "urn", "u", "", "URN of the resource to stream logs")
+	cmd.MarkFlagRequired("urn")
+
 	return cmd
 }
