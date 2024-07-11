@@ -21,8 +21,8 @@ func Execute(ctx context.Context) {
 		cmdMigrate(),
 		cmdVersion(),
 		cmdConfig(),
-		ResourceCommand(),
-		ModuleCommand(),
+		cmdResourceCommand(),
+		cmdModuleCommand(),
 	)
 
 	cmdx.SetHelp(rootCmd)

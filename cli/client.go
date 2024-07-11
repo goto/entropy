@@ -20,17 +20,17 @@ const (
 	dialTimeout = 5 * time.Second
 )
 
-func ResourceCommand() *cobra.Command {
+func cmdResourceCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "resource",
 		Short: "Entropy client with resource management commands",
 		Example: heredoc.Doc(`
-			$ entropy resource create
+			$ entropy resource create -f <file>
 			$ entropy resource list
-			$ entropy resource view <resource-urn>
-			$ entropy resource delete <resource-urn>
-			$ entropy resource edit <resource-urn>
-			$ entropy resource revisions <resource-urn>
+			$ entropy resource view -u <urn>
+			$ entropy resource delete -u <urn>
+			$ entropy resource edit -u <urn> -f <file>
+			$ entropy resource revisions -u <urn>
 		`),
 	}
 
@@ -53,14 +53,14 @@ func ResourceCommand() *cobra.Command {
 	return cmd
 }
 
-func ModuleCommand() *cobra.Command {
+func cmdModuleCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "module",
 		Short: "Entropy client with module management commands",
 		Example: heredoc.Doc(`
-			$ entropy resource create <file>
-			$ entropy resource update <module-urn> <file>
-			$ entropy resource view <module-urn>
+			$ entropy resource create -f <file>
+			$ entropy resource update -u <module-urn> -f <file>
+			$ entropy resource view -u <module-urn>
 		`),
 	}
 
