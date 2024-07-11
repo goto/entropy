@@ -5,8 +5,6 @@ import (
 
 	"github.com/goto/salt/cmdx"
 	"github.com/spf13/cobra"
-
-	"github.com/goto/entropy/cli/client"
 )
 
 var rootCmd = &cobra.Command{
@@ -22,8 +20,9 @@ func Execute(ctx context.Context) {
 		cmdServe(),
 		cmdMigrate(),
 		cmdVersion(),
-		cmdShowConfigs(),
-		client.Command(),
+		cmdConfig(),
+		cmdResourceCommand(),
+		cmdModuleCommand(),
 	)
 
 	cmdx.SetHelp(rootCmd)
