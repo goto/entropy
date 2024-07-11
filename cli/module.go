@@ -12,12 +12,13 @@ import (
 )
 
 func cmdModuleCreate() *cobra.Command {
+	var filePath string
 	cmd := &cobra.Command{
-		Use:   "create <file>",
+		Use:   "create",
 		Short: "Create a new module",
-		Args:  cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
-			$ entropy module create module.yaml
+			$ entropy module create -f module.yaml
+			$ entropy module create --file module.yaml
 		`),
 		Annotations: map[string]string{
 			"module": "core",
@@ -27,7 +28,7 @@ func cmdModuleCreate() *cobra.Command {
 	cmd.RunE = handleErr(func(cmd *cobra.Command, args []string) error {
 		var reqBody entropyv1beta1.Module
 
-		if err := parseFile(args[0], &reqBody); err != nil {
+		if err := parseFile(filePath, &reqBody); err != nil {
 			return err
 		}
 
@@ -61,16 +62,21 @@ func cmdModuleCreate() *cobra.Command {
 		})
 	})
 
+	cmd.Flags().StringVarP(&filePath, "file", "f", "", "Path to the module body file")
+	cmd.MarkFlagRequired("file")
+
 	return cmd
 }
 
 func cmdModuleUpdate() *cobra.Command {
+	var filePath, urn string
+
 	cmd := &cobra.Command{
-		Use:   "update <urn> <file>",
+		Use:   "update",
 		Short: "Update a module",
-		Args:  cobra.ExactArgs(2),
 		Example: heredoc.Doc(`
-			$ entropy module update orn:entropy:module:test-project:test-name module.yaml
+			$ entropy module update -u orn:entropy:module:test-project:test-name -f module.yaml
+			$ entropy module update -urn orn:entropy:module:test-project:test-name -file module.yaml
 		`),
 		Annotations: map[string]string{
 			"module": "core",
@@ -80,7 +86,7 @@ func cmdModuleUpdate() *cobra.Command {
 	cmd.RunE = handleErr(func(cmd *cobra.Command, args []string) error {
 		var reqBody entropyv1beta1.Module
 
-		if err := parseFile(args[1], &reqBody); err != nil {
+		if err := parseFile(filePath, &reqBody); err != nil {
 			return err
 		}
 
@@ -97,7 +103,7 @@ func cmdModuleUpdate() *cobra.Command {
 		spinner := printer.Spin("Updating module...")
 		defer spinner.Stop()
 		req := &entropyv1beta1.UpdateModuleRequest{
-			Urn:     args[0],
+			Urn:     urn,
 			Configs: reqBody.Configs,
 		}
 		spinner.Stop()
@@ -115,16 +121,22 @@ func cmdModuleUpdate() *cobra.Command {
 		})
 	})
 
+	cmd.Flags().StringVarP(&filePath, "file", "f", "", "Path to the module body file")
+	cmd.MarkFlagRequired("file")
+	cmd.Flags().StringVarP(&urn, "urn", "u", "", "URN of the module to update")
+	cmd.MarkFlagRequired("urn")
+
 	return cmd
 }
 
 func cmdModuleView() *cobra.Command {
+	var urn string
 	cmd := &cobra.Command{
-		Use:   "view <urn>",
+		Use:   "view",
 		Short: "View a module by URN",
-		Args:  cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
-			$ entropy module get orn:entropy:module:test-project:test-name
+			$ entropy module view -u orn:entropy:module:test-project:test-name
+			$ entropy module view --urn orn:entropy:module:test-project:test-name
 		`),
 		Annotations: map[string]string{
 			"module": "core",
@@ -141,7 +153,7 @@ func cmdModuleView() *cobra.Command {
 		spinner := printer.Spin("Fetching module...")
 		defer spinner.Stop()
 		req := &entropyv1beta1.GetModuleRequest{
-			Urn: args[0],
+			Urn: urn,
 		}
 		spinner.Stop()
 
@@ -159,6 +171,9 @@ func cmdModuleView() *cobra.Command {
 			return nil
 		})
 	})
+
+	cmd.Flags().StringVarP(&urn, "urn", "u", "", "URN of the module to view")
+	cmd.MarkFlagRequired("urn")
 
 	return cmd
 }

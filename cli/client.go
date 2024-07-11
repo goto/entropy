@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	outFormatFlag   = "format"
-	entropyHostFlag = "entropy"
-	dialTimeoutFlag = "timeout"
+	flagOutFormat   = "format"
+	flagEntropyHost = "entropy"
+	flagDialTimeout = "timeout"
 
 	dialTimeout = 5 * time.Second
 )
@@ -36,9 +36,9 @@ func ResourceCommand() *cobra.Command {
 
 	cfg, _ := loadClientConfig()
 
-	cmd.PersistentFlags().StringP(entropyHostFlag, "h", cfg.Host, "Entropy host to connect to")
-	cmd.PersistentFlags().DurationP(dialTimeoutFlag, "", dialTimeout, "Dial timeout")
-	cmd.PersistentFlags().StringP(outFormatFlag, "o", "pretty", "output format (json, yaml, pretty)")
+	cmd.PersistentFlags().StringP(flagEntropyHost, "h", cfg.Host, "Entropy host to connect to")
+	cmd.PersistentFlags().DurationP(flagDialTimeout, "", dialTimeout, "Dial timeout")
+	cmd.PersistentFlags().StringP(flagOutFormat, "o", "pretty", "output format (json, yaml, pretty)")
 
 	cmd.AddCommand(
 		cmdCreateResource(),
@@ -66,9 +66,9 @@ func ModuleCommand() *cobra.Command {
 
 	cfg, _ := loadClientConfig()
 
-	cmd.PersistentFlags().StringP(entropyHostFlag, "h", cfg.Host, "Entropy host to connect to")
-	cmd.PersistentFlags().DurationP(dialTimeoutFlag, "", dialTimeout, "Dial timeout")
-	cmd.PersistentFlags().StringP(outFormatFlag, "o", "pretty", "output format (json, yaml, pretty)")
+	cmd.PersistentFlags().StringP(flagEntropyHost, "h", cfg.Host, "Entropy host to connect to")
+	cmd.PersistentFlags().DurationP(flagDialTimeout, "", dialTimeout, "Dial timeout")
+	cmd.PersistentFlags().StringP(flagOutFormat, "o", "pretty", "output format (json, yaml, pretty)")
 
 	cmd.AddCommand(
 		cmdModuleCreate(),
@@ -80,8 +80,8 @@ func ModuleCommand() *cobra.Command {
 }
 
 func createResourceServiceClient(cmd *cobra.Command) (entropyv1beta1.ResourceServiceClient, func(), error) {
-	dialTimeoutVal, _ := cmd.Flags().GetDuration(dialTimeoutFlag)
-	entropyAddr, _ := cmd.Flags().GetString(entropyHostFlag)
+	dialTimeoutVal, _ := cmd.Flags().GetDuration(flagDialTimeout)
+	entropyAddr, _ := cmd.Flags().GetString(flagEntropyHost)
 
 	dialCtx, dialCancel := context.WithTimeout(cmd.Context(), dialTimeoutVal)
 	conn, err := grpc.DialContext(dialCtx, entropyAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -98,8 +98,8 @@ func createResourceServiceClient(cmd *cobra.Command) (entropyv1beta1.ResourceSer
 }
 
 func createModuleServiceClient(cmd *cobra.Command) (entropyv1beta1.ModuleServiceClient, func(), error) {
-	dialTimeoutVal, _ := cmd.Flags().GetDuration(dialTimeoutFlag)
-	entropyAddr, _ := cmd.Flags().GetString(entropyHostFlag)
+	dialTimeoutVal, _ := cmd.Flags().GetDuration(flagDialTimeout)
+	entropyAddr, _ := cmd.Flags().GetString(flagEntropyHost)
 
 	dialCtx, dialCancel := context.WithTimeout(cmd.Context(), dialTimeoutVal)
 	conn, err := grpc.DialContext(dialCtx, entropyAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
