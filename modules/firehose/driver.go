@@ -50,6 +50,7 @@ var defaultDriverConf = driverConf{
 		defaultKey: "firehose",
 	},
 	ChartValues: ChartValues{
+		ImageRepository: "gotocompany/firehose",
 		ImageTag:        "latest",
 		ChartVersion:    "0.1.3",
 		ImagePullPolicy: "IfNotPresent",
@@ -308,7 +309,7 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		"replicaCount": conf.Replicas,
 		"firehose": map[string]any{
 			"image": map[string]any{
-				"repository": imageRepo,
+				"repository": conf.ChartValues.ImageRepository,
 				"pullPolicy": conf.ChartValues.ImagePullPolicy,
 				"tag":        conf.ChartValues.ImageTag,
 			},
@@ -385,6 +386,7 @@ func mergeChartValues(cur, newVal *ChartValues) (*ChartValues, error) {
 	}
 
 	merged := ChartValues{
+		ImageRepository: cur.ImageRepository,
 		ImageTag:        cur.ImageTag,
 		ChartVersion:    cur.ChartVersion,
 		ImagePullPolicy: cur.ImagePullPolicy,

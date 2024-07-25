@@ -79,6 +79,7 @@ type TelegrafConf struct {
 }
 
 type ChartValues struct {
+	ImageRepository string `json:"image_repository" validate:"required"`
 	ImageTag        string `json:"image_tag" validate:"required"`
 	ChartVersion    string `json:"chart_version" validate:"required"`
 	ImagePullPolicy string `json:"image_pull_policy" validate:"required"`
