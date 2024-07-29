@@ -29,3 +29,4 @@ entropy*.dev.yml
 test_*.yml
 test_*.json
 requests.http
+entropy.yaml

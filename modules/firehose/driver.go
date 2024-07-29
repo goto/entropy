@@ -50,7 +50,7 @@ var defaultDriverConf = driverConf{
 		defaultKey: "firehose",
 	},
 	ChartValues: ChartValues{
-		ImageRepository: "gotocompany/firehose",
+		ImageRepository: imageRepo,
 		ImageTag:        "latest",
 		ChartVersion:    "0.1.3",
 		ImagePullPolicy: "IfNotPresent",
@@ -304,12 +304,18 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 	rc.Namespace = conf.Namespace
 	rc.ForceUpdate = true
 	rc.Version = conf.ChartValues.ChartVersion
+
+	imageRepository := fd.conf.ChartValues.ImageRepository
+	if conf.ChartValues.ImageRepository != "" {
+		imageRepository = conf.ChartValues.ImageRepository
+	}
+
 	rc.Values = map[string]any{
 		labelsConfKey:  modules.CloneAndMergeMaps(deploymentLabels, entropyLabels),
 		"replicaCount": conf.Replicas,
 		"firehose": map[string]any{
 			"image": map[string]any{
-				"repository": conf.ChartValues.ImageRepository,
+				"repository": imageRepository,
 				"pullPolicy": conf.ChartValues.ImagePullPolicy,
 				"tag":        conf.ChartValues.ImageTag,
 			},
