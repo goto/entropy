@@ -87,6 +87,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 						"deployment_id": "ABCDEFGHIJKLMNOPQRSTUVWXYZ-abcdefghij-3801d0-firehose",
 						"chart_values": map[string]string{
 							"chart_version":     "0.1.3",
+							"image_repository":  "gotocompany/firehose",
 							"image_pull_policy": "IfNotPresent",
 							"image_tag":         "latest",
 						},
@@ -163,7 +164,9 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 						"namespace":     "firehose",
 						"deployment_id": "foo-fh1-firehose",
 						"chart_values": map[string]string{
+
 							"chart_version":     "0.1.3",
+							"image_repository":  "gotocompany/firehose",
 							"image_pull_policy": "IfNotPresent",
 							"image_tag":         "latest",
 						},
@@ -240,7 +243,9 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 						"namespace":     "bigquery-firehose",
 						"deployment_id": "foo-fh1-firehose",
 						"chart_values": map[string]string{
+
 							"chart_version":     "0.1.3",
+							"image_repository":  "gotocompany/firehose",
 							"image_pull_policy": "IfNotPresent",
 							"image_tag":         "latest",
 						},
@@ -291,6 +296,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 							"replicas":      1,
 							"deployment_id": "firehose-deployment-x",
 							"chart_values": map[string]string{
+								"image_repository":  "gotocompany/firehose",
 								"chart_version":     "1.0.0",
 								"image_pull_policy": "",
 								"image_tag":         "1.0.0",
@@ -345,6 +351,113 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 						"replicas":      10,
 						"deployment_id": "firehose-deployment-x",
 						"chart_values": map[string]string{
+							"image_repository":  "gotocompany/firehose",
+							"chart_version":     "1.0.0",
+							"image_pull_policy": "",
+							"image_tag":         "1.0.0",
+						},
+						"env_variables": map[string]string{
+							"SINK_TYPE":                      "HTTP",
+							"INPUT_SCHEMA_PROTO_CLASS":       "com.foo.Bar",
+							"SOURCE_KAFKA_CONSUMER_GROUP_ID": "foo-bar-baz",
+							"SOURCE_KAFKA_BROKERS":           "localhost:9092",
+							"SOURCE_KAFKA_TOPIC":             "foo-log",
+						},
+						"limits": map[string]any{
+							"cpu":    "200m",
+							"memory": "512Mi",
+						},
+						"requests": map[string]any{
+							"cpu":    "200m",
+							"memory": "512Mi",
+						},
+						"init_container": map[string]interface{}{"args": interface{}(nil), "command": interface{}(nil), "enabled": false, "image_tag": "", "pull_policy": "", "repository": ""},
+					}),
+				},
+				State: resource.State{
+					Status: resource.StatusPending,
+					Output: modules.MustJSON(Output{
+						Namespace:   "firehose",
+						ReleaseName: "bar",
+					}),
+					ModuleData: modules.MustJSON(transientData{
+						PendingSteps: []string{stepReleaseUpdate},
+					}),
+					NextSyncAt: &frozenTime,
+				},
+			},
+			wantErr: nil,
+		},
+		// update override image repository
+		{
+			title: "Update_Override_Image_Repository",
+			exr: module.ExpandedResource{
+				Resource: resource.Resource{
+					URN:     "urn:goto:entropy:foo:fh1",
+					Kind:    "firehose",
+					Name:    "fh1",
+					Project: "foo",
+					Spec: resource.Spec{
+						Configs: modules.MustJSON(map[string]any{
+							"replicas":      1,
+							"deployment_id": "firehose-deployment-x",
+							"chart_values": map[string]string{
+								"image_repository":  "newrepo/firehose",
+								"chart_version":     "1.0.0",
+								"image_pull_policy": "",
+								"image_tag":         "1.0.0",
+							},
+							"env_variables": map[string]string{
+								"SINK_TYPE":                "LOG",
+								"INPUT_SCHEMA_PROTO_CLASS": "com.foo.Bar",
+								"SOURCE_KAFKA_BROKERS":     "localhost:9092",
+								"SOURCE_KAFKA_TOPIC":       "foo-log",
+							},
+						}),
+					},
+					State: resource.State{
+						Status: resource.StatusCompleted,
+						Output: modules.MustJSON(Output{
+							Namespace:   "firehose",
+							ReleaseName: "bar",
+						}),
+					},
+				},
+				Dependencies: map[string]module.ResolvedDependency{
+					"kube_cluster": {
+						Kind: "kubernetes",
+						Output: modules.MustJSON(kubernetes.Output{
+							Tolerations: map[string][]kubernetes.Toleration{},
+						}),
+					},
+				},
+			},
+			act: module.ActionRequest{
+				Name: module.UpdateAction,
+				Params: modules.MustJSON(map[string]any{
+					"replicas": 10,
+					"env_variables": map[string]string{
+						"SINK_TYPE":                      "HTTP", // the change being applied
+						"INPUT_SCHEMA_PROTO_CLASS":       "com.foo.Bar",
+						"SOURCE_KAFKA_CONSUMER_GROUP_ID": "foo-bar-baz",
+						"SOURCE_KAFKA_BROKERS":           "localhost:9092",
+						"SOURCE_KAFKA_TOPIC":             "foo-log",
+					},
+				}),
+			},
+			want: &resource.Resource{
+				URN:     "urn:goto:entropy:foo:fh1",
+				Kind:    "firehose",
+				Name:    "fh1",
+				Project: "foo",
+				Spec: resource.Spec{
+					Configs: modules.MustJSON(map[string]any{
+						"namespace":     "firehose",
+						"stopped":       false,
+						"replicas":      10,
+						"deployment_id": "firehose-deployment-x",
+						"chart_values": map[string]string{
+							"image_repository":  "newrepo/firehose",
 							"chart_version":     "1.0.0",
 							"image_pull_policy": "",
 							"image_tag":         "1.0.0",
@@ -394,6 +507,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 							"replicas":      1,
 							"deployment_id": "firehose-deployment-x",
 							"chart_values": map[string]string{
+								"image_repository":  "gotocompany/firehose",
 								"chart_version":     "1.0.0",
 								"image_pull_policy": "",
 								"image_tag":         "1.0.0",
@@ -454,6 +568,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 						"replicas":      10,
 						"deployment_id": "firehose-deployment-x",
 						"chart_values": map[string]string{
+							"image_repository":  "gotocompany/firehose",
 							"chart_version":     "1.0.0",
 							"image_pull_policy": "",
 							"image_tag":         "1.0.0",
@@ -552,6 +667,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 							"stopped":       true,
 							"deployment_id": "firehose-deployment-x",
 							"chart_values": map[string]string{
+								"image_repository":  "gotocompany/firehose",
 								"chart_version":     "1.0.0",
 								"image_pull_policy": "",
 								"image_tag":         "1.0.0",
@@ -605,6 +721,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 						"replicas":      10,
 						"deployment_id": "firehose-deployment-x",
 						"chart_values": map[string]string{
+							"image_repository":  "gotocompany/firehose",
 							"chart_version":     "1.0.0",
 							"image_pull_policy": "",
 							"image_tag":         "1.0.0",
@@ -789,6 +906,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 							"replicas":      1,
 							"deployment_id": "firehose-deployment-x",
 							"chart_values": map[string]string{
+								"image_repository":  "gotocompany/firehose",
 								"chart_version":     "0.1.0",
 								"image_pull_policy": "IfNotPresent",
 								"image_tag":         "latest",
@@ -832,7 +950,9 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 						"replicas":      1,
 						"deployment_id": "firehose-deployment-x",
 						"chart_values": map[string]string{
+
 							"chart_version":     "0.1.3",
+							"image_repository":  "gotocompany/firehose",
 							"image_pull_policy": "IfNotPresent",
 							"image_tag":         "latest",
 						},
@@ -883,6 +1003,7 @@ func TestFirehoseDriver_Plan(t *testing.T) {
 							"replicas":      1,
 							"deployment_id": "firehose-deployment-x",
 							"chart_values": map[string]string{
+								"image_repository":  "gotocompany/firehose",
 								"chart_version":     "0.1.0",
 								"image_pull_policy": "IfNotPresent",
 								"image_tag":         "latest",

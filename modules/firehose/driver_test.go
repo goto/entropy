@@ -624,6 +624,7 @@ func firehoseDriverConf() driverConf {
 		},
 		ChartValues: ChartValues{
 			ChartVersion:    "0.1.13",
+			ImageRepository: "gotocompany/firehose",
 			ImageTag:        "0.8.1",
 			ImagePullPolicy: "IfNotPresent",
 		},
