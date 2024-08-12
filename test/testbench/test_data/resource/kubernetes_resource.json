@@ -1,0 +1,8 @@
+{
+    "kind": "kubernetes",
+    "name": "test-kube",
+    "project": "test-project",
+    "labels": {
+        "firehose": "true"
+    }
+}

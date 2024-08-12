@@ -1,0 +1,29 @@
+{
+    "kind": "firehose",
+    "name": "test-firehose",
+    "project": "test-project",
+    "labels": {
+        "description": "test firehose resource"
+    },
+    "spec": {
+        "configs": {
+            "chart_values": {
+                "image_pull_policy": "IfNotPresent"
+            },
+            "env_variables": {
+                "SINK_TYPE": "LOG",
+                "INPUT_SCHEMA_PROTO_CLASS": "com.tests.TestMessage",
+                "SOURCE_KAFKA_BROKERS": "localhost:9092",
+                "SOURCE_KAFKA_TOPIC": "test-topic"
+            },
+            "replicas": 1,
+            "namespace": "default" 
+        },
+        "dependencies": [
+            {
+                "key": "kube_cluster",
+                "value": "orn:entropy:kubernetes:test-project:test-kube"
+            }
+        ]
+    }
+}
