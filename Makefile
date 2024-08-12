@@ -49,7 +49,6 @@ test: tidy
 	@go test ./... -coverprofile=${COVERAGE_DIR}/coverage.out
 
 e2e-test: tidy
-	@mkdir -p ${COVERAGE_DIR}
 	@echo "Running e2e-test tests..."
 	@go test -v ./test/e2e_test/...
 
