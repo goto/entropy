@@ -324,17 +324,17 @@ func (_c *ResourceStore_Revisions_Call) RunAndReturn(run func(context.Context, r
 	return _c
 }
 
-// SyncOne provides a mock function with given fields: ctx, syncFn
-func (_m *ResourceStore) SyncOne(ctx context.Context, syncFn resource.SyncFn) error {
-	ret := _m.Called(ctx, syncFn)
+// SyncOne provides a mock function with given fields: ctx, scope, syncFn
+func (_m *ResourceStore) SyncOne(ctx context.Context, scope map[string][]string, syncFn resource.SyncFn) error {
+	ret := _m.Called(ctx, scope, syncFn)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SyncOne")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, resource.SyncFn) error); ok {
-		r0 = rf(ctx, syncFn)
+	if rf, ok := ret.Get(0).(func(context.Context, map[string][]string, resource.SyncFn) error); ok {
+		r0 = rf(ctx, scope, syncFn)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -349,14 +349,15 @@ type ResourceStore_SyncOne_Call struct {
 
 // SyncOne is a helper method to define mock.On call
 //   - ctx context.Context
+//   - scope map[string][]string
 //   - syncFn resource.SyncFn
-func (_e *ResourceStore_Expecter) SyncOne(ctx interface{}, syncFn interface{}) *ResourceStore_SyncOne_Call {
-	return &ResourceStore_SyncOne_Call{Call: _e.mock.On("SyncOne", ctx, syncFn)}
+func (_e *ResourceStore_Expecter) SyncOne(ctx interface{}, scope interface{}, syncFn interface{}) *ResourceStore_SyncOne_Call {
+	return &ResourceStore_SyncOne_Call{Call: _e.mock.On("SyncOne", ctx, scope, syncFn)}
 }
 
-func (_c *ResourceStore_SyncOne_Call) Run(run func(ctx context.Context, syncFn resource.SyncFn)) *ResourceStore_SyncOne_Call {
+func (_c *ResourceStore_SyncOne_Call) Run(run func(ctx context.Context, scope map[string][]string, syncFn resource.SyncFn)) *ResourceStore_SyncOne_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(resource.SyncFn))
+		run(args[0].(context.Context), args[1].(map[string][]string), args[2].(resource.SyncFn))
 	})
 	return _c
 }
@@ -366,7 +367,7 @@ func (_c *ResourceStore_SyncOne_Call) Return(_a0 error) *ResourceStore_SyncOne_C
 	return _c
 }
 
-func (_c *ResourceStore_SyncOne_Call) RunAndReturn(run func(context.Context, resource.SyncFn) error) *ResourceStore_SyncOne_Call {
+func (_c *ResourceStore_SyncOne_Call) RunAndReturn(run func(context.Context, map[string][]string, resource.SyncFn) error) *ResourceStore_SyncOne_Call {
 	_c.Call.Return(run)
 	return _c
 }

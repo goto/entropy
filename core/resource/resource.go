@@ -27,7 +27,7 @@ type Store interface {
 
 	Revisions(ctx context.Context, selector RevisionsSelector) ([]Revision, error)
 
-	SyncOne(ctx context.Context, syncFn SyncFn) error
+	SyncOne(ctx context.Context, scope map[string][]string, syncFn SyncFn) error
 }
 
 type SyncFn func(ctx context.Context, res Resource) (*Resource, error)
