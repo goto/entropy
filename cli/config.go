@@ -23,13 +23,13 @@ const configFlag = "config"
 // Config contains the application configuration.
 type Config struct {
 	Log       logger.LogConfig `mapstructure:"log"`
-	Syncer    syncerConf       `mapstructure:"syncer"`
-	Service   serveConfig      `mapstructure:"service"`
+	Syncer    SyncerConf       `mapstructure:"syncer"`
+	Service   ServeConfig      `mapstructure:"service"`
 	PGConnStr string           `mapstructure:"pg_conn_str" default:"postgres://postgres@localhost:5432/entropy?sslmode=disable"`
 	Telemetry telemetry.Config `mapstructure:"telemetry"`
 }
 
-type syncerConf struct {
+type SyncerConf struct {
 	SyncInterval        time.Duration `mapstructure:"sync_interval" default:"1s"`
 	RefreshInterval     time.Duration `mapstructure:"refresh_interval" default:"3s"`
 	ExtendLockBy        time.Duration `mapstructure:"extend_lock_by" default:"5s"`
@@ -37,7 +37,7 @@ type syncerConf struct {
 	MaxRetries          int           `mapstructure:"max_retries" default:"5"`
 }
 
-type serveConfig struct {
+type ServeConfig struct {
 	Host string `mapstructure:"host" default:""`
 	Port int    `mapstructure:"port" default:"8080"`
 
@@ -50,9 +50,9 @@ type clientConfig struct {
 	Host string `mapstructure:"host" default:"localhost:8080"`
 }
 
-func (serveCfg serveConfig) httpAddr() string { return serveCfg.HTTPAddr }
+func (serveCfg ServeConfig) httpAddr() string { return serveCfg.HTTPAddr }
 
-func (serveCfg serveConfig) grpcAddr() string {
+func (serveCfg ServeConfig) grpcAddr() string {
 	return fmt.Sprintf("%s:%d", serveCfg.Host, serveCfg.Port)
 }
 

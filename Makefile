@@ -48,6 +48,10 @@ test: tidy
 	@echo "Running unit tests..."
 	@go test ./... -coverprofile=${COVERAGE_DIR}/coverage.out
 
+e2e-test: tidy
+	@echo "Running e2e-test tests..."
+	@go test -v ./test/e2e_test/...
+
 test-coverage: test
 	@echo "Generating coverage report..."
 	@go tool cover -html=${COVERAGE_DIR}/coverage.out

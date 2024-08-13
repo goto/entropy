@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"time"
 
 	"github.com/newrelic/go-agent/v3/newrelic"
@@ -39,42 +40,46 @@ func cmdServe() *cobra.Command {
 			return err
 		}
 
-		err = logger.Setup(&cfg.Log)
-		if err != nil {
-			return err
-		}
-
-		telemetry.Init(cmd.Context(), cfg.Telemetry)
-		nrApp, err := newrelic.NewApplication(
-			newrelic.ConfigAppName(cfg.Telemetry.ServiceName),
-			newrelic.ConfigLicense(cfg.Telemetry.NewRelicAPIKey),
-		)
-
-		store := setupStorage(cfg.PGConnStr, cfg.Syncer, cfg.Service)
-		moduleService := module.NewService(setupRegistry(), store)
-		resourceService := core.New(store, moduleService, time.Now, cfg.Syncer.SyncBackoffInterval, cfg.Syncer.MaxRetries)
-
-		if migrate {
-			if migrateErr := runMigrations(cmd.Context(), cfg); migrateErr != nil {
-				return migrateErr
-			}
-		}
-
-		if spawnWorker {
-			go func() {
-				if runErr := resourceService.RunSyncer(cmd.Context(), cfg.Syncer.SyncInterval); runErr != nil {
-					zap.L().Error("syncer exited with error", zap.Error(err))
-				}
-			}()
-		}
-
-		return entropyserver.Serve(cmd.Context(),
-			cfg.Service.httpAddr(), cfg.Service.grpcAddr(),
-			nrApp, resourceService, moduleService,
-		)
+		return StartServer(cmd.Context(), cfg, migrate, spawnWorker)
 	})
 
 	return cmd
+}
+
+func StartServer(ctx context.Context, cfg Config, migrate, spawnWorker bool) error {
+	err := logger.Setup(&cfg.Log)
+	if err != nil {
+		return err
+	}
+
+	telemetry.Init(ctx, cfg.Telemetry)
+	nrApp, err := newrelic.NewApplication(
+		newrelic.ConfigAppName(cfg.Telemetry.ServiceName),
+		newrelic.ConfigLicense(cfg.Telemetry.NewRelicAPIKey),
+	)
+
+	store := setupStorage(cfg.PGConnStr, cfg.Syncer, cfg.Service)
+	moduleService := module.NewService(setupRegistry(), store)
+	resourceService := core.New(store, moduleService, time.Now, cfg.Syncer.SyncBackoffInterval, cfg.Syncer.MaxRetries)
+
+	if migrate {
+		if migrateErr := runMigrations(ctx, cfg); migrateErr != nil {
+			return migrateErr
+		}
+	}
+
+	if spawnWorker {
+		go func() {
+			if runErr := resourceService.RunSyncer(ctx, cfg.Syncer.SyncInterval); runErr != nil {
+				zap.L().Error("syncer exited with error", zap.Error(err))
+			}
+		}()
+	}
+
+	return entropyserver.Serve(ctx,
+		cfg.Service.httpAddr(), cfg.Service.grpcAddr(),
+		nrApp, resourceService, moduleService,
+	)
 }
 
 func setupRegistry() module.Registry {
@@ -96,7 +101,7 @@ func setupRegistry() module.Registry {
 	return registry
 }
 
-func setupStorage(pgConStr string, syncCfg syncerConf, serveCfg serveConfig) *postgres.Store {
+func setupStorage(pgConStr string, syncCfg SyncerConf, serveCfg ServeConfig) *postgres.Store {
 	store, err := postgres.Open(pgConStr, syncCfg.RefreshInterval, syncCfg.ExtendLockBy, serveCfg.PaginationSizeDefault, serveCfg.PaginationPageDefault)
 	if err != nil {
 		zap.L().Fatal("failed to connect to Postgres database",

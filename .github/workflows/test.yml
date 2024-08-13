@@ -11,3 +11,12 @@ jobs:
           go-version: "1.21"
       - name: run tests
         run: make test
+  e2e-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: "1.21"
+      - name: run e2e-tests
+        run: make e2e-test
