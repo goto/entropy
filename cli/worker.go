@@ -41,10 +41,8 @@ func cmdWorker() *cobra.Command {
 		resourceService := core.New(store, moduleService, time.Now, cfg.Syncer.SyncBackoffInterval, cfg.Syncer.MaxRetries)
 
 		wg := spawnWorkers(cmd.Context(), resourceService, cfg.Syncer.WorkerModules, cfg.Syncer.SyncInterval)
-		defer func() {
-			wg.Wait()
-			zap.L().Info("all syncer workers exited")
-		}()
+		wg.Wait()
+		zap.L().Info("all syncer workers exited")
 
 		return nil
 	})
@@ -56,10 +54,10 @@ func spawnWorkers(ctx context.Context, resourceService *core.Service, workerModu
 	wg := &sync.WaitGroup{}
 
 	if len(workerModules) == 0 {
-		wg = resourceService.RunSyncer(ctx, 1, syncInterval, map[string][]string{}, wg)
+		resourceService.RunSyncer(ctx, 1, syncInterval, map[string][]string{}, wg)
 	} else {
 		for _, module := range workerModules {
-			wg = resourceService.RunSyncer(ctx, module.Count, syncInterval, module.Scope, wg)
+			resourceService.RunSyncer(ctx, module.Count, syncInterval, module.Scope, wg)
 		}
 	}
 	return wg

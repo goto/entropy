@@ -13,7 +13,7 @@ import (
 
 // RunSyncer runs the syncer thread that keeps performing resource-sync at
 // regular intervals.
-func (svc *Service) RunSyncer(ctx context.Context, workerCount int, interval time.Duration, scope map[string][]string, wg *sync.WaitGroup) *sync.WaitGroup {
+func (svc *Service) RunSyncer(ctx context.Context, workerCount int, interval time.Duration, scope map[string][]string, wg *sync.WaitGroup) {
 	for i := 0; i < workerCount; i++ {
 		wg.Add(1)
 		go func(id int) {
@@ -38,8 +38,6 @@ func (svc *Service) RunSyncer(ctx context.Context, workerCount int, interval tim
 			}
 		}(i)
 	}
-
-	return wg
 }
 
 func (svc *Service) handleSync(ctx context.Context, res resource.Resource) (*resource.Resource, error) {
