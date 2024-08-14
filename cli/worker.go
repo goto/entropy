@@ -43,10 +43,7 @@ func cmdWorker() *cobra.Command {
 		moduleService := module.NewService(setupRegistry(), store)
 		resourceService := core.New(store, moduleService, time.Now, cfg.Syncer.SyncBackoffInterval, cfg.Syncer.MaxRetries)
 
-		var wg *sync.WaitGroup
-		go func() {
-			wg = spawnWorkers(cmd.Context(), resourceService, cfg.Syncer.WorkerModules, cfg.Syncer.SyncInterval)
-		}()
+		wg := spawnWorkers(cmd.Context(), resourceService, cfg.Syncer.WorkerModules, cfg.Syncer.SyncInterval)
 
 		quitChannel := make(chan os.Signal, 1)
 		signal.Notify(quitChannel, syscall.SIGINT, syscall.SIGTERM)
@@ -61,13 +58,15 @@ func cmdWorker() *cobra.Command {
 	return cmd
 }
 
-func spawnWorkers(ctx context.Context, resourceService *core.Service, workerModules []workerModule, syncInterval time.Duration) (wg *sync.WaitGroup) {
+func spawnWorkers(ctx context.Context, resourceService *core.Service, workerModules []workerModule, syncInterval time.Duration) *sync.WaitGroup {
+	wg := &sync.WaitGroup{}
+
 	if len(workerModules) == 0 {
-		wg = resourceService.RunSyncer(ctx, 1, syncInterval, map[string][]string{})
+		wg = resourceService.RunSyncer(ctx, 1, syncInterval, map[string][]string{}, wg)
 	} else {
 		for _, module := range workerModules {
-			wg = resourceService.RunSyncer(ctx, module.Count, syncInterval, module.Scope)
+			wg = resourceService.RunSyncer(ctx, module.Count, syncInterval, module.Scope, wg)
 		}
 	}
-	return
+	return wg
 }

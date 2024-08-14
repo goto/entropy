@@ -13,35 +13,28 @@ import (
 
 // RunSyncer runs the syncer thread that keeps performing resource-sync at
 // regular intervals.
-func (svc *Service) runSyncer(ctx context.Context, _ int, interval time.Duration, scope map[string][]string) error {
-	tick := time.NewTimer(interval)
-	defer tick.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-
-		case <-tick.C:
-			tick.Reset(interval)
-
-			err := svc.store.SyncOne(ctx, scope, svc.handleSync)
-			if err != nil {
-				zap.L().Warn("SyncOne() failed", zap.Error(err))
-			}
-		}
-	}
-}
-
-func (svc *Service) RunSyncer(ctx context.Context, workerCount int, interval time.Duration, scope map[string][]string) *sync.WaitGroup {
-	wg := &sync.WaitGroup{}
+func (svc *Service) RunSyncer(ctx context.Context, workerCount int, interval time.Duration, scope map[string][]string, wg *sync.WaitGroup) *sync.WaitGroup {
 	for i := 0; i < workerCount; i++ {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
 
-			if err := svc.runSyncer(ctx, id, interval, scope); err != nil {
-				zap.L().Error("worker-%d failed", zap.Error(err))
+			tick := time.NewTimer(interval)
+			defer tick.Stop()
+
+			for {
+				select {
+				case <-ctx.Done():
+					zap.L().Error("worker failed", zap.Error(ctx.Err()))
+					return
+				case <-tick.C:
+					tick.Reset(interval)
+
+					err := svc.store.SyncOne(ctx, scope, svc.handleSync)
+					if err != nil {
+						zap.L().Warn("SyncOne() failed", zap.Error(err))
+					}
+				}
 			}
 		}(i)
 	}
