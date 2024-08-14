@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/newrelic/go-agent/v3/newrelic"
@@ -69,9 +68,8 @@ func StartServer(ctx context.Context, cfg Config, migrate, spawnWorker bool) err
 		}
 	}
 
-	var wg *sync.WaitGroup
 	if spawnWorker {
-		wg = spawnWorkers(ctx, resourceService, cfg.Syncer.WorkerModules, cfg.Syncer.SyncInterval)
+		wg := spawnWorkers(ctx, resourceService, cfg.Syncer.WorkerModules, cfg.Syncer.SyncInterval)
 		defer func() {
 			wg.Wait()
 			zap.L().Info("all syncer workers exited")

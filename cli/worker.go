@@ -2,10 +2,7 @@ package cli
 
 import (
 	"context"
-	"os"
-	"os/signal"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
@@ -44,13 +41,10 @@ func cmdWorker() *cobra.Command {
 		resourceService := core.New(store, moduleService, time.Now, cfg.Syncer.SyncBackoffInterval, cfg.Syncer.MaxRetries)
 
 		wg := spawnWorkers(cmd.Context(), resourceService, cfg.Syncer.WorkerModules, cfg.Syncer.SyncInterval)
-
-		quitChannel := make(chan os.Signal, 1)
-		signal.Notify(quitChannel, syscall.SIGINT, syscall.SIGTERM)
-		<-quitChannel
-
-		wg.Wait()
-		zap.L().Info("all syncer workers exited")
+		defer func() {
+			wg.Wait()
+			zap.L().Info("all syncer workers exited")
+		}()
 
 		return nil
 	})
