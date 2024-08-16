@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
@@ -11,6 +10,7 @@ import (
 	"github.com/goto/entropy/pkg/logger"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 )
 
 func cmdWorker() *cobra.Command {
@@ -40,9 +40,12 @@ func cmdWorker() *cobra.Command {
 		moduleService := module.NewService(setupRegistry(), store)
 		resourceService := core.New(store, moduleService, time.Now, cfg.Syncer.SyncBackoffInterval, cfg.Syncer.MaxRetries)
 
-		wg := spawnWorkers(cmd.Context(), resourceService, cfg.Syncer.WorkerModules, cfg.Syncer.SyncInterval)
-		wg.Wait()
-		zap.L().Info("all syncer workers exited")
+		eg := &errgroup.Group{}
+		spawnWorkers(cmd.Context(), resourceService, cfg.Syncer.Workers, cfg.Syncer.SyncInterval, eg)
+		if err := eg.Wait(); err != nil {
+			zap.L().Error("syncer exited with error", zap.Error(err))
+			return err
+		}
 
 		return nil
 	})
@@ -50,15 +53,12 @@ func cmdWorker() *cobra.Command {
 	return cmd
 }
 
-func spawnWorkers(ctx context.Context, resourceService *core.Service, workerModules []workerModule, syncInterval time.Duration) *sync.WaitGroup {
-	wg := &sync.WaitGroup{}
-
+func spawnWorkers(ctx context.Context, resourceService *core.Service, workerModules []workerConfig, syncInterval time.Duration, eg *errgroup.Group) {
 	if len(workerModules) == 0 {
-		resourceService.RunSyncer(ctx, 1, syncInterval, map[string][]string{}, wg)
+		resourceService.RunSyncer(ctx, 1, syncInterval, map[string][]string{}, eg)
 	} else {
 		for _, module := range workerModules {
-			resourceService.RunSyncer(ctx, module.Count, syncInterval, module.Scope, wg)
+			resourceService.RunSyncer(ctx, module.Count, syncInterval, module.Scope, eg)
 		}
 	}
-	return wg
 }

@@ -35,10 +35,10 @@ type SyncerConf struct {
 	ExtendLockBy        time.Duration  `mapstructure:"extend_lock_by" default:"5s"`
 	SyncBackoffInterval time.Duration  `mapstructure:"sync_backoff_interval" default:"5s"`
 	MaxRetries          int            `mapstructure:"max_retries" default:"5"`
-	WorkerModules       []workerModule `mapstructure:"worker_modules"`
+	Workers             []workerConfig `mapstructure:"workers"`
 }
 
-type workerModule struct {
+type workerConfig struct {
 	Name  string              `mapstructure:"name"`
 	Count int                 `mapstructure:"count" default:"1"`
 	Scope map[string][]string `mapstructure:"labels"`
