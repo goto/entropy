@@ -100,7 +100,7 @@ func (s *WorkerTestSuite) TestWorkerDefault() {
 }
 
 func (s *WorkerTestSuite) TestWorkerScope() {
-	projectScope := []string{"test-project-0"}
+	projectScope := []string{s.resources[0].Project}
 	workerConfig := cli.WorkerConfig{
 		Name:  "test-project-0-worker",
 		Count: 1,
@@ -115,6 +115,14 @@ func (s *WorkerTestSuite) TestWorkerScope() {
 	s.Run("running worker with project scoped config will run worker(s) that takes configured project job", func() {
 		resourceConfig, err := getFirehoseResourceRequest()
 		s.Require().NoError(err)
+
+		resourceConfig.Project = s.resources[0].Project
+		resourceConfig.Spec.Dependencies = []*entropyv1beta1.ResourceDependency{
+			{
+				Key:   "kube_cluster",
+				Value: s.resources[0].Urn,
+			},
+		}
 
 		resp, err := s.resourceClient.CreateResource(s.ctx, &entropyv1beta1.CreateResourceRequest{
 			Resource: resourceConfig,
