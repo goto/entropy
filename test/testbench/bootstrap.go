@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 
 	entropyv1beta1 "github.com/goto/entropy/proto/gotocompany/entropy/v1beta1"
@@ -21,10 +22,14 @@ func BootstrapKubernetesModule(ctx context.Context, client entropyv1beta1.Module
 		return err
 	}
 
-	if _, err := client.CreateModule(ctx, &entropyv1beta1.CreateModuleRequest{
-		Module: moduleConfig,
-	}); err != nil {
-		return err
+	project := moduleConfig.Project
+	for i := 0; i < 3; i++ {
+		moduleConfig.Project = fmt.Sprintf("%s-%d", project, i)
+		if _, err := client.CreateModule(ctx, &entropyv1beta1.CreateModuleRequest{
+			Module: moduleConfig,
+		}); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -41,11 +46,17 @@ func BootstrapFirehoseModule(ctx context.Context, client entropyv1beta1.ModuleSe
 		return err
 	}
 
-	if _, err := client.CreateModule(ctx, &entropyv1beta1.CreateModuleRequest{
-		Module: moduleConfig,
-	}); err != nil {
-		return err
+	project := moduleConfig.Project
+	for i := 0; i < 3; i++ {
+		moduleConfig.Project = fmt.Sprintf("%s-%d", project, i)
+
+		if _, err := client.CreateModule(ctx, &entropyv1beta1.CreateModuleRequest{
+			Module: moduleConfig,
+		}); err != nil {
+			return err
+		}
 	}
+
 	return nil
 }
 
@@ -102,10 +113,15 @@ func BootstrapKubernetesResource(ctx context.Context, client entropyv1beta1.Reso
 		return err
 	}
 
-	if _, err := client.CreateResource(ctx, &entropyv1beta1.CreateResourceRequest{
-		Resource: resourceConfig,
-	}); err != nil {
-		return errors.New(resourceConfig.Spec.Configs.GetStringValue())
+	project := resourceConfig.Project
+	for i := 0; i < 3; i++ {
+		resourceConfig.Project = fmt.Sprintf("%s-%d", project, i)
+
+		if _, err := client.CreateResource(ctx, &entropyv1beta1.CreateResourceRequest{
+			Resource: resourceConfig,
+		}); err != nil {
+			return errors.New(resourceConfig.Spec.Configs.GetStringValue())
+		}
 	}
 
 	return nil

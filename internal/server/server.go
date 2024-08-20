@@ -7,7 +7,6 @@ import (
 	"time"
 
 	gorillamux "github.com/gorilla/mux"
-	"github.com/goto/salt/mux"
 	grpcmiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpczap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpcrecovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
@@ -29,6 +28,7 @@ import (
 	"github.com/goto/entropy/pkg/version"
 	commonv1 "github.com/goto/entropy/proto/gotocompany/common/v1"
 	entropyv1beta1 "github.com/goto/entropy/proto/gotocompany/entropy/v1beta1"
+	"github.com/goto/salt/mux"
 )
 
 const (

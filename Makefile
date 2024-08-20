@@ -50,7 +50,7 @@ test: tidy
 
 e2e-test: tidy
 	@echo "Running e2e-test tests..."
-	@go test -v ./test/e2e_test/...
+	@go test -v ./test/e2e_test/... -timeout 20m
 
 test-coverage: test
 	@echo "Generating coverage report..."

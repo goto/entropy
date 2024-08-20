@@ -9,7 +9,6 @@ import (
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/pkg/logger"
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -36,24 +35,27 @@ func cmdWorker() *cobra.Command {
 			return err
 		}
 
-		store := setupStorage(cfg.PGConnStr, cfg.Syncer, cfg.Service)
-		moduleService := module.NewService(setupRegistry(), store)
-		resourceService := core.New(store, moduleService, time.Now, cfg.Syncer.SyncBackoffInterval, cfg.Syncer.MaxRetries)
-
-		eg := &errgroup.Group{}
-		spawnWorkers(cmd.Context(), resourceService, cfg.Syncer.Workers, cfg.Syncer.SyncInterval, eg)
-		if err := eg.Wait(); err != nil {
-			zap.L().Error("syncer exited with error", zap.Error(err))
-			return err
-		}
-
-		return nil
+		return StartWorkers(cmd.Context(), cfg)
 	})
 
 	return cmd
 }
 
-func spawnWorkers(ctx context.Context, resourceService *core.Service, workerModules []workerConfig, syncInterval time.Duration, eg *errgroup.Group) {
+func StartWorkers(ctx context.Context, cfg Config) error {
+	store := setupStorage(cfg.PGConnStr, cfg.Syncer, cfg.Service)
+	moduleService := module.NewService(setupRegistry(), store)
+	resourceService := core.New(store, moduleService, time.Now, cfg.Syncer.SyncBackoffInterval, cfg.Syncer.MaxRetries)
+
+	eg := &errgroup.Group{}
+	spawnWorkers(ctx, resourceService, cfg.Syncer.Workers, cfg.Syncer.SyncInterval, eg)
+	if err := eg.Wait(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func spawnWorkers(ctx context.Context, resourceService *core.Service, workerModules []WorkerConfig, syncInterval time.Duration, eg *errgroup.Group) {
 	if len(workerModules) == 0 {
 		resourceService.RunSyncer(ctx, 1, syncInterval, map[string][]string{}, eg)
 	} else {

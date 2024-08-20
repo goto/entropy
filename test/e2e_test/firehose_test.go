@@ -2,8 +2,6 @@ package e2e_test
 
 import (
 	"context"
-	"encoding/json"
-	"os"
 	"testing"
 	"time"
 
@@ -14,7 +12,6 @@ import (
 	"github.com/ory/dockertest/v3"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 	"sigs.k8s.io/kind/pkg/cluster"
@@ -22,10 +19,12 @@ import (
 
 type FirehoseTestSuite struct {
 	suite.Suite
+	ctx                  context.Context
 	moduleClient         entropyv1beta1.ModuleServiceClient
 	resourceClient       entropyv1beta1.ResourceServiceClient
 	cancelResourceClient func()
 	cancelModuleClient   func()
+	cancel               func()
 	appConfig            *cli.Config
 	pool                 *dockertest.Pool
 	resource             *dockertest.Resource
@@ -33,32 +32,25 @@ type FirehoseTestSuite struct {
 }
 
 func (s *FirehoseTestSuite) SetupTest() {
-	s.moduleClient, s.resourceClient, s.appConfig, s.pool, s.resource, s.kubeProvider, s.cancelModuleClient, s.cancelResourceClient, _ = testbench.SetupTests(s.T())
+	s.ctx, s.moduleClient, s.resourceClient, s.appConfig, s.pool, s.resource, s.kubeProvider, s.cancelModuleClient, s.cancelResourceClient, s.cancel = testbench.SetupTests(s.T(), true)
 
-	ctx := metadata.NewOutgoingContext(context.Background(), metadata.New(map[string]string{
-		testbench.UserIDHeader: "doe@gotocompany.com",
-	}))
-	modules, err := s.moduleClient.ListModules(ctx, &entropyv1beta1.ListModulesRequest{})
+	modules, err := s.moduleClient.ListModules(s.ctx, &entropyv1beta1.ListModulesRequest{})
 	s.Require().NoError(err)
-	s.Require().Equal(2, len(modules.GetModules()))
+	s.Require().Equal(6, len(modules.GetModules()))
 
-	resources, err := s.resourceClient.ListResources(ctx, &entropyv1beta1.ListResourcesRequest{
+	resources, err := s.resourceClient.ListResources(s.ctx, &entropyv1beta1.ListResourcesRequest{
 		Kind: "kubernetes",
 	})
 	s.Require().NoError(err)
-	s.Require().Equal(1, len(resources.GetResources()))
+	s.Require().Equal(3, len(resources.GetResources()))
 }
 
 func (s *FirehoseTestSuite) TestCreateFirehose() {
-	ctx := metadata.NewOutgoingContext(context.Background(), metadata.New(map[string]string{
-		testbench.UserIDHeader: "doe@gotocompany.com",
-	}))
-
 	s.Run("create firehose with invalid request body should return invalid error", func() {
-		_, err := s.resourceClient.CreateResource(ctx, &entropyv1beta1.CreateResourceRequest{
+		_, err := s.resourceClient.CreateResource(s.ctx, &entropyv1beta1.CreateResourceRequest{
 			Resource: &entropyv1beta1.Resource{
 				Name:    "test-firehose",
-				Project: "test-project",
+				Project: "test-project-0",
 				Kind:    "firehose",
 				Spec: &entropyv1beta1.ResourceSpec{
 					Configs:      structpb.NewStringValue("{}"),
@@ -70,23 +62,19 @@ func (s *FirehoseTestSuite) TestCreateFirehose() {
 	})
 
 	s.Run("create firehose with right request body should return no error and run a new firehose resource", func() {
-		resourceData, err := os.ReadFile(testbench.TestDataPath + "/resource/firehose_resource.json")
+		resourceConfig, err := getFirehoseResourceRequest()
 		s.Require().NoError(err)
 
-		var resourceConfig *entropyv1beta1.Resource
-		err = json.Unmarshal(resourceData, &resourceConfig)
-		s.Require().NoError(err)
-
-		resp, err := s.resourceClient.CreateResource(ctx, &entropyv1beta1.CreateResourceRequest{
+		resp, err := s.resourceClient.CreateResource(s.ctx, &entropyv1beta1.CreateResourceRequest{
 			Resource: resourceConfig,
 		})
 		s.Require().NoError(err)
 
-		pods, err := getRunningFirehosePods(ctx, s.kubeProvider, testbench.TestClusterName, testbench.TestNamespace, map[string]string{}, 90*time.Second)
+		pods, err := getRunningFirehosePods(s.ctx, s.kubeProvider, testbench.TestClusterName, testbench.TestNamespace, map[string]string{}, 90*time.Second)
 		s.Require().NoError(err)
 		s.Require().Equal(1, len(pods))
 
-		createdFirehose, err := s.resourceClient.GetResource(ctx, &entropyv1beta1.GetResourceRequest{
+		createdFirehose, err := s.resourceClient.GetResource(s.ctx, &entropyv1beta1.GetResourceRequest{
 			Urn: resp.GetResource().Urn,
 		})
 		s.Require().NoError(err)
@@ -103,6 +91,8 @@ func (s *FirehoseTestSuite) TearDownTest() {
 	if err := s.kubeProvider.Delete(testbench.TestClusterName, ""); err != nil {
 		s.T().Fatal(err)
 	}
+
+	s.cancel()
 }
 
 func TestFirehoseTestSuite(t *testing.T) {
