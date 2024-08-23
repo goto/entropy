@@ -33,7 +33,7 @@ var (
 	TestNamespace   = "default"
 )
 
-func SetupTests(t *testing.T) (entropyv1beta1.ModuleServiceClient, entropyv1beta1.ResourceServiceClient, *cli.Config,
+func SetupTests(t *testing.T, spawnWorkers bool) (context.Context, entropyv1beta1.ModuleServiceClient, entropyv1beta1.ResourceServiceClient, *cli.Config,
 	*dockertest.Pool, *dockertest.Resource, *cluster.Provider, func(), func(), func()) {
 	t.Helper()
 
@@ -55,7 +55,7 @@ func SetupTests(t *testing.T) (entropyv1beta1.ModuleServiceClient, entropyv1beta
 	}
 
 	zapLogger.Info("creating postgres")
-	postgres, err := dockertestx.CreatePostgres(dockertestx.PostgresWithDockerPool(pool), dockertestx.PostgresWithDockertestResourceExpiry(240))
+	postgres, err := dockertestx.CreatePostgres(dockertestx.PostgresWithDockerPool(pool), dockertestx.PostgresWithDockertestResourceExpiry(3000))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,8 +83,8 @@ func SetupTests(t *testing.T) (entropyv1beta1.ModuleServiceClient, entropyv1beta
 	})))
 
 	go func() {
-		if err := cli.StartServer(ctx, *appConfig, true, true); err != nil {
-			zapLogger.Fatal(err.Error())
+		if err := cli.StartServer(ctx, *appConfig, true, spawnWorkers); err != nil {
+			zapLogger.Warn(err.Error())
 		}
 	}()
 
@@ -123,7 +123,15 @@ func SetupTests(t *testing.T) (entropyv1beta1.ModuleServiceClient, entropyv1beta
 		t.Fatal()
 	}
 
-	return moduleClient, resourceClient, appConfig, pool, postgres.GetResource(), provider, cancelModuleClient, cancelResourceClient, cancel
+	return ctx, moduleClient, resourceClient, appConfig, pool, postgres.GetResource(), provider, cancelModuleClient, cancelResourceClient, cancel
+}
+
+func SetupWorker(t *testing.T, ctx context.Context, appConfig cli.Config) {
+	go func() {
+		if err := cli.StartWorkers(ctx, appConfig); err != nil {
+			zapLogger.Warn(err.Error())
+		}
+	}()
 }
 
 func getFreePort() (int, error) {

@@ -1,7 +1,7 @@
 {
     "kind": "firehose",
     "name": "test-firehose",
-    "project": "test-project",
+    "project": "test-project-0",
     "labels": {
         "description": "test firehose resource"
     },
@@ -22,7 +22,7 @@
         "dependencies": [
             {
                 "key": "kube_cluster",
-                "value": "orn:entropy:kubernetes:test-project:test-kube"
+                "value": "orn:entropy:kubernetes:test-project-0:test-kube"
             }
         ]
     }

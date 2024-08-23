@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/pkg/errors"
@@ -12,23 +13,26 @@ import (
 
 // RunSyncer runs the syncer thread that keeps performing resource-sync at
 // regular intervals.
-func (svc *Service) RunSyncer(ctx context.Context, interval time.Duration) error {
-	tick := time.NewTimer(interval)
-	defer tick.Stop()
+func (svc *Service) RunSyncer(ctx context.Context, workerCount int, interval time.Duration, scope map[string][]string, eg *errgroup.Group) {
+	for i := 0; i < workerCount; i++ {
+		eg.Go(func() error {
+			tick := time.NewTimer(interval)
+			defer tick.Stop()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
+			for {
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-tick.C:
+					tick.Reset(interval)
 
-		case <-tick.C:
-			tick.Reset(interval)
-
-			err := svc.store.SyncOne(ctx, svc.handleSync)
-			if err != nil {
-				zap.L().Warn("SyncOne() failed", zap.Error(err))
+					err := svc.store.SyncOne(ctx, scope, svc.handleSync)
+					if err != nil {
+						zap.L().Warn("SyncOne() failed", zap.Error(err))
+					}
+				}
 			}
-		}
+		})
 	}
 }
 

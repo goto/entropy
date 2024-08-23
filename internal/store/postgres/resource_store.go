@@ -264,8 +264,8 @@ func (st *Store) Delete(ctx context.Context, urn string, hooks ...resource.Mutat
 	return withinTx(ctx, st.db, false, deleteFn)
 }
 
-func (st *Store) SyncOne(ctx context.Context, syncFn resource.SyncFn) error {
-	urn, err := st.fetchResourceForSync(ctx)
+func (st *Store) SyncOne(ctx context.Context, scope map[string][]string, syncFn resource.SyncFn) error {
+	urn, err := st.fetchResourceForSync(ctx, scope)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// No resource available for sync.
@@ -298,7 +298,7 @@ func (st *Store) handleDequeued(baseCtx context.Context, res resource.Resource, 
 	return fn(runCtx, res)
 }
 
-func (st *Store) fetchResourceForSync(ctx context.Context) (string, error) {
+func (st *Store) fetchResourceForSync(ctx context.Context, scope map[string][]string) (string, error) {
 	var urn string
 
 	// find a resource ready for sync, extend it next sync time atomically.
@@ -309,6 +309,10 @@ func (st *Store) fetchResourceForSync(ctx context.Context) (string, error) {
 			From(tableResources).
 			Where(sq.Expr("state_next_sync <= current_timestamp")).
 			Suffix("FOR UPDATE SKIP LOCKED")
+
+		for key, value := range scope {
+			builder = builder.Where(sq.Eq{key: value})
+		}
 
 		query, args, err := builder.PlaceholderFormat(sq.Dollar).ToSql()
 		if err != nil {

@@ -1,0 +1,74 @@
+[
+    {
+        "urn": "orn:entropy:firehose:test-project-00:test-firehose",
+        "kind": "firehose",
+        "name": "test-firehose",
+        "project": "test-project-00",
+        "labels": {
+            "description": "test firehose resource"
+        },
+        "state": {
+            "next_sync_at": "0001-01-01T00:00:00Z"
+        }
+    },
+    {
+        "urn": "orn:entropy:dagger:test-project-01:test-dagger",
+        "kind": "dagger",
+        "name": "test-dagger",
+        "project": "test-project-01",
+        "labels": {
+            "description": "test dagger resource"
+        },
+        "state": {
+            "next_sync_at": "0001-01-01T00:00:00Z"
+        }
+    },
+    {
+        "urn": "orn:entropy:firehose:test-project-01:test-firehose-01",
+        "kind": "firehose",
+        "name": "test-firehose",
+        "project": "test-project-01",
+        "labels": {
+            "description": "test firehose resource"
+        },
+        "state": {
+            "next_sync_at": "0001-01-01T00:00:00Z"
+        }
+    },
+    {
+        "urn": "orn:entropy:dagger:test-project-00:test-dagger-01",
+        "kind": "dagger",
+        "name": "test-dagger",
+        "project": "test-project-00",
+        "labels": {
+            "description": "test dagger resource"
+        },
+        "state": {
+            "next_sync_at": "0001-01-01T00:00:00Z"
+        }
+    },
+    {
+        "urn": "orn:entropy:firehose:test-project-00:test-firehose-02",
+        "kind": "firehose",
+        "name": "test-firehose",
+        "project": "test-project-00",
+        "labels": {
+            "description": "test firehose resource"
+        },
+        "state": {
+            "next_sync_at": "0001-01-01T00:00:00Z"
+        }
+    },
+    {
+        "urn": "orn:entropy:dagger:test-project-01:test-dagger-02",
+        "kind": "dagger",
+        "name": "test-dagger",
+        "project": "test-project-01",
+        "labels": {
+            "description": "test dagger resource"
+        },
+        "state": {
+            "next_sync_at": "0001-01-01T00:00:00Z"
+        }
+    }
+]

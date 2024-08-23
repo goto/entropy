@@ -30,11 +30,18 @@ type Config struct {
 }
 
 type SyncerConf struct {
-	SyncInterval        time.Duration `mapstructure:"sync_interval" default:"1s"`
-	RefreshInterval     time.Duration `mapstructure:"refresh_interval" default:"3s"`
-	ExtendLockBy        time.Duration `mapstructure:"extend_lock_by" default:"5s"`
-	SyncBackoffInterval time.Duration `mapstructure:"sync_backoff_interval" default:"5s"`
-	MaxRetries          int           `mapstructure:"max_retries" default:"5"`
+	SyncInterval        time.Duration  `mapstructure:"sync_interval" default:"1s"`
+	RefreshInterval     time.Duration  `mapstructure:"refresh_interval" default:"3s"`
+	ExtendLockBy        time.Duration  `mapstructure:"extend_lock_by" default:"5s"`
+	SyncBackoffInterval time.Duration  `mapstructure:"sync_backoff_interval" default:"5s"`
+	MaxRetries          int            `mapstructure:"max_retries" default:"5"`
+	Workers             []WorkerConfig `mapstructure:"workers"`
+}
+
+type WorkerConfig struct {
+	Name  string              `mapstructure:"name"`
+	Count int                 `mapstructure:"count" default:"1"`
+	Scope map[string][]string `mapstructure:"labels"`
 }
 
 type ServeConfig struct {

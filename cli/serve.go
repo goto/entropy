@@ -7,6 +7,7 @@ import (
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/goto/entropy/core"
 	"github.com/goto/entropy/core/module"
@@ -69,8 +70,10 @@ func StartServer(ctx context.Context, cfg Config, migrate, spawnWorker bool) err
 	}
 
 	if spawnWorker {
+		eg := &errgroup.Group{}
+		spawnWorkers(ctx, resourceService, cfg.Syncer.Workers, cfg.Syncer.SyncInterval, eg)
 		go func() {
-			if runErr := resourceService.RunSyncer(ctx, cfg.Syncer.SyncInterval); runErr != nil {
+			if err := eg.Wait(); err != nil {
 				zap.L().Error("syncer exited with error", zap.Error(err))
 			}
 		}()

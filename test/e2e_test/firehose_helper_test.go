@@ -2,9 +2,12 @@ package e2e_test
 
 import (
 	"context"
+	"encoding/json"
+	"os"
 	"time"
 
 	"github.com/goto/entropy/pkg/kube"
+	entropyv1beta1 "github.com/goto/entropy/proto/gotocompany/entropy/v1beta1"
 	"github.com/goto/entropy/test/testbench"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/kind/pkg/cluster"
@@ -35,4 +38,19 @@ func getRunningFirehosePods(ctx context.Context, kubeProvider *cluster.Provider,
 	}
 
 	return pods, nil
+}
+
+func getFirehoseResourceRequest() (*entropyv1beta1.Resource, error) {
+	resourceData, err := os.ReadFile(testbench.TestDataPath + "/resource/firehose_resource.json")
+	if err != nil {
+		return nil, err
+	}
+
+	var resourceConfig *entropyv1beta1.Resource
+	err = json.Unmarshal(resourceData, &resourceConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return resourceConfig, nil
 }
