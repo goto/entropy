@@ -102,14 +102,13 @@ func (s *WorkerTestSuite) TestWorkerDefault() {
 func (s *WorkerTestSuite) TestWorkerScope() {
 	projectScope := []string{s.resources[0].Project}
 	workerConfig := cli.WorkerConfig{
-		Name:  "test-project-0-worker",
 		Count: 1,
 		Scope: map[string][]string{
 			"project": projectScope,
 		},
 	}
 
-	s.appConfig.Syncer.Workers = []cli.WorkerConfig{workerConfig}
+	s.appConfig.Syncer.Workers = map[string]cli.WorkerConfig{"test-project-0-worker": workerConfig}
 	testbench.SetupWorker(s.T(), s.ctx, *s.appConfig)
 
 	s.Run("running worker with project scoped config will run worker(s) that takes configured project job", func() {
