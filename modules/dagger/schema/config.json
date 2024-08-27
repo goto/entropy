@@ -1,0 +1,37 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": [
+      "replicas",
+      "env_variables"
+    ],
+    "properties": {
+      "replicas": {
+        "type": "number",
+        "default": 1,
+        "minimum": 1
+      },
+      "deployment_id": {
+        "type": "string"
+      },
+      "env_variables": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "SINK_TYPE"
+        ],
+        "properties": {
+          "SINK_TYPE": {
+            "type": "string",
+            "enum": [
+              "INFLUX",
+              "KAFKA",
+              "BIGQUERY"
+            ]
+          }
+        }
+      }
+    }
+  }
+  
