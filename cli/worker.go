@@ -55,7 +55,7 @@ func StartWorkers(ctx context.Context, cfg Config) error {
 	return nil
 }
 
-func spawnWorkers(ctx context.Context, resourceService *core.Service, workerModules []WorkerConfig, syncInterval time.Duration, eg *errgroup.Group) {
+func spawnWorkers(ctx context.Context, resourceService *core.Service, workerModules map[string]WorkerConfig, syncInterval time.Duration, eg *errgroup.Group) {
 	if len(workerModules) == 0 {
 		resourceService.RunSyncer(ctx, 1, syncInterval, map[string][]string{}, eg)
 	} else {
