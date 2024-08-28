@@ -8,7 +8,10 @@ import (
 	"github.com/goto/entropy/core"
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/pkg/logger"
+	"github.com/goto/entropy/pkg/telemetry"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -35,7 +38,18 @@ func cmdWorker() *cobra.Command {
 			return err
 		}
 
-		return StartWorkers(cmd.Context(), cfg)
+		ctx := cmd.Context()
+
+		telemetry.Init(ctx, cfg.Telemetry)
+		_, err = newrelic.NewApplication(
+			newrelic.ConfigAppName(cfg.Telemetry.ServiceName),
+			newrelic.ConfigLicense(cfg.Telemetry.NewRelicAPIKey),
+		)
+		if err != nil {
+			zap.L().Error("error initializing opentelemetry", zap.Error(err))
+		}
+
+		return StartWorkers(ctx, cfg)
 	})
 
 	return cmd
