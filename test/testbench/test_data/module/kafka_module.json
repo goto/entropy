@@ -1,5 +1,5 @@
 {
-    "name": "kubernetes",
+    "name": "kafka",
     "project": "test-project",
     "configs": {}
 }    

@@ -33,7 +33,7 @@ var (
 	TestNamespace   = "default"
 )
 
-func SetupTests(t *testing.T, spawnWorkers bool) (context.Context, entropyv1beta1.ModuleServiceClient, entropyv1beta1.ResourceServiceClient, *cli.Config,
+func SetupTests(t *testing.T, spawnWorkers bool, setupKube bool) (context.Context, entropyv1beta1.ModuleServiceClient, entropyv1beta1.ResourceServiceClient, *cli.Config,
 	*dockertest.Pool, *dockertest.Resource, *cluster.Provider, func(), func(), func()) {
 	t.Helper()
 
@@ -47,11 +47,14 @@ func SetupTests(t *testing.T, spawnWorkers bool) (context.Context, entropyv1beta
 		t.Fatal(err)
 	}
 
-	zapLogger.Info("creating cluster")
-	provider := cluster.NewProvider()
-	err = provider.Create(TestClusterName)
-	if err != nil {
-		t.Fatal(err)
+	var provider *cluster.Provider
+	if setupKube {
+		zapLogger.Info("creating cluster")
+		provider = cluster.NewProvider()
+		err = provider.Create(TestClusterName)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	zapLogger.Info("creating postgres")
@@ -118,9 +121,11 @@ func SetupTests(t *testing.T, spawnWorkers bool) (context.Context, entropyv1beta
 		t.Fatal()
 	}
 
-	err = BootstrapKubernetesResource(ctx, resourceClient, provider, TestDataPath)
-	if err != nil {
-		t.Fatal()
+	if setupKube {
+		err = BootstrapKubernetesResource(ctx, resourceClient, provider, TestDataPath)
+		if err != nil {
+			t.Fatal()
+		}
 	}
 
 	return ctx, moduleClient, resourceClient, appConfig, pool, postgres.GetResource(), provider, cancelModuleClient, cancelResourceClient, cancel

@@ -1,0 +1,25 @@
+{
+    "kind": "kafka",
+    "name": "test-kafka",
+    "project": "test-project",
+    "labels": {
+        "description": "test kafka resource"
+    },
+    "spec": {
+        "configs": {
+            "advertise_mode": {
+                "host": "6667",
+                "address": "6668"
+            },
+            "brokers": [
+                {
+                    "name": "test-project-test-kafka-01",
+                    "host": "test-project-test-kafka-01",
+                    "address": "127.0.0.1"
+                }
+            ], 
+            "type": "source"
+        },
+        "dependencies": []
+    }
+} 
