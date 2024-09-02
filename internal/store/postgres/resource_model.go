@@ -14,8 +14,8 @@ import (
 )
 
 const listResourceByFilterQuery = `SELECT r.id, r.urn, r.kind, r.name, r.project, r.created_at, r.updated_at, r.state_status, r.state_output, r.state_module_data, r.state_next_sync, r.state_sync_result, r.created_by, r.updated_by,
-		COALESCE(NULLIF(array_agg(rt.tag), '{NULL}'), '{}')::text[] AS tags,
-		jsonb_object_agg(COALESCE(rd.dependency_key, ''), d.urn) AS dependencies
+	COALESCE(NULLIF(array_agg(rt.tag), '{NULL}'), '{}')::text[] AS tags,
+	jsonb_object_agg(COALESCE(rd.dependency_key, ''), d.urn) AS dependencies
 FROM resources r
          LEFT JOIN resource_dependencies rd ON r.id = rd.resource_id
          LEFT JOIN resources d ON rd.depends_on = d.id
@@ -28,8 +28,8 @@ OFFSET $4
 `
 
 const listResourceWithSpecConfigsByFilterQuery = `SELECT r.id, r.urn, r.kind, r.name, r.project, r.created_at, r.updated_at, r.spec_configs, r.state_status, r.state_output, r.state_module_data, r.state_next_sync, r.state_sync_result, r.created_by, r.updated_by,
-		COALESCE(NULLIF(array_agg(rt.tag), '{NULL}'), '{}')::text[] AS tags,
-		jsonb_object_agg(COALESCE(rd.dependency_key, ''), d.urn) AS dependencies
+	COALESCE(NULLIF(array_agg(rt.tag), '{NULL}'), '{}')::text[] AS tags,
+	jsonb_object_agg(COALESCE(rd.dependency_key, ''), d.urn) AS dependencies
 FROM resources r
          LEFT JOIN resource_dependencies rd ON r.id = rd.resource_id
          LEFT JOIN resources d ON rd.depends_on = d.id
