@@ -17,6 +17,8 @@ var Module = module.Descriptor{
 		},
 	},
 	DriverFactory: func(_ json.RawMessage) (module.Driver, error) {
-		return &kafkaDriver{}, nil
+		return &kafkaDriver{
+			conf: defaultDriverConf,
+		}, nil
 	},
 }

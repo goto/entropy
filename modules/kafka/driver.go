@@ -8,20 +8,40 @@ import (
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
+	"github.com/goto/entropy/modules"
 	"github.com/goto/entropy/pkg/errors"
 )
 
-type kafkaDriver struct{}
+const (
+	labelName = "name"
+)
+
+var defaultDriverConf = driverConf{
+	Type: "source",
+}
+
+type kafkaDriver struct {
+	conf driverConf
+}
 
 type Output struct {
 	URL string `json:"url"`
 }
 
+type driverConf struct {
+	Type string `json:"type"`
+}
+
 func (m *kafkaDriver) Plan(ctx context.Context, res module.ExpandedResource,
 	act module.ActionRequest,
 ) (*resource.Resource, error) {
+	cfg, err := readConfig(res.Resource, act.Params, m.conf)
+	if err != nil {
+		return nil, err
+	}
+
 	res.Resource.Spec = resource.Spec{
-		Configs:      act.Params,
+		Configs:      modules.MustJSON(cfg),
 		Dependencies: nil,
 	}
 
@@ -47,7 +67,7 @@ func (*kafkaDriver) Sync(_ context.Context, res module.ExpandedResource) (*resou
 }
 
 func (m *kafkaDriver) Output(ctx context.Context, res module.ExpandedResource) (json.RawMessage, error) {
-	cfg, err := readConfig(res.Resource.Spec.Configs)
+	cfg, err := readConfig(res.Resource, res.Resource.Spec.Configs, m.conf)
 	if err != nil {
 		return nil, err
 	}
