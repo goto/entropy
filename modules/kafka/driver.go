@@ -9,11 +9,6 @@ import (
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/modules"
-	"github.com/goto/entropy/pkg/errors"
-)
-
-const (
-	labelName = "name"
 )
 
 var defaultDriverConf = driverConf{
@@ -45,14 +40,11 @@ func (m *kafkaDriver) Plan(ctx context.Context, res module.ExpandedResource,
 		Dependencies: nil,
 	}
 
-	output, err := m.Output(ctx, res)
-	if err != nil {
-		return nil, err
-	}
-
 	res.Resource.State = resource.State{
 		Status: resource.StatusCompleted,
-		Output: output,
+		Output: modules.MustJSON(Output{
+			URL: mapUrl(cfg),
+		}),
 	}
 
 	return &res.Resource, nil
@@ -72,6 +64,12 @@ func (m *kafkaDriver) Output(ctx context.Context, res module.ExpandedResource) (
 		return nil, err
 	}
 
+	return modules.MustJSON(Output{
+		URL: mapUrl(cfg),
+	}), nil
+}
+
+func mapUrl(cfg *Config) string {
 	var mode, port string
 	if cfg.AdvertiseMode.Address != "" {
 		mode = "address"
@@ -92,10 +90,5 @@ func (m *kafkaDriver) Output(ctx context.Context, res module.ExpandedResource) (
 		urls = append(urls, fmt.Sprintf("%s:%s", addr, port))
 	}
 
-	output, err := json.Marshal(Output{URL: strings.Join(urls, ",")})
-	if err != nil {
-		return nil, errors.ErrInternal.WithMsgf("invalid kube state").WithCausef(err.Error())
-	}
-
-	return output, nil
+	return strings.Join(urls, ",")
 }
