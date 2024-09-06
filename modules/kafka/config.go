@@ -40,12 +40,12 @@ func readConfig(res resource.Resource, confJSON json.RawMessage, dc driverConf) 
 	var resCfg, cfg Config
 
 	if err := json.Unmarshal(confJSON, &cfg); err != nil {
-		return nil, errors.ErrInvalid.WithMsgf("invalid config json").WithCausef(err.Error())
+		return nil, errors.ErrInvalid.WithMsgf("failed to unmarshal").WithCausef(err.Error())
 	}
 
 	if res.Spec.Configs != nil {
 		if err := json.Unmarshal(res.Spec.Configs, &resCfg); err != nil {
-			return nil, errors.ErrInvalid.WithMsgf("invalid config json").WithCausef(err.Error())
+			return nil, errors.ErrInvalid.WithMsgf("failed to unmarshal").WithCausef(err.Error())
 		}
 	}
 
@@ -63,7 +63,7 @@ func readConfig(res resource.Resource, confJSON json.RawMessage, dc driverConf) 
 
 	newConfJSON, err := json.Marshal(cfg)
 	if err != nil {
-		return nil, errors.ErrInvalid.WithMsgf("invalid config json").WithCausef(err.Error())
+		return nil, errors.ErrInvalid.WithMsgf("failed to marshal").WithCausef(err.Error())
 	}
 
 	if err := validateConfig(newConfJSON); err != nil {
