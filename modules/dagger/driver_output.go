@@ -7,6 +7,7 @@ import (
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/modules"
+	"github.com/goto/entropy/modules/flink"
 	"github.com/goto/entropy/modules/kubernetes"
 	"github.com/goto/entropy/pkg/errors"
 )
@@ -22,12 +23,12 @@ func (dd *daggerDriver) Output(ctx context.Context, exr module.ExpandedResource)
 		return nil, errors.ErrInternal.WithCausef(err.Error())
 	}
 
-	var kubeOut kubernetes.Output
-	if err := json.Unmarshal(exr.Dependencies[keyKubeDependency].Output, &kubeOut); err != nil {
+	var flinkOut flink.Output
+	if err := json.Unmarshal(exr.Dependencies[keyFlinkDependency].Output, &flinkOut); err != nil {
 		return nil, errors.ErrInternal.WithMsgf("invalid kube state").WithCausef(err.Error())
 	}
 
-	return dd.refreshOutput(ctx, exr.Resource, *conf, *output, kubeOut)
+	return dd.refreshOutput(ctx, exr.Resource, *conf, *output, flinkOut.KubeCluster)
 }
 
 func (dd *daggerDriver) refreshOutput(ctx context.Context, r resource.Resource,

@@ -7,7 +7,7 @@ import (
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/modules"
-	"github.com/goto/entropy/modules/kubernetes"
+	"github.com/goto/entropy/modules/flink"
 	"github.com/goto/entropy/pkg/errors"
 )
 
@@ -59,11 +59,11 @@ func (dd *daggerDriver) planCreate(exr module.ExpandedResource, act module.Actio
 }
 
 func (dd *daggerDriver) validateHelmReleaseConfigs(expandedResource module.ExpandedResource, config Config) error {
-	var kubeOut kubernetes.Output
-	if err := json.Unmarshal(expandedResource.Dependencies[keyKubeDependency].Output, &kubeOut); err != nil {
+	var flinkOut flink.Output
+	if err := json.Unmarshal(expandedResource.Dependencies[keyFlinkDependency].Output, &flinkOut); err != nil {
 		return errors.ErrInternal.WithMsgf("invalid kube state").WithCausef(err.Error())
 	}
 
-	_, err := dd.getHelmRelease(expandedResource.Resource, config, kubeOut)
+	_, err := dd.getHelmRelease(expandedResource.Resource, config, flinkOut.KubeCluster)
 	return err
 }

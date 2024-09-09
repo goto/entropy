@@ -7,6 +7,7 @@ import (
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/modules"
+	"github.com/goto/entropy/modules/flink"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/validator"
 )
@@ -81,8 +82,13 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 
 	if cfg.Namespace == "" {
 		//TODO: add error handling
-		kubeUrn := r.Spec.Dependencies[keyKubeDependency]
-		ns := dc.Namespace[kubeUrn]
+
+		var flinkOut flink.Output
+		if err := json.Unmarshal(r.Dependencies[keyFlinkDependency].Output, &flinkOut); err != nil {
+			return nil, errors.ErrInternal.WithMsgf("invalid kube state").WithCausef(err.Error())
+		}
+
+		ns := flinkOut.KubeNamespace
 		cfg.Namespace = ns
 	}
 

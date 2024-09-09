@@ -6,18 +6,18 @@ import (
 	"time"
 
 	"github.com/goto/entropy/core/module"
-	"github.com/goto/entropy/modules/kubernetes"
+	"github.com/goto/entropy/modules/flink"
 	"github.com/goto/entropy/pkg/validator"
 )
 
 const (
-	keyKubeDependency = "kube_cluster"
+	keyFlinkDependency = "flink"
 )
 
 var Module = module.Descriptor{
 	Kind: "dagger",
 	Dependencies: map[string]string{
-		keyKubeDependency: kubernetes.Module.Kind,
+		keyFlinkDependency: flink.Module.Kind,
 	},
 	Actions: []module.ActionDesc{
 		{
