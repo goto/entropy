@@ -125,6 +125,12 @@ func (s *FlinkTestSuite) TearDownTest() {
 	if err := s.pool.Purge(s.resource); err != nil {
 		s.T().Fatal(err)
 	}
+
+	if err := s.kubeProvider.Delete(testbench.TestClusterName, ""); err != nil {
+		s.T().Fatal(err)
+	}
+
+	s.cancel()
 }
 
 func TestFlinkTestSuite(t *testing.T) {
