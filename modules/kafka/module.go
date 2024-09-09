@@ -16,9 +16,14 @@ var Module = module.Descriptor{
 			Name: module.UpdateAction,
 		},
 	},
-	DriverFactory: func(_ json.RawMessage) (module.Driver, error) {
+	DriverFactory: func(confJSON json.RawMessage) (module.Driver, error) {
+		conf := defaultDriverConf
+		if err := json.Unmarshal(confJSON, &conf); err != nil {
+			return nil, err
+		}
+
 		return &kafkaDriver{
-			conf: defaultDriverConf,
+			conf: conf,
 		}, nil
 	},
 }
