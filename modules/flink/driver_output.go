@@ -16,8 +16,11 @@ func (fd *flinkDriver) Output(ctx context.Context, exr module.ExpandedResource) 
 		return nil, err
 	}
 
-	conf, err := readConfig(exr.Resource, exr.Spec.Configs, fd.conf)
+	conf, err := readConfig(exr.Resource, exr.Resource.Spec.Configs, fd.conf)
 	if err != nil {
+		if errors.Is(err, errors.ErrInvalid) {
+			return nil, err
+		}
 		return nil, errors.ErrInternal.WithCausef(err.Error())
 	}
 

@@ -1,0 +1,25 @@
+{
+    "kind": "flink",
+    "name": "test-flink",
+    "project": "test-project-0",
+    "labels": {
+        "description": "test flink resource"
+    },
+    "spec": {
+        "configs": {
+            "influx": {
+                "password": "influx-password",
+                "url": "localhost:1234",
+                "username": "influx-user"
+            },
+            "kube_namespace": "flink-ns",
+            "sink_kafka_stream_name": "flinkstream"
+        },
+        "dependencies": [
+            {
+                "key": "kube_cluster",
+                "value": "orn:entropy:kubernetes:test-project-0:test-kube"
+            }
+        ]
+    }
+} 
