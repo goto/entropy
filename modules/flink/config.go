@@ -23,9 +23,9 @@ type Influx struct {
 }
 
 type Config struct {
-	KubeNamespace       string `json:"kube_namespace,omitempty"`
-	Influx              Influx `json:"influx,omitempty"`
-	SinkKafkaStreamName string `json:"sink_kafka_stream_name,omitempty"`
+	KubeNamespace   string `json:"kube_namespace,omitempty"`
+	Influx          Influx `json:"influx,omitempty"`
+	SinkKafkaStream string `json:"sink_kafka_stream,omitempty"`
 }
 
 func readConfig(_ resource.Resource, confJSON json.RawMessage, dc driverConf) (*Config, error) {
@@ -40,8 +40,8 @@ func readConfig(_ resource.Resource, confJSON json.RawMessage, dc driverConf) (*
 		cfg.Influx.Password = dc.Influx.Password
 	}
 
-	if cfg.SinkKafkaStreamName == "" {
-		cfg.SinkKafkaStreamName = dc.SinkKafkaStreamName
+	if cfg.SinkKafkaStream == "" {
+		cfg.SinkKafkaStream = dc.SinkKafkaStream
 	}
 
 	if cfg.KubeNamespace == "" {

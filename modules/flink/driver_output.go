@@ -32,7 +32,7 @@ func (fd *flinkDriver) Output(ctx context.Context, exr module.ExpandedResource) 
 	output.KubeCluster = kubeOut
 	output.Influx = conf.Influx
 	output.KubeNamespace = conf.KubeNamespace
-	output.SinkKafkaStreamName = conf.SinkKafkaStreamName
+	output.SinkKafkaStream = conf.SinkKafkaStream
 
 	return modules.MustJSON(output), nil
 }

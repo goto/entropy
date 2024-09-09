@@ -13,16 +13,16 @@ type flinkDriver struct {
 }
 
 type driverConf struct {
-	Influx              Influx `json:"influx,omitempty"`
-	SinkKafkaStreamName string `json:"sink_kafka_stream_name,omitempty"`
-	KubeNamespace       string `json:"kube_namespace,omitempty"`
+	Influx          Influx `json:"influx,omitempty"`
+	SinkKafkaStream string `json:"sink_kafka_stream,omitempty"`
+	KubeNamespace   string `json:"kube_namespace,omitempty"`
 }
 
 type Output struct {
-	KubeCluster         kubernetes.Output `json:"kube_cluster,omitempty"`
-	KubeNamespace       string            `json:"kube_namespace,omitempty"`
-	Influx              Influx            `json:"influx,omitempty"`
-	SinkKafkaStreamName string            `json:"sink_kafka_stream_name,omitempty"`
+	KubeCluster     kubernetes.Output `json:"kube_cluster,omitempty"`
+	KubeNamespace   string            `json:"kube_namespace,omitempty"`
+	Influx          Influx            `json:"influx,omitempty"`
+	SinkKafkaStream string            `json:"sink_kafka_stream,omitempty"`
 }
 
 func readOutputData(exr module.ExpandedResource) (*Output, error) {
