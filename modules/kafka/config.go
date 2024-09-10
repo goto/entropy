@@ -37,28 +37,22 @@ type Broker struct {
 }
 
 func readConfig(res resource.Resource, confJSON json.RawMessage, dc driverConf) (*Config, error) {
-	var resCfg, cfg Config
-
-	if err := json.Unmarshal(confJSON, &cfg); err != nil {
-		return nil, errors.ErrInvalid.WithMsgf("failed to unmarshal").WithCausef(err.Error())
+	cfg := Config{
+		Type:         dc.Type,
+		Entity:       dc.Entity,
+		Organization: dc.Organization,
+		Landscape:    dc.Landscape,
+		Environment:  dc.Environment,
 	}
 
 	if res.Spec.Configs != nil {
-		if err := json.Unmarshal(res.Spec.Configs, &resCfg); err != nil {
+		if err := json.Unmarshal(res.Spec.Configs, &cfg); err != nil {
 			return nil, errors.ErrInvalid.WithMsgf("failed to unmarshal").WithCausef(err.Error())
 		}
 	}
 
-	if cfg.Type == "" {
-		if resCfg.Type != "" {
-			cfg.Type = resCfg.Type
-		} else {
-			cfg.Type = dc.Type
-		}
-	}
-
-	if cfg.Brokers == nil {
-		cfg.Brokers = resCfg.Brokers
+	if err := json.Unmarshal(confJSON, &cfg); err != nil {
+		return nil, errors.ErrInvalid.WithMsgf("failed to unmarshal").WithCausef(err.Error())
 	}
 
 	newConfJSON, err := json.Marshal(cfg)

@@ -24,7 +24,11 @@ type Output struct {
 }
 
 type driverConf struct {
-	Type string `json:"type"`
+	Type         string `json:"type"`
+	Entity       string `json:"entity"`
+	Organization string `json:"organization"`
+	Landscape    string `json:"landscape"`
+	Environment  string `json:"environment"`
 }
 
 func (m *kafkaDriver) Plan(ctx context.Context, res module.ExpandedResource,
