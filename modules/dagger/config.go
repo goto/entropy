@@ -48,22 +48,27 @@ type Resources struct {
 }
 
 type Config struct {
-	Resources    Resources         `json:"resources,omitempty"`
-	FlinkName    string            `json:"flink_name,omitempty"`
-	DeploymentID string            `json:"deployment_id,omitempty"`
-	Streams      []Stream          `json:"streams,omitempty"`
-	JobId        string            `json:"job_id,omitempty"`
-	Savepoint    any               `json:"savepoint,omitempty"`
-	EnvVariables map[string]string `json:"env_variables,omitempty"`
-	ChartValues  *ChartValues      `json:"chart_values,omitempty"`
-	Deleted      bool              `json:"deleted,omitempty"`
-	Namespace    string            `json:"namespace,omitempty"`
-	Replicas     int               `json:"replicas"`
-	SinkType     string            `json:"sink_type"`
+	Resources     Resources         `json:"resources,omitempty"`
+	FlinkName     string            `json:"flink_name,omitempty"`
+	DeploymentID  string            `json:"deployment_id,omitempty"`
+	Streams       []Stream          `json:"streams,omitempty"`
+	JobId         string            `json:"job_id,omitempty"`
+	Savepoint     any               `json:"savepoint,omitempty"`
+	EnvVariables  map[string]string `json:"env_variables,omitempty"`
+	ChartValues   *ChartValues      `json:"chart_values,omitempty"`
+	Deleted       bool              `json:"deleted,omitempty"`
+	Namespace     string            `json:"namespace,omitempty"`
+	Replicas      int               `json:"replicas"`
+	SinkType      string            `json:"sink_type"`
+	PrometheusURL string            `json:"prometheus_url"`
+	JarURI        string            `json:"jar_uri"`
 }
 
 type ChartValues struct {
-	ChartVersion string `json:"chart_version" validate:"required"`
+	ImageRepository string `json:"image_repository" validate:"required"`
+	ImageTag        string `json:"image_tag" validate:"required"`
+	ChartVersion    string `json:"chart_version" validate:"required"`
+	ImagePullPolicy string `json:"image_pull_policy"`
 }
 
 type SourceDetail struct {
@@ -113,7 +118,7 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 	//transformation #3
 	var flinkOut flink.Output
 	if err := json.Unmarshal(r.Dependencies[keyFlinkDependency].Output, &flinkOut); err != nil {
-		return nil, errors.ErrInternal.WithMsgf("invalid kube state").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("invalid flink state").WithCausef(err.Error())
 	}
 
 	if cfg.Namespace == "" {
@@ -148,7 +153,9 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 	//transformation #9 and #11
 	cfg.Streams = []Stream{}
 	for i := range streams {
-		streams[i].SourceKafkaConsumerConfigGroupID = incrementGroupId(r.Name+"-0001", i)
+		if streams[i].SourceKafkaConsumerConfigGroupID == "" {
+			streams[i].SourceKafkaConsumerConfigGroupID = incrementGroupId(r.Name+"-0001", i)
+		}
 		streams[i].SourceKafkaConsumerConfigAutoCommitEnable = dc.EnvVariables[SourceKafkaConsumerConfigAutoCommitEnable]
 		streams[i].SourceKafkaConsumerConfigAutoOffsetReset = dc.EnvVariables[SourceKafkaConsumerConfigAutoOffsetReset]
 		//TODO: add stream URL for key SOURCE_KAFKA_CONSUMER_CONFIG_BOOTSTRAP_SERVERS
@@ -174,6 +181,8 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 
 	//transformation #14
 	cfg.Resources = mergeResources(dc.Resources, cfg.Resources)
+
+	cfg.PrometheusURL = flinkOut.PrometheusURL
 
 	if cfg.Replicas <= 0 {
 		cfg.Replicas = 1

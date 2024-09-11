@@ -1,12 +1,16 @@
 package dagger
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"html/template"
 	"time"
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
+	"github.com/goto/entropy/modules"
 	"github.com/goto/entropy/modules/kubernetes"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/helm"
@@ -24,7 +28,15 @@ const (
 )
 
 const (
-	labelsConfKey = "labels"
+	labelsConfKey = "extra_labels"
+
+	labelDeployment   = "deployment"
+	labelOrchestrator = "orchestrator"
+	labelURN          = "urn"
+	labelName         = "name"
+	labelNamespace    = "namespace"
+
+	orchestratorLabelValue = "entropy"
 )
 
 const defaultKey = "default"
@@ -83,31 +95,6 @@ type transientData struct {
 	PendingSteps []string `json:"pending_steps"`
 }
 
-func (dd *daggerDriver) getHelmRelease(_ resource.Resource, conf Config,
-	_ kubernetes.Output,
-) (*helm.ReleaseConfig, error) {
-
-	rc := helm.DefaultReleaseConfig()
-	rc.Timeout = dd.conf.KubeDeployTimeout
-	rc.Name = conf.DeploymentID
-	rc.Repository = chartRepo
-	rc.Chart = chartName
-	rc.Namespace = conf.Namespace
-	rc.ForceUpdate = true
-	rc.Version = conf.ChartValues.ChartVersion
-
-	rc.Values = map[string]any{
-		labelsConfKey:  dd.conf.Labels,
-		"replicaCount": conf.Replicas,
-		"dagger": map[string]any{
-			"config":    conf.EnvVariables,
-			"resources": conf.Resources,
-		},
-	}
-
-	return rc, nil
-}
-
 func mergeChartValues(cur, newVal *ChartValues) (*ChartValues, error) {
 	if newVal == nil {
 		return cur, nil
@@ -129,4 +116,105 @@ func readOutputData(exr module.ExpandedResource) (*Output, error) {
 		return nil, errors.ErrInternal.WithMsgf("corrupted output").WithCausef(err.Error())
 	}
 	return &curOut, nil
+}
+
+func readTransientData(exr module.ExpandedResource) (*transientData, error) {
+	if len(exr.Resource.State.ModuleData) == 0 {
+		return &transientData{}, nil
+	}
+
+	var modData transientData
+	if err := json.Unmarshal(exr.Resource.State.ModuleData, &modData); err != nil {
+		return nil, errors.ErrInternal.WithMsgf("corrupted transient data").WithCausef(err.Error())
+	}
+	return &modData, nil
+}
+
+func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
+	kubeOut kubernetes.Output,
+) (*helm.ReleaseConfig, error) {
+
+	entropyLabels := map[string]string{
+		labelDeployment:   conf.DeploymentID,
+		labelOrchestrator: orchestratorLabelValue,
+	}
+
+	otherLabels := map[string]string{
+		labelURN:       res.URN,
+		labelName:      res.Name,
+		labelNamespace: conf.Namespace,
+	}
+
+	deploymentLabels, err := renderTpl(dd.conf.Labels, modules.CloneAndMergeMaps(res.Labels, modules.CloneAndMergeMaps(entropyLabels, otherLabels)))
+	if err != nil {
+		return nil, err
+	}
+
+	rc := helm.DefaultReleaseConfig()
+	rc.Timeout = dd.conf.KubeDeployTimeout
+	rc.Name = conf.DeploymentID
+	rc.Repository = chartRepo
+	rc.Chart = chartName
+	rc.Namespace = conf.Namespace
+	rc.ForceUpdate = true
+	rc.Version = conf.ChartValues.ChartVersion
+
+	imageRepository := dd.conf.ChartValues.ImageRepository
+	if conf.ChartValues.ImageRepository != "" {
+		imageRepository = conf.ChartValues.ImageRepository
+	}
+
+	envVarsJSON, err := json.Marshal(conf.EnvVariables)
+	if err != nil {
+		return nil, errors.ErrInternal.WithMsgf("failed to marshal env variables").WithCausef(err.Error())
+	}
+
+	encodedEnvVars := base64.StdEncoding.EncodeToString(envVarsJSON)
+	programArgs := encodedEnvVars
+
+	rc.Values = map[string]any{
+		labelsConfKey:   modules.CloneAndMergeMaps(deploymentLabels, entropyLabels),
+		"image":         imageRepository,
+		"deployment_id": conf.DeploymentID,
+		"configurations": map[string]any{
+			"FLINK_PARALLELISM": conf.Replicas,
+		},
+		"projectID":      res.Project,
+		"name":           res.Name,
+		"team":           res.Labels["team"], //TODO: improve handling this case
+		"flink_name":     conf.FlinkName,
+		"prometheus_url": conf.PrometheusURL,
+		"resources":      conf.Resources,
+		"jar_uri":        conf.JarURI,
+		"programArgs":    "--encodedArgs" + programArgs,
+	}
+
+	return rc, nil
+}
+
+// TODO: move this to pkg
+func renderTpl(labelsTpl map[string]string, labelsValues map[string]string) (map[string]string, error) {
+	const useZeroValueForMissingKey = "missingkey=zero"
+
+	finalLabels := map[string]string{}
+	for k, v := range labelsTpl {
+		var buf bytes.Buffer
+		t, err := template.New("").Option(useZeroValueForMissingKey).Parse(v)
+		if err != nil {
+			return nil, errors.ErrInvalid.
+				WithMsgf("label template for '%s' is invalid", k).WithCausef(err.Error())
+		} else if err := t.Execute(&buf, labelsValues); err != nil {
+			return nil, errors.ErrInvalid.
+				WithMsgf("failed to render label template").WithCausef(err.Error())
+		}
+
+		// allow empty values
+		//		labelVal := strings.TrimSpace(buf.String())
+		//		if labelVal == "" {
+		//			continue
+		//		}
+
+		finalLabels[k] = buf.String()
+	}
+	return finalLabels, nil
 }

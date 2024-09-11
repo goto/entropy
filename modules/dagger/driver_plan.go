@@ -43,6 +43,8 @@ func (dd *daggerDriver) planCreate(exr module.ExpandedResource, act module.Actio
 		return nil, err
 	}
 
+	conf.JarURI = dd.conf.JarURI
+
 	exr.Resource.State = resource.State{
 		Status: resource.StatusPending,
 		Output: modules.MustJSON(Output{

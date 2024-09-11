@@ -26,6 +26,7 @@ type Config struct {
 	KubeNamespace   string `json:"kube_namespace,omitempty"`
 	Influx          Influx `json:"influx,omitempty"`
 	SinkKafkaStream string `json:"sink_kafka_stream,omitempty"`
+	PrometheusURL   string `json:"prometheus_url,omitempty"`
 }
 
 func readConfig(_ resource.Resource, confJSON json.RawMessage, dc driverConf) (*Config, error) {

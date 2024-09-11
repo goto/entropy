@@ -1,13 +1,17 @@
 package dagger
 
 import (
+	"context"
 	_ "embed"
 	"encoding/json"
 	"time"
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/modules/flink"
+	"github.com/goto/entropy/pkg/helm"
+	"github.com/goto/entropy/pkg/kube"
 	"github.com/goto/entropy/pkg/validator"
+	"helm.sh/helm/v3/pkg/release"
 )
 
 const (
@@ -34,9 +38,29 @@ var Module = module.Descriptor{
 		}
 
 		return &daggerDriver{
-			conf:       conf,
-			timeNow:    time.Now,
-			kubeDeploy: nil,
+			conf:    conf,
+			timeNow: time.Now,
+			kubeDeploy: func(_ context.Context, isCreate bool, kubeConf kube.Config, hc helm.ReleaseConfig) error {
+				canUpdate := func(rel *release.Release) bool {
+					curLabels, ok := rel.Config[labelsConfKey].(map[string]any)
+					if !ok {
+						return false
+					}
+					newLabels, ok := hc.Values[labelsConfKey].(map[string]string)
+					if !ok {
+						return false
+					}
+
+					isManagedByEntropy := curLabels[labelOrchestrator] == orchestratorLabelValue
+					isSameDeployment := curLabels[labelDeployment] == newLabels[labelDeployment]
+
+					return isManagedByEntropy && isSameDeployment
+				}
+
+				helmCl := helm.NewClient(&helm.Config{Kubernetes: kubeConf})
+				_, errHelm := helmCl.Upsert(&hc, canUpdate)
+				return errHelm
+			},
 			kubeGetPod: nil,
 		}, nil
 	},
