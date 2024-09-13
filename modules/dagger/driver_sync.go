@@ -56,7 +56,7 @@ func (dd *daggerDriver) Sync(ctx context.Context, exr module.ExpandedResource) (
 		return &finalState, nil
 	}
 
-	return nil, nil
+	return &finalState, nil
 
 }
 

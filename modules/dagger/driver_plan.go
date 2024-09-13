@@ -35,6 +35,7 @@ func (dd *daggerDriver) planCreate(exr module.ExpandedResource, act module.Actio
 	conf.ChartValues = chartVals
 
 	immediately := dd.timeNow()
+	conf.JarURI = dd.conf.JarURI
 
 	exr.Resource.Spec.Configs = modules.MustJSON(conf)
 
@@ -42,8 +43,6 @@ func (dd *daggerDriver) planCreate(exr module.ExpandedResource, act module.Actio
 	if err != nil {
 		return nil, err
 	}
-
-	conf.JarURI = dd.conf.JarURI
 
 	exr.Resource.State = resource.State{
 		Status: resource.StatusPending,

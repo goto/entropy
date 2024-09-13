@@ -70,25 +70,30 @@ func (p *Client) doCreate(actionConfig *action.Configuration, config *ReleaseCon
 	}
 
 	act := action.NewInstall(actionConfig)
-	act.Wait = config.Wait
-	act.DryRun = false
+	act.Wait = true
+	act.IncludeCRDs = true
+	act.SkipCRDs = false
 	act.Timeout = time.Duration(config.Timeout) * time.Second
 	act.Replace = config.Replace
 	act.OutputDir = ""
 	act.Namespace = config.Namespace
 	act.ClientOnly = false
 	act.Description = config.Description
-	act.WaitForJobs = config.WaitForJobs
+	act.WaitForJobs = true
 	act.ReleaseName = config.Name
 	act.GenerateName = false
 	act.NameTemplate = ""
 	act.CreateNamespace = config.CreateNamespace
 	act.ChartPathOptions = *chartPathOpts
+	act.DryRun = false
 
 	rel, err := act.Run(fetchedChart, config.Values)
 	if err != nil {
 		return nil, errors.ErrInternal.WithMsgf("create-release failed").WithCausef(err.Error())
 	}
+
+	//TODO: remove this
+	fmt.Println("Release manifest\n", rel)
 
 	return &Result{
 		Config:  config,
