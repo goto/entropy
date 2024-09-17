@@ -34,6 +34,7 @@ func (fd *flinkDriver) Output(ctx context.Context, exr module.ExpandedResource) 
 	output.KubeNamespace = conf.KubeNamespace
 	output.SinkKafkaStream = conf.SinkKafkaStream
 	output.PrometheusURL = conf.PrometheusURL
+	output.FlinkName = conf.FlinkName
 
 	return modules.MustJSON(output), nil
 }

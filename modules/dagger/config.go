@@ -25,10 +25,12 @@ const keySinkInfluxMeasurementName = "SINK_INFLUX_MEASUREMENT_NAME"
 const keyRedisServer = "REDIS_SERVER"
 const SourceKafkaConsumerConfigAutoCommitEnable = "SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_COMMIT_ENABLE"
 const SourceKafkaConsumerConfigAutoOffsetReset = "SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_OFFSET_RESET"
+const SourceKafkaConsumerConfigBootstrapServers = "SOURCE_KAFKA_CONSUMER_CONFIG_BOOTSTRAP_SERVERS"
 const SinkTypeInflux = "INFLUX"
 const SinkTypeKafka = "KAFKA"
 const keySinkKafkaBrokers = "SINK_KAFKA_BROKERS"
 const keySinkKafkaStream = "SINK_KAFKA_STREAM"
+const keySinkType = "SINK_TYPE"
 
 var (
 	//go:embed schema/config.json
@@ -48,20 +50,23 @@ type Resources struct {
 }
 
 type Config struct {
-	Resources     Resources         `json:"resources,omitempty"`
-	FlinkName     string            `json:"flink_name,omitempty"`
-	DeploymentID  string            `json:"deployment_id,omitempty"`
-	Streams       []Stream          `json:"streams,omitempty"`
-	JobId         string            `json:"job_id,omitempty"`
-	Savepoint     any               `json:"savepoint,omitempty"`
-	EnvVariables  map[string]string `json:"env_variables,omitempty"`
-	ChartValues   *ChartValues      `json:"chart_values,omitempty"`
-	Deleted       bool              `json:"deleted,omitempty"`
-	Namespace     string            `json:"namespace,omitempty"`
-	Replicas      int               `json:"replicas"`
-	SinkType      string            `json:"sink_type"`
-	PrometheusURL string            `json:"prometheus_url"`
-	JarURI        string            `json:"jar_uri"`
+	Resources    Resources         `json:"resources,omitempty"`
+	Source       []Source          `json:"source,omitempty"`
+	Sink         Sink              `json:"sink,omitempty"`
+	EnvVariables map[string]string `json:"env_variables,omitempty"`
+	Replicas     int               `json:"replicas"`
+	SinkType     string            `json:"sink_type"`
+	Team         string            `json:"team"`
+
+	FlinkName     string       `json:"flink_name,omitempty"`
+	DeploymentID  string       `json:"deployment_id,omitempty"`
+	JobId         string       `json:"job_id,omitempty"`
+	Savepoint     any          `json:"savepoint,omitempty"`
+	ChartValues   *ChartValues `json:"chart_values,omitempty"`
+	Deleted       bool         `json:"deleted,omitempty"`
+	Namespace     string       `json:"namespace,omitempty"`
+	PrometheusURL string       `json:"prometheus_url,omitempty"`
+	JarURI        string       `json:"jar_uri,omitempty"`
 }
 
 type ChartValues struct {
@@ -76,19 +81,65 @@ type SourceDetail struct {
 	SourceType string `json:"SOURCE_TYPE"`
 }
 
-type Stream struct {
-	InputSchemaTable                          string         `json:"INPUT_SCHEMA_TABLE"`
-	SourceDetails                             []SourceDetail `json:"SOURCE_DETAILS"`
+type SourceKafka struct {
 	SourceKafkaConsumerConfigAutoCommitEnable string         `json:"SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_COMMIT_ENABLE"`
 	SourceKafkaConsumerConfigAutoOffsetReset  string         `json:"SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_OFFSET_RESET"`
-	InputSchemaProtoClass                     string         `json:"INPUT_SCHEMA_PROTO_CLASS"`
 	SourceKafkaTopicNames                     string         `json:"SOURCE_KAFKA_TOPIC_NAMES"`
 	SourceKafkaName                           string         `json:"SOURCE_KAFKA_NAME"`
-	InputSchemaEventTimestampFieldIndex       string         `json:"INPUT_SCHEMA_EVENT_TIMESTAMP_FIELD_INDEX"`
-	SourceParquetFileDateRange                interface{}    `json:"SOURCE_PARQUET_FILE_DATE_RANGE"`
-	SourceParquetFilePaths                    interface{}    `json:"SOURCE_PARQUET_FILE_PATHS"`
 	SourceKafkaConsumerConfigGroupID          string         `json:"SOURCE_KAFKA_CONSUMER_CONFIG_GROUP_ID"`
 	SourceKafkaConsumerConfigBootstrapServers string         `json:"SOURCE_KAFKA_CONSUMER_CONFIG_BOOTSTRAP_SERVERS"`
+	InputSchemaTable                          string         `json:"INPUT_SCHEMA_TABLE"`
+	SourceDetails                             []SourceDetail `json:"SOURCE_DETAILS"`
+	InputSchemaProtoClass                     string         `json:"INPUT_SCHEMA_PROTO_CLASS"`
+	InputSchemaEventTimestampFieldIndex       string         `json:"INPUT_SCHEMA_EVENT_TIMESTAMP_FIELD_INDEX"`
+}
+
+type SourceParquet struct {
+	SourceParquetFileDateRange interface{} `json:"SOURCE_PARQUET_FILE_DATE_RANGE"`
+	SourceParquetFilePaths     interface{} `json:"SOURCE_PARQUET_FILE_PATHS"`
+}
+
+type Source struct {
+	SourceKafka
+	SourceParquet
+}
+
+type SinkKafka struct {
+	SinkKafkaBrokers  string `json:"SINK_KAFKA_BROKERS"`
+	SinkKafkaStream   string `json:"SINK_KAFKA_STREAM"`
+	SinkKafkaTopic    string `json:"SINK_KAFKA_TOPIC"`
+	SinkKafkaProtoMsg string `json:"SINK_KAFKA_PROTO_MESSAGE"`
+	SinkKafkaLingerMs string `json:"SINK_KAFKA_LINGER_MS"`
+}
+
+type SinkInflux struct {
+	SinkInfluxDBName          string `json:"SINK_INFLUX_DB_NAME"`
+	SinkInfluxMeasurementName string `json:"SINK_INFLUX_MEASUREMENT_NAME"`
+}
+
+type SinkBigquery struct {
+	SinkBigqueryGoogleCloudProjectID    string `json:"SINK_BIGQUERY_GOOGLE_CLOUD_PROJECT_ID"`
+	SinkBigqueryTableName               string `json:"SINK_BIGQUERY_TABLE_NAME"`
+	SinkBigqueryDatasetLabels           string `json:"SINK_BIGQUERY_DATASET_LABELS"`
+	SinkBigqueryTableLabels             string `json:"SINK_BIGQUERY_TABLE_LABELS"`
+	SinkBigqueryDatasetName             string `json:"SINK_BIGQUERY_DATASET_NAME"`
+	SinkBigqueryTablePartitioningEnable bool   `json:"SINK_BIGQUERY_TABLE_PARTITIONING_ENABLE"`
+	SinkBigqueryTablePartitionKey       string `json:"SINK_BIGQUERY_TABLE_PARTITION_KEY"`
+	SinkBigqueryRowInsertIDEnable       bool   `json:"SINK_BIGQUERY_ROW_INSERT_ID_ENABLE"`
+	SinkBigqueryClientReadTimeoutMs     int    `json:"SINK_BIGQUERY_CLIENT_READ_TIMEOUT_MS"`
+	SinkBigqueryClientConnectTimeoutMs  int    `json:"SINK_BIGQUERY_CLIENT_CONNECT_TIMEOUT_MS"`
+	SinkBigqueryTablePartitionExpiryMs  int    `json:"SINK_BIGQUERY_TABLE_PARTITION_EXPIRY_MS"`
+	SinkBigqueryDatasetLocation         string `json:"SINK_BIGQUERY_DATASET_LOCATION"`
+	SinkBigqueryBatchSize               int    `json:"SINK_BIGQUERY_BATCH_SIZE"`
+	SinkBigqueryTableClusteringEnable   bool   `json:"SINK_BIGQUERY_TABLE_CLUSTERING_ENABLE"`
+	SinkBigqueryTableClusteringKeys     string `json:"SINK_BIGQUERY_TABLE_CLUSTERING_KEYS"`
+	SinkErrorTypesForFailure            string `json:"SINK_ERROR_TYPES_FOR_FAILURE"`
+}
+
+type Sink struct {
+	SinkKafka
+	SinkInflux
+	SinkBigquery
 }
 
 func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverConf) (*Config, error) {
@@ -99,11 +150,11 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 	}
 
 	//transformation #1
-	streams := cfg.Streams
+	source := cfg.Source
 
-	for i := range streams {
-		if len(streams[i].SourceDetails) == 0 {
-			streams[i].SourceDetails = []SourceDetail{
+	for i := range source {
+		if len(source[i].SourceDetails) == 0 {
+			source[i].SourceDetails = []SourceDetail{
 				{
 					SourceName: "KAFKA_CONSUMER",
 					SourceType: "UNBOUNDED",
@@ -144,25 +195,28 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 	cfg.EnvVariables[keySinkInfluxURL] = flinkOut.Influx.URL
 	cfg.EnvVariables[keySinkInfluxPassword] = flinkOut.Influx.Password
 	cfg.EnvVariables[keySinkInfluxUsername] = flinkOut.Influx.Username
-	//TODO: add sink influx db name
-	//TODO: check if SINK_INFLUX_MEASUREMENT_NAME and REDIS_SERVER needs modification
+	//SINK_INFLUX_DB_NAME is added by client
+	//SINK_INFLUX_MEASUREMENT_NAME is added by client
+	//REDIS_SERVER is skipped
 
 	//transformation #8
-	//Longbow related  transformation skipped
+	//Longbow configs would be in base configs
 
 	//transformation #9 and #11
-	cfg.Streams = []Stream{}
-	for i := range streams {
-		if streams[i].SourceKafkaConsumerConfigGroupID == "" {
-			streams[i].SourceKafkaConsumerConfigGroupID = incrementGroupId(r.Name+"-0001", i)
+	cfg.Source = []Source{}
+	for i := range source {
+		if source[i].SourceKafkaConsumerConfigGroupID == "" {
+			source[i].SourceKafkaConsumerConfigGroupID = incrementGroupId(r.Name+"-0001", i)
 		}
-		streams[i].SourceKafkaConsumerConfigAutoCommitEnable = dc.EnvVariables[SourceKafkaConsumerConfigAutoCommitEnable]
-		streams[i].SourceKafkaConsumerConfigAutoOffsetReset = dc.EnvVariables[SourceKafkaConsumerConfigAutoOffsetReset]
-		//TODO: add stream URL for key SOURCE_KAFKA_CONSUMER_CONFIG_BOOTSTRAP_SERVERS
+		source[i].SourceKafkaConsumerConfigAutoCommitEnable = dc.EnvVariables[SourceKafkaConsumerConfigAutoCommitEnable]
+		source[i].SourceKafkaConsumerConfigAutoOffsetReset = dc.EnvVariables[SourceKafkaConsumerConfigAutoOffsetReset]
+		source[i].SourceKafkaConsumerConfigBootstrapServers = dc.EnvVariables[SourceKafkaConsumerConfigBootstrapServers]
 
-		cfg.Streams = append(cfg.Streams, Stream{
-			SourceKafkaName:                  streams[i].SourceKafkaName,
-			SourceKafkaConsumerConfigGroupID: streams[i].SourceKafkaConsumerConfigGroupID,
+		cfg.Source = append(cfg.Source, Source{
+			SourceKafka: SourceKafka{
+				SourceKafkaName:                  source[i].SourceKafkaName,
+				SourceKafkaConsumerConfigGroupID: source[i].SourceKafkaConsumerConfigGroupID,
+			},
 		})
 	}
 
@@ -171,18 +225,23 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 	//do we need to check this?
 
 	//transformation #12
-	cfg.EnvVariables[keyStreams] = string(mustMarshalJSON(streams))
+	cfg.EnvVariables[keyStreams] = string(mustMarshalJSON(source))
 
 	//transformation #13
+	cfg.EnvVariables[keySinkType] = cfg.SinkType
 	if cfg.SinkType == SinkTypeKafka {
-		cfg.EnvVariables[keySinkKafkaStream] = flinkOut.SinkKafkaStream
-		//TODO cfg.EnvVariables[keySinkKafkaBrokers] = stream URL
+		cfg.EnvVariables[keySinkKafkaStream] = cfg.Sink.SinkKafka.SinkKafkaStream
+		cfg.EnvVariables[keySinkKafkaBrokers] = cfg.Sink.SinkKafka.SinkKafkaBrokers
+	} else if cfg.SinkType == SinkTypeInflux {
+		cfg.EnvVariables[keySinkInfluxDBName] = cfg.Sink.SinkInflux.SinkInfluxDBName
+		cfg.EnvVariables[keySinkInfluxMeasurementName] = cfg.Sink.SinkInflux.SinkInfluxMeasurementName
 	}
 
 	//transformation #14
 	cfg.Resources = mergeResources(dc.Resources, cfg.Resources)
 
 	cfg.PrometheusURL = flinkOut.PrometheusURL
+	cfg.FlinkName = flinkOut.FlinkName
 
 	if cfg.Replicas <= 0 {
 		cfg.Replicas = 1

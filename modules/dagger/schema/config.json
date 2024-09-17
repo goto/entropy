@@ -4,7 +4,11 @@
     "type": "object",
     "required": [
       "replicas",
-      "env_variables"
+      "env_variables",
+      "team",
+      "source",
+      "sink",
+      "sink_type"
     ],
     "properties": {
       "replicas": {
@@ -14,6 +18,14 @@
       },
       "deployment_id": {
         "type": "string"
+      },
+      "sink_type": {
+        "type": "string",
+        "enum": [
+          "INFLUX",
+          "KAFKA",
+          "BIGQUERY"
+        ]
       },
       "env_variables": {
         "type": "object",
