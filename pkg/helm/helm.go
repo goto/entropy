@@ -92,9 +92,6 @@ func (p *Client) doCreate(actionConfig *action.Configuration, config *ReleaseCon
 		return nil, errors.ErrInternal.WithMsgf("create-release failed").WithCausef(err.Error())
 	}
 
-	//TODO: remove this
-	fmt.Println("Release manifest\n", rel)
-
 	return &Result{
 		Config:  config,
 		Release: rel,

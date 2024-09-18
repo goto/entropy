@@ -28,9 +28,32 @@ const SourceKafkaConsumerConfigAutoOffsetReset = "SOURCE_KAFKA_CONSUMER_CONFIG_A
 const SourceKafkaConsumerConfigBootstrapServers = "SOURCE_KAFKA_CONSUMER_CONFIG_BOOTSTRAP_SERVERS"
 const SinkTypeInflux = "INFLUX"
 const SinkTypeKafka = "KAFKA"
+const SinkTypeBigquery = "BIGQUERY"
 const keySinkKafkaBrokers = "SINK_KAFKA_BROKERS"
 const keySinkKafkaStream = "SINK_KAFKA_STREAM"
 const keySinkType = "SINK_TYPE"
+const keySinkKafkaProtoMsg = "SINK_KAFKA_PROTO_MESSAGE"
+const keySinkKafkaTopic = "SINK_KAFKA_TOPIC"
+const keySinkKafkaKey = "SINK_KAFKA_PROTO_KEY"
+const keySinkKafkaLingerMs = "SINK_KAFKA_LINGER_MS"
+const (
+	keySinkBigqueryGoogleCloudProjectID    = "SINK_BIGQUERY_GOOGLE_CLOUD_PROJECT_ID"
+	keySinkBigqueryDatasetName             = "SINK_BIGQUERY_DATASET_NAME"
+	keySinkBigqueryTableName               = "SINK_BIGQUERY_TABLE_NAME"
+	keySinkBigqueryDatasetLabels           = "SINK_BIGQUERY_DATASET_LABELS"
+	keySinkBigqueryTableLabels             = "SINK_BIGQUERY_TABLE_LABELS"
+	keySinkBigqueryTablePartitioningEnable = "SINK_BIGQUERY_TABLE_PARTITIONING_ENABLE"
+	keySinkBigqueryTableClusteringEnable   = "SINK_BIGQUERY_TABLE_CLUSTERING_ENABLE"
+	keySinkBigqueryBatchSize               = "SINK_BIGQUERY_BATCH_SIZE"
+	keySinkBigqueryTablePartitionKey       = "SINK_BIGQUERY_TABLE_PARTITION_KEY"
+	keySinkBigqueryRowInsertIDEnable       = "SINK_BIGQUERY_ROW_INSERT_ID_ENABLE"
+	keySinkBigqueryClientReadTimeoutMs     = "SINK_BIGQUERY_CLIENT_READ_TIMEOUT_MS"
+	keySinkBigqueryClientConnectTimeoutMs  = "SINK_BIGQUERY_CLIENT_CONNECT_TIMEOUT_MS"
+	keySinkBigqueryTablePartitionExpiryMs  = "SINK_BIGQUERY_TABLE_PARTITION_EXPIRY_MS"
+	keySinkBigqueryDatasetLocation         = "SINK_BIGQUERY_DATASET_LOCATION"
+	keySinkErrorTypesForFailure            = "SINK_ERROR_TYPES_FOR_FAILURE"
+	keySinkBigqueryTableClusteringKeys     = "SINK_BIGQUERY_TABLE_CLUSTERING_KEYS"
+)
 
 var (
 	//go:embed schema/config.json
@@ -82,24 +105,24 @@ type SourceDetail struct {
 }
 
 type SourceKafka struct {
-	SourceKafkaConsumerConfigAutoCommitEnable string         `json:"SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_COMMIT_ENABLE"`
-	SourceKafkaConsumerConfigAutoOffsetReset  string         `json:"SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_OFFSET_RESET"`
-	SourceKafkaTopicNames                     string         `json:"SOURCE_KAFKA_TOPIC_NAMES"`
-	SourceKafkaName                           string         `json:"SOURCE_KAFKA_NAME"`
-	SourceKafkaConsumerConfigGroupID          string         `json:"SOURCE_KAFKA_CONSUMER_CONFIG_GROUP_ID"`
-	SourceKafkaConsumerConfigBootstrapServers string         `json:"SOURCE_KAFKA_CONSUMER_CONFIG_BOOTSTRAP_SERVERS"`
-	InputSchemaTable                          string         `json:"INPUT_SCHEMA_TABLE"`
-	SourceDetails                             []SourceDetail `json:"SOURCE_DETAILS"`
-	InputSchemaProtoClass                     string         `json:"INPUT_SCHEMA_PROTO_CLASS"`
-	InputSchemaEventTimestampFieldIndex       string         `json:"INPUT_SCHEMA_EVENT_TIMESTAMP_FIELD_INDEX"`
+	SourceKafkaConsumerConfigAutoCommitEnable string `json:"SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_COMMIT_ENABLE"`
+	SourceKafkaConsumerConfigAutoOffsetReset  string `json:"SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_OFFSET_RESET"`
+	SourceKafkaTopicNames                     string `json:"SOURCE_KAFKA_TOPIC_NAMES"`
+	SourceKafkaName                           string `json:"SOURCE_KAFKA_NAME"`
+	SourceKafkaConsumerConfigGroupID          string `json:"SOURCE_KAFKA_CONSUMER_CONFIG_GROUP_ID"`
+	SourceKafkaConsumerConfigBootstrapServers string `json:"SOURCE_KAFKA_CONSUMER_CONFIG_BOOTSTRAP_SERVERS"`
 }
 
 type SourceParquet struct {
 	SourceParquetFileDateRange interface{} `json:"SOURCE_PARQUET_FILE_DATE_RANGE"`
-	SourceParquetFilePaths     interface{} `json:"SOURCE_PARQUET_FILE_PATHS"`
+	SourceParquetFilePaths     []string    `json:"SOURCE_PARQUET_FILE_PATHS"`
 }
 
 type Source struct {
+	InputSchemaProtoClass               string         `json:"INPUT_SCHEMA_PROTO_CLASS"`
+	InputSchemaEventTimestampFieldIndex string         `json:"INPUT_SCHEMA_EVENT_TIMESTAMP_FIELD_INDEX"`
+	SourceDetails                       []SourceDetail `json:"SOURCE_DETAILS"`
+	InputSchemaTable                    string         `json:"INPUT_SCHEMA_TABLE"`
 	SourceKafka
 	SourceParquet
 }
@@ -110,6 +133,7 @@ type SinkKafka struct {
 	SinkKafkaTopic    string `json:"SINK_KAFKA_TOPIC"`
 	SinkKafkaProtoMsg string `json:"SINK_KAFKA_PROTO_MESSAGE"`
 	SinkKafkaLingerMs string `json:"SINK_KAFKA_LINGER_MS"`
+	SinkKafkaProtoKey string `json:"SINK_KAFKA_PROTO_KEY"`
 }
 
 type SinkInflux struct {
@@ -123,15 +147,15 @@ type SinkBigquery struct {
 	SinkBigqueryDatasetLabels           string `json:"SINK_BIGQUERY_DATASET_LABELS"`
 	SinkBigqueryTableLabels             string `json:"SINK_BIGQUERY_TABLE_LABELS"`
 	SinkBigqueryDatasetName             string `json:"SINK_BIGQUERY_DATASET_NAME"`
-	SinkBigqueryTablePartitioningEnable bool   `json:"SINK_BIGQUERY_TABLE_PARTITIONING_ENABLE"`
+	SinkBigqueryTablePartitioningEnable string `json:"SINK_BIGQUERY_TABLE_PARTITIONING_ENABLE"`
 	SinkBigqueryTablePartitionKey       string `json:"SINK_BIGQUERY_TABLE_PARTITION_KEY"`
-	SinkBigqueryRowInsertIDEnable       bool   `json:"SINK_BIGQUERY_ROW_INSERT_ID_ENABLE"`
-	SinkBigqueryClientReadTimeoutMs     int    `json:"SINK_BIGQUERY_CLIENT_READ_TIMEOUT_MS"`
-	SinkBigqueryClientConnectTimeoutMs  int    `json:"SINK_BIGQUERY_CLIENT_CONNECT_TIMEOUT_MS"`
-	SinkBigqueryTablePartitionExpiryMs  int    `json:"SINK_BIGQUERY_TABLE_PARTITION_EXPIRY_MS"`
+	SinkBigqueryRowInsertIDEnable       string `json:"SINK_BIGQUERY_ROW_INSERT_ID_ENABLE"`
+	SinkBigqueryClientReadTimeoutMs     string `json:"SINK_BIGQUERY_CLIENT_READ_TIMEOUT_MS"`
+	SinkBigqueryClientConnectTimeoutMs  string `json:"SINK_BIGQUERY_CLIENT_CONNECT_TIMEOUT_MS"`
+	SinkBigqueryTablePartitionExpiryMs  string `json:"SINK_BIGQUERY_TABLE_PARTITION_EXPIRY_MS"`
 	SinkBigqueryDatasetLocation         string `json:"SINK_BIGQUERY_DATASET_LOCATION"`
-	SinkBigqueryBatchSize               int    `json:"SINK_BIGQUERY_BATCH_SIZE"`
-	SinkBigqueryTableClusteringEnable   bool   `json:"SINK_BIGQUERY_TABLE_CLUSTERING_ENABLE"`
+	SinkBigqueryBatchSize               string `json:"SINK_BIGQUERY_BATCH_SIZE"`
+	SinkBigqueryTableClusteringEnable   string `json:"SINK_BIGQUERY_TABLE_CLUSTERING_ENABLE"`
 	SinkBigqueryTableClusteringKeys     string `json:"SINK_BIGQUERY_TABLE_CLUSTERING_KEYS"`
 	SinkErrorTypesForFailure            string `json:"SINK_ERROR_TYPES_FOR_FAILURE"`
 }
@@ -149,18 +173,41 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 		return nil, errors.ErrInvalid.WithMsgf("invalid config json").WithCausef(err.Error())
 	}
 
-	//transformation #1
-	source := cfg.Source
+	//transformation #9 and #11
+	if cfg.EnvVariables[keyStreams] == "" {
+		//transformation #1
+		source := cfg.Source
 
-	for i := range source {
-		if len(source[i].SourceDetails) == 0 {
-			source[i].SourceDetails = []SourceDetail{
-				{
-					SourceName: "KAFKA_CONSUMER",
-					SourceType: "UNBOUNDED",
-				},
+		cfg.Source = []Source{}
+		for i := range source {
+			if source[i].SourceParquet.SourceParquetFilePaths != nil && len(source[i].SourceParquet.SourceParquetFilePaths) > 0 {
+				//source is parquete
+				//do nothing
+				cfg.Source = []Source{
+					{
+						SourceParquet: SourceParquet{},
+					},
+				}
+				continue
 			}
+			if source[i].SourceKafkaConsumerConfigGroupID == "" {
+				source[i].SourceKafkaConsumerConfigGroupID = incrementGroupId(r.Name+"-0001", i)
+			}
+			source[i].SourceKafkaConsumerConfigAutoCommitEnable = dc.EnvVariables[SourceKafkaConsumerConfigAutoCommitEnable]
+			source[i].SourceKafkaConsumerConfigAutoOffsetReset = dc.EnvVariables[SourceKafkaConsumerConfigAutoOffsetReset]
+			source[i].SourceKafkaConsumerConfigBootstrapServers = dc.EnvVariables[SourceKafkaConsumerConfigBootstrapServers]
+
+			cfg.Source = append(cfg.Source, Source{
+				SourceKafka: SourceKafka{
+					SourceKafkaName:                  source[i].SourceKafkaName,
+					SourceKafkaConsumerConfigGroupID: source[i].SourceKafkaConsumerConfigGroupID,
+				},
+			})
 		}
+
+		//transformation #12
+		cfg.EnvVariables[keyStreams] = string(mustMarshalJSON(source))
+		fmt.Printf("cfg.EnvVariables[keyStreams]: %v\n", cfg.EnvVariables[keyStreams])
 	}
 
 	//transformation #2
@@ -202,39 +249,39 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 	//transformation #8
 	//Longbow configs would be in base configs
 
-	//transformation #9 and #11
-	cfg.Source = []Source{}
-	for i := range source {
-		if source[i].SourceKafkaConsumerConfigGroupID == "" {
-			source[i].SourceKafkaConsumerConfigGroupID = incrementGroupId(r.Name+"-0001", i)
-		}
-		source[i].SourceKafkaConsumerConfigAutoCommitEnable = dc.EnvVariables[SourceKafkaConsumerConfigAutoCommitEnable]
-		source[i].SourceKafkaConsumerConfigAutoOffsetReset = dc.EnvVariables[SourceKafkaConsumerConfigAutoOffsetReset]
-		source[i].SourceKafkaConsumerConfigBootstrapServers = dc.EnvVariables[SourceKafkaConsumerConfigBootstrapServers]
-
-		cfg.Source = append(cfg.Source, Source{
-			SourceKafka: SourceKafka{
-				SourceKafkaName:                  source[i].SourceKafkaName,
-				SourceKafkaConsumerConfigGroupID: source[i].SourceKafkaConsumerConfigGroupID,
-			},
-		})
-	}
-
 	//transformation #10
 	//this shall check if the project of the conf.EnvVars.STREAMS is same as that of the corresponding flink
 	//do we need to check this?
-
-	//transformation #12
-	cfg.EnvVariables[keyStreams] = string(mustMarshalJSON(source))
 
 	//transformation #13
 	cfg.EnvVariables[keySinkType] = cfg.SinkType
 	if cfg.SinkType == SinkTypeKafka {
 		cfg.EnvVariables[keySinkKafkaStream] = cfg.Sink.SinkKafka.SinkKafkaStream
 		cfg.EnvVariables[keySinkKafkaBrokers] = cfg.Sink.SinkKafka.SinkKafkaBrokers
+		cfg.EnvVariables[keySinkKafkaProtoMsg] = cfg.Sink.SinkKafka.SinkKafkaProtoMsg
+		cfg.EnvVariables[keySinkKafkaTopic] = cfg.Sink.SinkKafka.SinkKafkaTopic
+		cfg.EnvVariables[keySinkKafkaKey] = cfg.Sink.SinkKafka.SinkKafkaProtoKey
+		cfg.EnvVariables[keySinkKafkaLingerMs] = cfg.Sink.SinkKafka.SinkKafkaLingerMs
 	} else if cfg.SinkType == SinkTypeInflux {
 		cfg.EnvVariables[keySinkInfluxDBName] = cfg.Sink.SinkInflux.SinkInfluxDBName
 		cfg.EnvVariables[keySinkInfluxMeasurementName] = cfg.Sink.SinkInflux.SinkInfluxMeasurementName
+	} else if cfg.SinkType == SinkTypeBigquery {
+		cfg.EnvVariables[keySinkBigqueryGoogleCloudProjectID] = cfg.Sink.SinkBigquery.SinkBigqueryGoogleCloudProjectID
+		cfg.EnvVariables[keySinkBigqueryDatasetName] = cfg.Sink.SinkBigquery.SinkBigqueryDatasetName
+		cfg.EnvVariables[keySinkBigqueryTableName] = cfg.Sink.SinkBigquery.SinkBigqueryTableName
+		cfg.EnvVariables[keySinkBigqueryDatasetLabels] = cfg.Sink.SinkBigquery.SinkBigqueryDatasetLabels
+		cfg.EnvVariables[keySinkBigqueryTableLabels] = cfg.Sink.SinkBigquery.SinkBigqueryTableLabels
+		cfg.EnvVariables[keySinkBigqueryTablePartitioningEnable] = cfg.Sink.SinkBigquery.SinkBigqueryTablePartitioningEnable
+		cfg.EnvVariables[keySinkBigqueryTablePartitionKey] = cfg.Sink.SinkBigquery.SinkBigqueryTablePartitionKey
+		cfg.EnvVariables[keySinkBigqueryRowInsertIDEnable] = cfg.Sink.SinkBigquery.SinkBigqueryRowInsertIDEnable
+		cfg.EnvVariables[keySinkBigqueryClientReadTimeoutMs] = cfg.Sink.SinkBigquery.SinkBigqueryClientReadTimeoutMs
+		cfg.EnvVariables[keySinkBigqueryClientConnectTimeoutMs] = cfg.Sink.SinkBigquery.SinkBigqueryClientConnectTimeoutMs
+		cfg.EnvVariables[keySinkBigqueryTablePartitionExpiryMs] = cfg.Sink.SinkBigquery.SinkBigqueryTablePartitionExpiryMs
+		cfg.EnvVariables[keySinkBigqueryDatasetLocation] = cfg.Sink.SinkBigquery.SinkBigqueryDatasetLocation
+		cfg.EnvVariables[keySinkBigqueryBatchSize] = cfg.Sink.SinkBigquery.SinkBigqueryBatchSize
+		cfg.EnvVariables[keySinkBigqueryTableClusteringEnable] = cfg.Sink.SinkBigquery.SinkBigqueryTableClusteringEnable
+		cfg.EnvVariables[keySinkBigqueryTableClusteringKeys] = cfg.Sink.SinkBigquery.SinkBigqueryTableClusteringKeys
+		cfg.EnvVariables[keySinkErrorTypesForFailure] = cfg.Sink.SinkBigquery.SinkErrorTypesForFailure
 	}
 
 	//transformation #14
