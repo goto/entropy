@@ -39,12 +39,22 @@ func (dd *daggerDriver) refreshOutput(ctx context.Context, r resource.Resource,
 		return nil, err
 	}
 
-	pods, err := dd.kubeGetPod(ctx, kubeOut.Configs, rc.Namespace, map[string]string{"app": rc.Name})
+	pods, err := dd.kubeGetPod(ctx, kubeOut.Configs, rc.Namespace, map[string]string{"app": conf.DeploymentID})
 	if err != nil {
 		return nil, errors.ErrInternal.WithCausef(err.Error())
 	}
 	output.Pods = pods
 	output.Namespace = conf.Namespace
+	output.JobID = conf.DeploymentID
+
+	crd, err := dd.kubeGetCRD(ctx, kubeOut.Configs, rc.Namespace, rc.Name)
+	if err != nil {
+		return nil, errors.ErrInternal.WithCausef(err.Error())
+	}
+
+	output.JMDeployStatus = crd.JMDeployStatus
+	output.JobStatus = crd.JobStatus
+	output.Reconcilation = crd.Reconciliation
 
 	return modules.MustJSON(output), nil
 }

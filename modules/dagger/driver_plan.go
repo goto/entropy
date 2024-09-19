@@ -47,8 +47,7 @@ func (dd *daggerDriver) planCreate(exr module.ExpandedResource, act module.Actio
 	exr.Resource.State = resource.State{
 		Status: resource.StatusPending,
 		Output: modules.MustJSON(Output{
-			Namespace:   conf.Namespace,
-			ReleaseName: conf.DeploymentID,
+			Namespace: conf.Namespace,
 		}),
 		NextSyncAt: &immediately,
 		ModuleData: modules.MustJSON(transientData{

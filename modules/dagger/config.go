@@ -73,23 +73,21 @@ type Resources struct {
 }
 
 type Config struct {
-	Resources    Resources         `json:"resources,omitempty"`
-	Source       []Source          `json:"source,omitempty"`
-	Sink         Sink              `json:"sink,omitempty"`
-	EnvVariables map[string]string `json:"env_variables,omitempty"`
-	Replicas     int               `json:"replicas"`
-	SinkType     string            `json:"sink_type"`
-	Team         string            `json:"team"`
-
-	FlinkName     string       `json:"flink_name,omitempty"`
-	DeploymentID  string       `json:"deployment_id,omitempty"`
-	JobId         string       `json:"job_id,omitempty"`
-	Savepoint     any          `json:"savepoint,omitempty"`
-	ChartValues   *ChartValues `json:"chart_values,omitempty"`
-	Deleted       bool         `json:"deleted,omitempty"`
-	Namespace     string       `json:"namespace,omitempty"`
-	PrometheusURL string       `json:"prometheus_url,omitempty"`
-	JarURI        string       `json:"jar_uri,omitempty"`
+	Resources     Resources         `json:"resources,omitempty"`
+	Source        []Source          `json:"source,omitempty"`
+	Sink          Sink              `json:"sink,omitempty"`
+	EnvVariables  map[string]string `json:"env_variables,omitempty"`
+	Replicas      int               `json:"replicas"`
+	SinkType      string            `json:"sink_type"`
+	Team          string            `json:"team"`
+	FlinkName     string            `json:"flink_name,omitempty"`
+	DeploymentID  string            `json:"deployment_id,omitempty"`
+	Savepoint     any               `json:"savepoint,omitempty"`
+	ChartValues   *ChartValues      `json:"chart_values,omitempty"`
+	Deleted       bool              `json:"deleted,omitempty"`
+	Namespace     string            `json:"namespace,omitempty"`
+	PrometheusURL string            `json:"prometheus_url,omitempty"`
+	JarURI        string            `json:"jar_uri,omitempty"`
 }
 
 type ChartValues struct {
@@ -228,6 +226,7 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 	//transform resource name to safe length
 
 	//transformation #5
+	//TODO: build name from title as project-<title>-dagger
 	cfg.EnvVariables[keyFlinkJobID] = r.Name
 
 	//transformation #6
