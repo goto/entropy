@@ -88,35 +88,36 @@ var Module = module.Descriptor{
 				if err != nil {
 					return kube.FlinkDeploymentStatus{}, err
 				}
-				flinkDeployment := crd.Object
-
-				var flinkCRDStatus FlinkCRDStatus
-				statusInterface, ok := flinkDeployment["status"].(map[string]interface{})
-				if !ok {
-					return kube.FlinkDeploymentStatus{}, errors.ErrInternal.WithMsgf("failed to convert flink deployment status to map[string]interface{}")
-				}
-
-				if jmStatus, ok := statusInterface["jobManagerDeploymentStatus"].(string); ok {
-					flinkCRDStatus.JobManagerDeploymentStatus = jmStatus
-				}
-				if jobStatus, ok := statusInterface["jobStatus"].(map[string]interface{}); ok {
-					if st, ok := jobStatus["state"].(string); ok {
-						flinkCRDStatus.JobStatus = st
-					}
-				}
-				if reconciliationStatus, ok := statusInterface["reconciliationStatus"].(map[string]interface{}); ok {
-					if st, ok := reconciliationStatus["state"].(string); ok {
-						flinkCRDStatus.ReconciliationStatus = st
-					}
-				}
-
-				status := kube.FlinkDeploymentStatus{
-					JMDeployStatus: flinkCRDStatus.JobManagerDeploymentStatus,
-					JobStatus:      flinkCRDStatus.JobStatus,
-					Reconciliation: flinkCRDStatus.ReconciliationStatus,
-				}
-				return status, nil
-
+				return parseFlinkCRDStatus(crd.Object)
 			}}, nil
 	},
+}
+
+func parseFlinkCRDStatus(flinkDeployment map[string]interface{}) (kube.FlinkDeploymentStatus, error) {
+	var flinkCRDStatus FlinkCRDStatus
+	statusInterface, ok := flinkDeployment["status"].(map[string]interface{})
+	if !ok {
+		return kube.FlinkDeploymentStatus{}, errors.ErrInternal.WithMsgf("failed to convert flink deployment status to map[string]interface{}")
+	}
+
+	if jmStatus, ok := statusInterface["jobManagerDeploymentStatus"].(string); ok {
+		flinkCRDStatus.JobManagerDeploymentStatus = jmStatus
+	}
+	if jobStatus, ok := statusInterface["jobStatus"].(map[string]interface{}); ok {
+		if st, ok := jobStatus["state"].(string); ok {
+			flinkCRDStatus.JobStatus = st
+		}
+	}
+	if reconciliationStatus, ok := statusInterface["reconciliationStatus"].(map[string]interface{}); ok {
+		if st, ok := reconciliationStatus["state"].(string); ok {
+			flinkCRDStatus.ReconciliationStatus = st
+		}
+	}
+
+	status := kube.FlinkDeploymentStatus{
+		JMDeployStatus: flinkCRDStatus.JobManagerDeploymentStatus,
+		JobStatus:      flinkCRDStatus.JobStatus,
+		Reconciliation: flinkCRDStatus.ReconciliationStatus,
+	}
+	return status, nil
 }
