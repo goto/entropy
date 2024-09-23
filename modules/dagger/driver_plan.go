@@ -29,6 +29,9 @@ func (dd *daggerDriver) planCreate(exr module.ExpandedResource, act module.Actio
 		return nil, err
 	}
 
+	//transformation #12
+	conf.EnvVariables[keyStreams] = string(mustMarshalJSON(conf.Source))
+
 	chartVals, err := mergeChartValues(&dd.conf.ChartValues, conf.ChartValues)
 	if err != nil {
 		return nil, err
@@ -71,6 +74,8 @@ func (dd *daggerDriver) planChange(exr module.ExpandedResource, act module.Actio
 		if err != nil {
 			return nil, err
 		}
+
+		newConf.Source = mergeConsumerGroupId(curConf.Source, newConf.Source)
 
 		chartVals, err := mergeChartValues(curConf.ChartValues, newConf.ChartValues)
 		if err != nil {
@@ -116,4 +121,24 @@ func (dd *daggerDriver) validateHelmReleaseConfigs(expandedResource module.Expan
 
 	_, err := dd.getHelmRelease(expandedResource.Resource, config, flinkOut.KubeCluster)
 	return err
+}
+
+func mergeConsumerGroupId(currStreams, newStreams []Source) []Source {
+	if len(currStreams) != len(newStreams) {
+		return newStreams
+	}
+
+	for i := range currStreams {
+		if currStreams[i].SourceParquet.SourceParquetFilePaths != nil && len(currStreams[i].SourceParquet.SourceParquetFilePaths) > 0 {
+			//source is parquete
+			//do nothing
+			continue
+		}
+
+		if currStreams[i].SourceKafka.SourceKafkaName == newStreams[i].SourceKafka.SourceKafkaName {
+			newStreams[i].SourceKafka.SourceKafkaConsumerConfigGroupID = currStreams[i].SourceKafka.SourceKafkaConsumerConfigGroupID
+		}
+	}
+
+	return newStreams
 }

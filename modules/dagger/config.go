@@ -211,11 +211,9 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 		source[i].SourceKafkaConsumerConfigAutoCommitEnable = dc.EnvVariables[SourceKafkaConsumerConfigAutoCommitEnable]
 		source[i].SourceKafkaConsumerConfigAutoOffsetReset = dc.EnvVariables[SourceKafkaConsumerConfigAutoOffsetReset]
 		source[i].SourceKafkaConsumerConfigBootstrapServers = dc.EnvVariables[SourceKafkaConsumerConfigBootstrapServers]
-
 	}
 
-	//transformation #12
-	cfg.EnvVariables[keyStreams] = string(mustMarshalJSON(source))
+	cfg.Source = source
 
 	//transformation #2
 	cfg.EnvVariables = modules.CloneAndMergeMaps(dc.EnvVariables, cfg.EnvVariables)
