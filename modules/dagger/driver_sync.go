@@ -18,6 +18,11 @@ func (dd *daggerDriver) Sync(ctx context.Context, exr module.ExpandedResource) (
 		return nil, err
 	}
 
+	out, err := readOutputData(exr)
+	if err != nil {
+		return nil, errors.ErrInternal.WithCausef(err.Error())
+	}
+
 	conf, err := readConfig(exr, exr.Spec.Configs, dd.conf)
 	if err != nil {
 		return nil, errors.ErrInternal.WithCausef(err.Error())
@@ -56,6 +61,14 @@ func (dd *daggerDriver) Sync(ctx context.Context, exr module.ExpandedResource) (
 		return &finalState, nil
 	}
 
+	finalOut, err := dd.refreshOutput(ctx, exr.Resource, *conf, *out, flinkOut.KubeCluster)
+	if err != nil {
+		return nil, err
+	}
+	finalState.Output = finalOut
+
+	finalState.Status = resource.StatusCompleted
+	finalState.ModuleData = nil
 	return &finalState, nil
 
 }
