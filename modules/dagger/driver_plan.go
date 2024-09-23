@@ -12,6 +12,12 @@ import (
 )
 
 const SourceKafkaConsumerAutoOffsetReset = "SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_OFFSET_RESET"
+const (
+	JobStateRunning   = "running"
+	JobStateSuspended = "suspended"
+	StateDeployed     = "DEPLOYED"
+	StateUserStopped  = "USER_STOPPED"
+)
 
 func (dd *daggerDriver) Plan(_ context.Context, exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
 	switch act.Name {
@@ -40,6 +46,8 @@ func (dd *daggerDriver) planCreate(exr module.ExpandedResource, act module.Actio
 
 	immediately := dd.timeNow()
 	conf.JarURI = dd.conf.JarURI
+	conf.State = StateDeployed
+	conf.JobState = JobStateRunning
 
 	exr.Resource.Spec.Configs = modules.MustJSON(conf)
 
@@ -86,12 +94,22 @@ func (dd *daggerDriver) planChange(exr module.ExpandedResource, act module.Actio
 		newConf.DeploymentID = curConf.DeploymentID
 		newConf.ChartValues = chartVals
 		newConf.JarURI = curConf.JarURI
+		newConf.State = StateDeployed
+		newConf.JobState = JobStateRunning
 
 		newConf.Resources = mergeResources(curConf.Resources, newConf.Resources)
 
 		curConf = newConf
-	}
 
+	case StopAction:
+		curConf.State = StateUserStopped
+		curConf.JobState = JobStateSuspended
+
+	case StartAction:
+		curConf.State = StateDeployed
+		curConf.JobState = JobStateRunning
+
+	}
 	immediately := dd.timeNow()
 
 	exr.Resource.Spec.Configs = modules.MustJSON(curConf)

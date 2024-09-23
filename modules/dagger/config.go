@@ -111,6 +111,8 @@ type Config struct {
 	Namespace     string            `json:"namespace,omitempty"`
 	PrometheusURL string            `json:"prometheus_url,omitempty"`
 	JarURI        string            `json:"jar_uri,omitempty"`
+	State         string            `json:"state"`
+	JobState      string            `json:"job_state"`
 }
 
 type ChartValues struct {

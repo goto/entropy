@@ -88,7 +88,6 @@ type driverConf struct {
 }
 
 type Output struct {
-	State          string     `json:"state,omitempty"`
 	JMDeployStatus string     `json:"jm_deploy_status,omitempty"`
 	JobStatus      string     `json:"job_status,omitempty"`
 	Reconcilation  string     `json:"reconcilation,omitempty"`
@@ -208,7 +207,7 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 		},
 		"jarURI":      conf.JarURI,
 		"programArgs": append([]string{"--encodedArgs"}, encodedProgramArgs),
-		"state":       "running",
+		"state":       conf.JobState,
 		"namespace":   conf.Namespace,
 	}
 

@@ -18,6 +18,8 @@ import (
 
 const (
 	keyFlinkDependency = "flink"
+	StopAction         = "stop"
+	StartAction        = "start"
 )
 
 type FlinkCRDStatus struct {
@@ -39,6 +41,14 @@ var Module = module.Descriptor{
 		{
 			Name:        module.UpdateAction,
 			Description: "Updates an existing dagger",
+		},
+		{
+			Name:        StopAction,
+			Description: "Suspends a running dagger",
+		},
+		{
+			Name:        StartAction,
+			Description: "Starts a suspended dagger",
 		},
 	},
 	DriverFactory: func(confJSON json.RawMessage) (module.Driver, error) {
