@@ -20,7 +20,7 @@
         }
       }
     },
-    "sink_kafka_stream_name": {
+    "sink_kafka_stream": {
       "type": "string"
     }
   }
