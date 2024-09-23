@@ -195,40 +195,27 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 	}
 
 	//transformation #9 and #11
-	if cfg.EnvVariables[keyStreams] == "" {
-		//transformation #1
-		source := cfg.Source
+	//transformation #1
+	source := cfg.Source
 
-		cfg.Source = []Source{}
-		for i := range source {
-			if source[i].SourceParquet.SourceParquetFilePaths != nil && len(source[i].SourceParquet.SourceParquetFilePaths) > 0 {
-				//source is parquete
-				//do nothing
-				cfg.Source = []Source{
-					{
-						SourceParquet: SourceParquet{},
-					},
-				}
-				continue
-			}
-			if source[i].SourceKafkaConsumerConfigGroupID == "" {
-				source[i].SourceKafkaConsumerConfigGroupID = incrementGroupId(r.Name+"-0001", i)
-			}
-			source[i].SourceKafkaConsumerConfigAutoCommitEnable = dc.EnvVariables[SourceKafkaConsumerConfigAutoCommitEnable]
-			source[i].SourceKafkaConsumerConfigAutoOffsetReset = dc.EnvVariables[SourceKafkaConsumerConfigAutoOffsetReset]
-			source[i].SourceKafkaConsumerConfigBootstrapServers = dc.EnvVariables[SourceKafkaConsumerConfigBootstrapServers]
-
-			cfg.Source = append(cfg.Source, Source{
-				SourceKafka: SourceKafka{
-					SourceKafkaName:                  source[i].SourceKafkaName,
-					SourceKafkaConsumerConfigGroupID: source[i].SourceKafkaConsumerConfigGroupID,
-				},
-			})
+	for i := range source {
+		if source[i].SourceParquet.SourceParquetFilePaths != nil && len(source[i].SourceParquet.SourceParquetFilePaths) > 0 {
+			//source is parquete
+			//do nothing
+			continue
 		}
+		//TODO: check how to handle increment group id on update
+		if source[i].SourceKafkaConsumerConfigGroupID == "" {
+			source[i].SourceKafkaConsumerConfigGroupID = incrementGroupId(r.Name+"-0001", i)
+		}
+		source[i].SourceKafkaConsumerConfigAutoCommitEnable = dc.EnvVariables[SourceKafkaConsumerConfigAutoCommitEnable]
+		source[i].SourceKafkaConsumerConfigAutoOffsetReset = dc.EnvVariables[SourceKafkaConsumerConfigAutoOffsetReset]
+		source[i].SourceKafkaConsumerConfigBootstrapServers = dc.EnvVariables[SourceKafkaConsumerConfigBootstrapServers]
 
-		//transformation #12
-		cfg.EnvVariables[keyStreams] = string(mustMarshalJSON(source))
 	}
+
+	//transformation #12
+	cfg.EnvVariables[keyStreams] = string(mustMarshalJSON(source))
 
 	//transformation #2
 	cfg.EnvVariables = modules.CloneAndMergeMaps(dc.EnvVariables, cfg.EnvVariables)
@@ -239,10 +226,7 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 		return nil, errors.ErrInternal.WithMsgf("invalid flink state").WithCausef(err.Error())
 	}
 
-	if cfg.Namespace == "" {
-		ns := flinkOut.KubeNamespace
-		cfg.Namespace = ns
-	}
+	cfg.Namespace = flinkOut.KubeNamespace
 
 	//transformation #4
 	//transform resource name to safe length
@@ -321,6 +305,7 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 
 	return &cfg, nil
 }
+
 func incrementGroupId(groupId string, step int) string {
 	incrementNumberInString := func(number string) int {
 		num, _ := strconv.Atoi(number)
@@ -349,18 +334,18 @@ func mustMarshalJSON(v interface{}) []byte {
 	return data
 }
 
-func mergeResources(defaultResources, currResources Resources) Resources {
-	if currResources.TaskManager.CPU == "" {
-		currResources.TaskManager.CPU = defaultResources.TaskManager.CPU
+func mergeResources(oldResources, newResources Resources) Resources {
+	if newResources.TaskManager.CPU == "" {
+		newResources.TaskManager.CPU = oldResources.TaskManager.CPU
 	}
-	if currResources.TaskManager.Memory == "" {
-		currResources.TaskManager.Memory = defaultResources.TaskManager.Memory
+	if newResources.TaskManager.Memory == "" {
+		newResources.TaskManager.Memory = oldResources.TaskManager.Memory
 	}
-	if currResources.JobManager.CPU == "" {
-		currResources.JobManager.CPU = defaultResources.JobManager.CPU
+	if newResources.JobManager.CPU == "" {
+		newResources.JobManager.CPU = oldResources.JobManager.CPU
 	}
-	if currResources.JobManager.Memory == "" {
-		currResources.JobManager.Memory = defaultResources.JobManager.Memory
+	if newResources.JobManager.Memory == "" {
+		newResources.JobManager.Memory = oldResources.JobManager.Memory
 	}
-	return currResources
+	return newResources
 }

@@ -17,8 +17,9 @@ func (dd *daggerDriver) Plan(_ context.Context, exr module.ExpandedResource, act
 	switch act.Name {
 	case module.CreateAction:
 		return dd.planCreate(exr, act)
+
 	default:
-		return nil, nil
+		return dd.planChange(exr, act)
 	}
 }
 
@@ -53,6 +54,55 @@ func (dd *daggerDriver) planCreate(exr module.ExpandedResource, act module.Actio
 		ModuleData: modules.MustJSON(transientData{
 			PendingSteps: []string{stepReleaseCreate},
 		}),
+	}
+
+	return &exr.Resource, nil
+}
+
+func (dd *daggerDriver) planChange(exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
+	curConf, err := readConfig(exr, exr.Resource.Spec.Configs, dd.conf)
+	if err != nil {
+		return nil, err
+	}
+
+	switch act.Name {
+	case module.UpdateAction:
+		newConf, err := readConfig(exr, act.Params, dd.conf)
+		if err != nil {
+			return nil, err
+		}
+
+		chartVals, err := mergeChartValues(curConf.ChartValues, newConf.ChartValues)
+		if err != nil {
+			return nil, err
+		}
+
+		// restore configs that are not user-controlled.
+		newConf.DeploymentID = curConf.DeploymentID
+		newConf.ChartValues = chartVals
+		newConf.JarURI = curConf.JarURI
+
+		newConf.Resources = mergeResources(curConf.Resources, newConf.Resources)
+
+		curConf = newConf
+	}
+
+	immediately := dd.timeNow()
+
+	exr.Resource.Spec.Configs = modules.MustJSON(curConf)
+
+	err = dd.validateHelmReleaseConfigs(exr, *curConf)
+	if err != nil {
+		return nil, err
+	}
+
+	exr.Resource.State = resource.State{
+		Status: resource.StatusPending,
+		Output: exr.Resource.State.Output,
+		ModuleData: modules.MustJSON(transientData{
+			PendingSteps: []string{stepReleaseUpdate},
+		}),
+		NextSyncAt: &immediately,
 	}
 
 	return &exr.Resource, nil

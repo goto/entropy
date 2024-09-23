@@ -21,6 +21,7 @@ import (
 
 const (
 	stepReleaseCreate = "release_create"
+	stepReleaseUpdate = "release_update"
 )
 
 const (
