@@ -36,6 +36,10 @@ var Module = module.Descriptor{
 			Name:        module.CreateAction,
 			Description: "Creates a new dagger",
 		},
+		{
+			Name:        module.UpdateAction,
+			Description: "Updates an existing dagger",
+		},
 	},
 	DriverFactory: func(confJSON json.RawMessage) (module.Driver, error) {
 		conf := defaultDriverConf // clone the default value
