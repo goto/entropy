@@ -14,28 +14,51 @@ import (
 	"github.com/goto/entropy/pkg/validator"
 )
 
-const helmReleaseNameMaxLength = 53
-const keyStreams = "STREAMS"
-const keyFlinkJobID = "FLINK_JOB_ID"
-const keySinkInfluxURL = "SINK_INFLUX_URL"
-const keySinkInfluxPassword = "SINK_INFLUX_PASSWORD"
-const keySinkInfluxDBName = "SINK_INFLUX_DB_NAME"
-const keySinkInfluxUsername = "SINK_INFLUX_USERNAME"
-const keySinkInfluxMeasurementName = "SINK_INFLUX_MEASUREMENT_NAME"
-const keyRedisServer = "REDIS_SERVER"
-const SourceKafkaConsumerConfigAutoCommitEnable = "SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_COMMIT_ENABLE"
-const SourceKafkaConsumerConfigAutoOffsetReset = "SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_OFFSET_RESET"
-const SourceKafkaConsumerConfigBootstrapServers = "SOURCE_KAFKA_CONSUMER_CONFIG_BOOTSTRAP_SERVERS"
-const SinkTypeInflux = "INFLUX"
-const SinkTypeKafka = "KAFKA"
-const SinkTypeBigquery = "BIGQUERY"
-const keySinkKafkaBrokers = "SINK_KAFKA_BROKERS"
-const keySinkKafkaStream = "SINK_KAFKA_STREAM"
-const keySinkType = "SINK_TYPE"
-const keySinkKafkaProtoMsg = "SINK_KAFKA_PROTO_MESSAGE"
-const keySinkKafkaTopic = "SINK_KAFKA_TOPIC"
-const keySinkKafkaKey = "SINK_KAFKA_PROTO_KEY"
-const keySinkKafkaLingerMs = "SINK_KAFKA_LINGER_MS"
+const (
+	helmReleaseNameMaxLength = 53
+)
+
+// Stream-related constants
+const (
+	keyStreams  = "STREAMS"
+	keySinkType = "SINK_TYPE"
+)
+
+// Flink-related constants
+const (
+	keyFlinkJobID = "FLINK_JOB_ID"
+)
+
+// Influx-related constants
+const (
+	keySinkInfluxURL             = "SINK_INFLUX_URL"
+	keySinkInfluxPassword        = "SINK_INFLUX_PASSWORD"
+	keySinkInfluxDBName          = "SINK_INFLUX_DB_NAME"
+	keySinkInfluxUsername        = "SINK_INFLUX_USERNAME"
+	keySinkInfluxMeasurementName = "SINK_INFLUX_MEASUREMENT_NAME"
+)
+
+// Kafka-related constants
+const (
+	SourceKafkaConsumerConfigAutoCommitEnable = "SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_COMMIT_ENABLE"
+	SourceKafkaConsumerConfigAutoOffsetReset  = "SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_OFFSET_RESET"
+	SourceKafkaConsumerConfigBootstrapServers = "SOURCE_KAFKA_CONSUMER_CONFIG_BOOTSTRAP_SERVERS"
+	keySinkKafkaBrokers                       = "SINK_KAFKA_BROKERS"
+	keySinkKafkaStream                        = "SINK_KAFKA_STREAM"
+	keySinkKafkaProtoMsg                      = "SINK_KAFKA_PROTO_MESSAGE"
+	keySinkKafkaTopic                         = "SINK_KAFKA_TOPIC"
+	keySinkKafkaKey                           = "SINK_KAFKA_PROTO_KEY"
+	keySinkKafkaLingerMs                      = "SINK_KAFKA_LINGER_MS"
+)
+
+// Sink types
+const (
+	SinkTypeInflux   = "INFLUX"
+	SinkTypeKafka    = "KAFKA"
+	SinkTypeBigquery = "BIGQUERY"
+)
+
+// BigQuery-related constants
 const (
 	keySinkBigqueryGoogleCloudProjectID    = "SINK_BIGQUERY_GOOGLE_CLOUD_PROJECT_ID"
 	keySinkBigqueryDatasetName             = "SINK_BIGQUERY_DATASET_NAME"
@@ -205,7 +228,6 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 
 		//transformation #12
 		cfg.EnvVariables[keyStreams] = string(mustMarshalJSON(source))
-		fmt.Printf("cfg.EnvVariables[keyStreams]: %v\n", cfg.EnvVariables[keyStreams])
 	}
 
 	//transformation #2
