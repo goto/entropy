@@ -20,6 +20,7 @@ const (
 	keyFlinkDependency = "flink"
 	StopAction         = "stop"
 	StartAction        = "start"
+	ResetAction        = "reset"
 )
 
 type FlinkCRDStatus struct {
@@ -49,6 +50,10 @@ var Module = module.Descriptor{
 		{
 			Name:        StartAction,
 			Description: "Starts a suspended dagger",
+		},
+		{
+			Name:        ResetAction,
+			Description: "Resets the offset of a dagger",
 		},
 	},
 	DriverFactory: func(confJSON json.RawMessage) (module.Driver, error) {
@@ -103,7 +108,9 @@ var Module = module.Descriptor{
 					return kube.FlinkDeploymentStatus{}, err
 				}
 				return parseFlinkCRDStatus(crd.Object)
-			}}, nil
+			},
+			consumerReset: consumerReset,
+		}, nil
 	},
 }
 
@@ -134,4 +141,16 @@ func parseFlinkCRDStatus(flinkDeployment map[string]interface{}) (kube.FlinkDepl
 		Reconciliation: flinkCRDStatus.ReconciliationStatus,
 	}
 	return status, nil
+}
+
+func consumerReset(ctx context.Context, conf Config, resetTo string) []Source {
+	baseGroup := conf.Source[0].SourceKafkaConsumerConfigGroupID
+	groupId := incrementGroupId(baseGroup, len(conf.Source))
+
+	for i := range conf.Source {
+		conf.Source[i].SourceKafkaConsumerConfigGroupID = incrementGroupId(groupId, i)
+		conf.Source[i].SourceKafkaConsumerConfigAutoOffsetReset = resetTo
+	}
+
+	return conf.Source
 }

@@ -113,6 +113,7 @@ type Config struct {
 	JarURI        string            `json:"jar_uri,omitempty"`
 	State         string            `json:"state"`
 	JobState      string            `json:"job_state"`
+	ResetOffset   string            `json:"reset_offset"`
 }
 
 type ChartValues struct {
@@ -200,19 +201,16 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 	//transformation #1
 	source := cfg.Source
 
-	for i := range source {
-		if source[i].SourceParquet.SourceParquetFilePaths != nil && len(source[i].SourceParquet.SourceParquetFilePaths) > 0 {
-			//source is parquete
-			//do nothing
-			continue
+	if !(source[0].SourceParquet.SourceParquetFilePaths != nil && len(source[0].SourceParquet.SourceParquetFilePaths) > 0) {
+		for i := range source {
+			//TODO: check how to handle increment group id on update
+			if source[i].SourceKafkaConsumerConfigGroupID == "" {
+				source[i].SourceKafkaConsumerConfigGroupID = incrementGroupId(r.Name+"-0001", i)
+			}
+			source[i].SourceKafkaConsumerConfigAutoCommitEnable = dc.EnvVariables[SourceKafkaConsumerConfigAutoCommitEnable]
+			source[i].SourceKafkaConsumerConfigAutoOffsetReset = dc.EnvVariables[SourceKafkaConsumerConfigAutoOffsetReset]
+			source[i].SourceKafkaConsumerConfigBootstrapServers = dc.EnvVariables[SourceKafkaConsumerConfigBootstrapServers]
 		}
-		//TODO: check how to handle increment group id on update
-		if source[i].SourceKafkaConsumerConfigGroupID == "" {
-			source[i].SourceKafkaConsumerConfigGroupID = incrementGroupId(r.Name+"-0001", i)
-		}
-		source[i].SourceKafkaConsumerConfigAutoCommitEnable = dc.EnvVariables[SourceKafkaConsumerConfigAutoCommitEnable]
-		source[i].SourceKafkaConsumerConfigAutoOffsetReset = dc.EnvVariables[SourceKafkaConsumerConfigAutoOffsetReset]
-		source[i].SourceKafkaConsumerConfigBootstrapServers = dc.EnvVariables[SourceKafkaConsumerConfigBootstrapServers]
 	}
 
 	cfg.Source = source

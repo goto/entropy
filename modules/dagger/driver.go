@@ -22,6 +22,8 @@ import (
 const (
 	stepReleaseCreate = "release_create"
 	stepReleaseUpdate = "release_update"
+	stepReleaseStop   = "release_stop"
+	stepKafkaReset    = "kafka_reset"
 )
 
 const (
@@ -54,17 +56,19 @@ var defaultDriverConf = driverConf{
 }
 
 type daggerDriver struct {
-	timeNow    func() time.Time
-	conf       driverConf
-	kubeDeploy kubeDeployFn
-	kubeGetPod kubeGetPodFn
-	kubeGetCRD kubeGetCRDFn
+	timeNow       func() time.Time
+	conf          driverConf
+	kubeDeploy    kubeDeployFn
+	kubeGetPod    kubeGetPodFn
+	kubeGetCRD    kubeGetCRDFn
+	consumerReset consumerResetFn
 }
 
 type (
-	kubeDeployFn func(ctx context.Context, isCreate bool, conf kube.Config, hc helm.ReleaseConfig) error
-	kubeGetPodFn func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error)
-	kubeGetCRDFn func(ctx context.Context, conf kube.Config, ns string, name string) (kube.FlinkDeploymentStatus, error)
+	kubeDeployFn    func(ctx context.Context, isCreate bool, conf kube.Config, hc helm.ReleaseConfig) error
+	kubeGetPodFn    func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error)
+	kubeGetCRDFn    func(ctx context.Context, conf kube.Config, ns string, name string) (kube.FlinkDeploymentStatus, error)
+	consumerResetFn func(ctx context.Context, conf Config, resetTo string) []Source
 )
 
 type driverConf struct {
@@ -97,7 +101,8 @@ type Output struct {
 }
 
 type transientData struct {
-	PendingSteps []string `json:"pending_steps"`
+	PendingSteps  []string `json:"pending_steps"`
+	ResetOffsetTo string   `json:"reset_offset_to,omitempty"`
 }
 
 func mergeChartValues(cur, newVal *ChartValues) (*ChartValues, error) {

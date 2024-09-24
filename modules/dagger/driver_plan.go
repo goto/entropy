@@ -9,6 +9,7 @@ import (
 	"github.com/goto/entropy/modules"
 	"github.com/goto/entropy/modules/flink"
 	"github.com/goto/entropy/pkg/errors"
+	"github.com/goto/entropy/pkg/kafka"
 )
 
 const SourceKafkaConsumerAutoOffsetReset = "SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_OFFSET_RESET"
@@ -23,6 +24,9 @@ func (dd *daggerDriver) Plan(_ context.Context, exr module.ExpandedResource, act
 	switch act.Name {
 	case module.CreateAction:
 		return dd.planCreate(exr, act)
+
+	case ResetAction:
+		return dd.planReset(exr, act)
 
 	default:
 		return dd.planChange(exr, act)
@@ -128,6 +132,39 @@ func (dd *daggerDriver) planChange(exr module.ExpandedResource, act module.Actio
 		NextSyncAt: &immediately,
 	}
 
+	return &exr.Resource, nil
+}
+
+func (dd *daggerDriver) planReset(exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
+	resetValue, err := kafka.ParseResetV2Params(act.Params)
+	if err != nil {
+		return nil, err
+	}
+
+	immediately := dd.timeNow()
+
+	curConf, err := readConfig(exr, exr.Resource.Spec.Configs, dd.conf)
+	if err != nil {
+		return nil, err
+	}
+
+	curConf.ResetOffset = resetValue
+
+	curConf.Source = dd.consumerReset(context.Background(), *curConf, resetValue)
+	curConf.EnvVariables[keyStreams] = string(mustMarshalJSON(curConf.Source))
+
+	exr.Resource.Spec.Configs = modules.MustJSON(curConf)
+	exr.Resource.State = resource.State{
+		Status:     resource.StatusPending,
+		Output:     exr.Resource.State.Output,
+		NextSyncAt: &immediately,
+		ModuleData: modules.MustJSON(transientData{
+			ResetOffsetTo: resetValue,
+			PendingSteps: []string{
+				stepKafkaReset,
+			},
+		}),
+	}
 	return &exr.Resource, nil
 }
 
