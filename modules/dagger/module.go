@@ -17,10 +17,11 @@ import (
 )
 
 const (
-	keyFlinkDependency = "flink"
-	StopAction         = "stop"
-	StartAction        = "start"
-	ResetAction        = "reset"
+	keyFlinkDependency     = "flink"
+	StopAction             = "stop"
+	StartAction            = "start"
+	ResetAction            = "reset"
+	TriggerSavepointAction = "savepoint"
 )
 
 type FlinkCRDStatus struct {
@@ -54,6 +55,14 @@ var Module = module.Descriptor{
 		{
 			Name:        ResetAction,
 			Description: "Resets the offset of a dagger",
+		},
+		{
+			Name:        ResetAction,
+			Description: "Resets the offset of a dagger",
+		},
+		{
+			Name:        TriggerSavepointAction,
+			Description: "Trigger a savepoint for a dagger",
 		},
 	},
 	DriverFactory: func(confJSON json.RawMessage) (module.Driver, error) {
