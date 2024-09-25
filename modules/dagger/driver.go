@@ -20,10 +20,11 @@ import (
 )
 
 const (
-	stepReleaseCreate = "release_create"
-	stepReleaseUpdate = "release_update"
-	stepReleaseStop   = "release_stop"
-	stepKafkaReset    = "kafka_reset"
+	stepReleaseCreate   = "release_create"
+	stepReleaseUpdate   = "release_update"
+	stepReleaseStop     = "release_stop"
+	stepKafkaReset      = "kafka_reset"
+	stepSavepointCreate = "savepoint_create"
 )
 
 const (
@@ -210,10 +211,11 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 				"memory": conf.Resources.JobManager.Memory,
 			},
 		},
-		"jarURI":      conf.JarURI,
-		"programArgs": append([]string{"--encodedArgs"}, encodedProgramArgs),
-		"state":       conf.JobState,
-		"namespace":   conf.Namespace,
+		"jarURI":                conf.JarURI,
+		"programArgs":           append([]string{"--encodedArgs"}, encodedProgramArgs),
+		"state":                 conf.JobState,
+		"namespace":             conf.Namespace,
+		"savepointTriggerNonce": conf.SavepointTriggerNonce,
 	}
 
 	return rc, nil

@@ -28,6 +28,9 @@ func (dd *daggerDriver) Plan(_ context.Context, exr module.ExpandedResource, act
 	case ResetAction:
 		return dd.planReset(exr, act)
 
+	case TriggerSavepointAction:
+		return dd.planTriggerSavepoint(exr)
+
 	default:
 		return dd.planChange(exr, act)
 	}
@@ -52,6 +55,7 @@ func (dd *daggerDriver) planCreate(exr module.ExpandedResource, act module.Actio
 	conf.JarURI = dd.conf.JarURI
 	conf.State = StateDeployed
 	conf.JobState = JobStateRunning
+	conf.SavepointTriggerNonce = 1
 
 	exr.Resource.Spec.Configs = modules.MustJSON(conf)
 
@@ -165,6 +169,35 @@ func (dd *daggerDriver) planReset(exr module.ExpandedResource, act module.Action
 			},
 		}),
 	}
+	return &exr.Resource, nil
+}
+
+func (dd *daggerDriver) planTriggerSavepoint(exr module.ExpandedResource) (*resource.Resource, error) {
+	curConf, err := readConfig(exr, exr.Resource.Spec.Configs, dd.conf)
+	if err != nil {
+		return nil, err
+	}
+
+	curConf.SavepointTriggerNonce += 1
+
+	immediately := dd.timeNow()
+
+	exr.Resource.Spec.Configs = modules.MustJSON(curConf)
+
+	err = dd.validateHelmReleaseConfigs(exr, *curConf)
+	if err != nil {
+		return nil, err
+	}
+
+	exr.Resource.State = resource.State{
+		Status: resource.StatusPending,
+		Output: exr.Resource.State.Output,
+		ModuleData: modules.MustJSON(transientData{
+			PendingSteps: []string{stepSavepointCreate},
+		}),
+		NextSyncAt: &immediately,
+	}
+
 	return &exr.Resource, nil
 }
 

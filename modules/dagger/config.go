@@ -96,24 +96,25 @@ type Resources struct {
 }
 
 type Config struct {
-	Resources     Resources         `json:"resources,omitempty"`
-	Source        []Source          `json:"source,omitempty"`
-	Sink          Sink              `json:"sink,omitempty"`
-	EnvVariables  map[string]string `json:"env_variables,omitempty"`
-	Replicas      int               `json:"replicas"`
-	SinkType      string            `json:"sink_type"`
-	Team          string            `json:"team"`
-	FlinkName     string            `json:"flink_name,omitempty"`
-	DeploymentID  string            `json:"deployment_id,omitempty"`
-	Savepoint     any               `json:"savepoint,omitempty"`
-	ChartValues   *ChartValues      `json:"chart_values,omitempty"`
-	Deleted       bool              `json:"deleted,omitempty"`
-	Namespace     string            `json:"namespace,omitempty"`
-	PrometheusURL string            `json:"prometheus_url,omitempty"`
-	JarURI        string            `json:"jar_uri,omitempty"`
-	State         string            `json:"state"`
-	JobState      string            `json:"job_state"`
-	ResetOffset   string            `json:"reset_offset"`
+	Resources             Resources         `json:"resources,omitempty"`
+	Source                []Source          `json:"source,omitempty"`
+	Sink                  Sink              `json:"sink,omitempty"`
+	EnvVariables          map[string]string `json:"env_variables,omitempty"`
+	Replicas              int               `json:"replicas" default:"1"`
+	SinkType              string            `json:"sink_type"`
+	Team                  string            `json:"team"`
+	FlinkName             string            `json:"flink_name,omitempty"`
+	DeploymentID          string            `json:"deployment_id,omitempty"`
+	Savepoint             any               `json:"savepoint,omitempty"`
+	ChartValues           *ChartValues      `json:"chart_values,omitempty"`
+	Deleted               bool              `json:"deleted,omitempty"`
+	Namespace             string            `json:"namespace,omitempty"`
+	PrometheusURL         string            `json:"prometheus_url,omitempty"`
+	JarURI                string            `json:"jar_uri,omitempty"`
+	State                 string            `json:"state"`
+	JobState              string            `json:"job_state"`
+	ResetOffset           string            `json:"reset_offset"`
+	SavepointTriggerNonce int               `json:"savepoint_trigger_nonce,omitempty"`
 }
 
 type ChartValues struct {
@@ -209,7 +210,6 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 			}
 			source[i].SourceKafkaConsumerConfigAutoCommitEnable = dc.EnvVariables[SourceKafkaConsumerConfigAutoCommitEnable]
 			source[i].SourceKafkaConsumerConfigAutoOffsetReset = dc.EnvVariables[SourceKafkaConsumerConfigAutoOffsetReset]
-			source[i].SourceKafkaConsumerConfigBootstrapServers = dc.EnvVariables[SourceKafkaConsumerConfigBootstrapServers]
 		}
 	}
 
