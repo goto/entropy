@@ -36,7 +36,7 @@ func (s *FirehoseTestSuite) SetupTest() {
 
 	modules, err := s.moduleClient.ListModules(s.ctx, &entropyv1beta1.ListModulesRequest{})
 	s.Require().NoError(err)
-	s.Require().Equal(6, len(modules.GetModules()))
+	s.Require().Equal(9, len(modules.GetModules()))
 
 	resources, err := s.resourceClient.ListResources(s.ctx, &entropyv1beta1.ListResourcesRequest{
 		Kind: "kubernetes",

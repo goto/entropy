@@ -60,6 +60,31 @@ func BootstrapFirehoseModule(ctx context.Context, client entropyv1beta1.ModuleSe
 	return nil
 }
 
+func BootstrapFlinkModule(ctx context.Context, client entropyv1beta1.ModuleServiceClient, testDataPath string) error {
+	moduleData, err := os.ReadFile(testDataPath + "/module/flink_module.json")
+	if err != nil {
+		return err
+	}
+
+	var moduleConfig *entropyv1beta1.Module
+	if err = json.Unmarshal(moduleData, &moduleConfig); err != nil {
+		return err
+	}
+
+	project := moduleConfig.Project
+	for i := 0; i < 3; i++ {
+		moduleConfig.Project = fmt.Sprintf("%s-%d", project, i)
+
+		if _, err := client.CreateModule(ctx, &entropyv1beta1.CreateModuleRequest{
+			Module: moduleConfig,
+		}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func BootstrapKubernetesResource(ctx context.Context, client entropyv1beta1.ResourceServiceClient, kubeProvider *cluster.Provider, testDataPath string) error {
 	resourceData, err := os.ReadFile(testDataPath + "/resource/kubernetes_resource.json")
 	if err != nil {
