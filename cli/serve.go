@@ -14,7 +14,9 @@ import (
 	entropyserver "github.com/goto/entropy/internal/server"
 	"github.com/goto/entropy/internal/store/postgres"
 	"github.com/goto/entropy/modules"
+	"github.com/goto/entropy/modules/dagger"
 	"github.com/goto/entropy/modules/firehose"
+	"github.com/goto/entropy/modules/flink"
 	"github.com/goto/entropy/modules/job"
 	"github.com/goto/entropy/modules/kafka"
 	"github.com/goto/entropy/modules/kubernetes"
@@ -92,6 +94,8 @@ func setupRegistry() module.Registry {
 		firehose.Module,
 		job.Module,
 		kafka.Module,
+		flink.Module,
+		dagger.Module,
 	}
 
 	registry := &modules.Registry{}
