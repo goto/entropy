@@ -13,7 +13,7 @@
                 "username": "influx-user"
             },
             "kube_namespace": "flink-ns",
-            "sink_kafka_stream_name": "flinkstream"
+            "sink_kafka_stream": "flinkstream"
         },
         "dependencies": [
             {

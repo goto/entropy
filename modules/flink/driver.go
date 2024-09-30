@@ -16,6 +16,8 @@ type driverConf struct {
 	Influx          Influx `json:"influx,omitempty"`
 	SinkKafkaStream string `json:"sink_kafka_stream,omitempty"`
 	KubeNamespace   string `json:"kube_namespace,omitempty"`
+	PrometheusURL   string `json:"prometheus_url,omitempty"`
+	FlinkName       string `json:"flink_name,omitempty"`
 }
 
 type Output struct {
@@ -23,6 +25,8 @@ type Output struct {
 	KubeNamespace   string            `json:"kube_namespace,omitempty"`
 	Influx          Influx            `json:"influx,omitempty"`
 	SinkKafkaStream string            `json:"sink_kafka_stream,omitempty"`
+	PrometheusURL   string            `json:"prometheus_url,omitempty"`
+	FlinkName       string            `json:"flink_name,omitempty"`
 }
 
 func readOutputData(exr module.ExpandedResource) (*Output, error) {

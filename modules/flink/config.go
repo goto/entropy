@@ -26,6 +26,8 @@ type Config struct {
 	KubeNamespace   string `json:"kube_namespace,omitempty"`
 	Influx          Influx `json:"influx,omitempty"`
 	SinkKafkaStream string `json:"sink_kafka_stream,omitempty"`
+	PrometheusURL   string `json:"prometheus_url,omitempty"`
+	FlinkName       string `json:"flink_name,omitempty"`
 }
 
 func readConfig(_ resource.Resource, confJSON json.RawMessage, dc driverConf) (*Config, error) {
@@ -46,6 +48,14 @@ func readConfig(_ resource.Resource, confJSON json.RawMessage, dc driverConf) (*
 
 	if cfg.KubeNamespace == "" {
 		cfg.KubeNamespace = dc.KubeNamespace
+	}
+
+	if cfg.PrometheusURL == "" {
+		cfg.PrometheusURL = dc.PrometheusURL
+	}
+
+	if cfg.FlinkName == "" {
+		cfg.FlinkName = dc.FlinkName
 	}
 
 	return &cfg, nil
