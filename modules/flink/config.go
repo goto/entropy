@@ -23,11 +23,12 @@ type Influx struct {
 }
 
 type Config struct {
-	KubeNamespace   string `json:"kube_namespace,omitempty"`
-	Influx          Influx `json:"influx,omitempty"`
-	SinkKafkaStream string `json:"sink_kafka_stream,omitempty"`
-	PrometheusURL   string `json:"prometheus_url,omitempty"`
-	FlinkName       string `json:"flink_name,omitempty"`
+	KubeNamespace   string   `json:"kube_namespace,omitempty"`
+	Influx          Influx   `json:"influx,omitempty"`
+	SinkKafkaStream string   `json:"sink_kafka_stream,omitempty"`
+	PrometheusURL   string   `json:"prometheus_url,omitempty"`
+	FlinkName       string   `json:"flink_name,omitempty"`
+	ExtraStreams    []string `json:"extra_streams,omitempty"`
 }
 
 func readConfig(_ resource.Resource, confJSON json.RawMessage, dc driverConf) (*Config, error) {

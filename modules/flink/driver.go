@@ -27,6 +27,7 @@ type Output struct {
 	SinkKafkaStream string            `json:"sink_kafka_stream,omitempty"`
 	PrometheusURL   string            `json:"prometheus_url,omitempty"`
 	FlinkName       string            `json:"flink_name,omitempty"`
+	ExtraStreams    []string          `json:"extra_streams,omitempty"`
 }
 
 func readOutputData(exr module.ExpandedResource) (*Output, error) {
