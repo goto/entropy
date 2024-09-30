@@ -43,7 +43,7 @@ func (dd *daggerDriver) Sync(ctx context.Context, exr module.ExpandedResource) (
 		modData.PendingSteps = modData.PendingSteps[1:]
 
 		switch pendingStep {
-		case stepReleaseCreate, stepReleaseUpdate:
+		case stepReleaseCreate, stepReleaseUpdate, stepReleaseStop, stepKafkaReset:
 			isCreate := pendingStep == stepReleaseCreate
 			if err := dd.releaseSync(ctx, exr.Resource, isCreate, *conf, flinkOut.KubeCluster); err != nil {
 				return nil, err
