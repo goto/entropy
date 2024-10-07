@@ -61,6 +61,16 @@ func (dd *daggerDriver) Sync(ctx context.Context, exr module.ExpandedResource) (
 		return &finalState, nil
 	}
 
+	finalState.NextSyncAt = conf.StopTime
+	if conf.StopTime != nil && conf.StopTime.Before(dd.timeNow()) {
+		conf.JobState = JobStateSuspended
+		conf.State = StateSystemStopped
+		if err := dd.releaseSync(ctx, exr.Resource, false, *conf, flinkOut.KubeCluster); err != nil {
+			return nil, err
+		}
+		finalState.NextSyncAt = nil
+	}
+
 	finalOut, err := dd.refreshOutput(ctx, exr.Resource, *conf, *out, flinkOut.KubeCluster)
 	if err != nil {
 		return nil, err
