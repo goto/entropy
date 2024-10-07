@@ -14,10 +14,11 @@ import (
 
 const SourceKafkaConsumerAutoOffsetReset = "SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_OFFSET_RESET"
 const (
-	JobStateRunning   = "running"
-	JobStateSuspended = "suspended"
-	StateDeployed     = "DEPLOYED"
-	StateUserStopped  = "USER_STOPPED"
+	JobStateRunning    = "running"
+	JobStateSuspended  = "suspended"
+	StateDeployed      = "DEPLOYED"
+	StateUserStopped   = "USER_STOPPED"
+	StateSystemStopped = "SYSTEM_STOPPED"
 )
 
 func (dd *daggerDriver) Plan(_ context.Context, exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
@@ -113,7 +114,16 @@ func (dd *daggerDriver) planChange(exr module.ExpandedResource, act module.Actio
 		curConf.State = StateDeployed
 		curConf.JobState = JobStateRunning
 
+		var startParams StartParams
+		if err := json.Unmarshal(act.Params, &startParams); err != nil {
+			return nil, errors.ErrInvalid.WithMsgf("invalid params for start action").WithCausef(err.Error())
+		}
+		if startParams.StopTime != nil {
+			curConf.StopTime = startParams.StopTime
+		}
+
 	}
+
 	immediately := dd.timeNow()
 
 	exr.Resource.Spec.Configs = modules.MustJSON(curConf)

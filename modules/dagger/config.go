@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/modules"
@@ -85,6 +86,10 @@ var (
 	validateConfig = validator.FromJSONSchema(configSchemaRaw)
 )
 
+type StartParams struct {
+	StopTime *time.Time `json:"stop_time"`
+}
+
 type UsageSpec struct {
 	CPU    string `json:"cpu,omitempty" validate:"required"`
 	Memory string `json:"memory,omitempty" validate:"required"`
@@ -114,6 +119,7 @@ type Config struct {
 	State         string            `json:"state"`
 	JobState      string            `json:"job_state"`
 	ResetOffset   string            `json:"reset_offset"`
+	StopTime      *time.Time        `json:"stop_time,omitempty"`
 }
 
 type ChartValues struct {
