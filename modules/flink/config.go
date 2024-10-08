@@ -4,7 +4,6 @@ import (
 	_ "embed"
 	"encoding/json"
 
-	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/validator"
 )
@@ -31,7 +30,7 @@ type Config struct {
 	ExtraStreams    []string `json:"extra_streams,omitempty"`
 }
 
-func readConfig(_ resource.Resource, confJSON json.RawMessage, dc driverConf) (*Config, error) {
+func readConfig(confJSON json.RawMessage, dc driverConf) (*Config, error) {
 	var cfg Config
 	if err := json.Unmarshal(confJSON, &cfg); err != nil {
 		return nil, errors.ErrInvalid.WithMsgf("invalid config json").WithCausef(err.Error())
