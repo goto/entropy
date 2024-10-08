@@ -53,6 +53,7 @@ func (dd *daggerDriver) planCreate(exr module.ExpandedResource, act module.Actio
 	conf.JarURI = dd.conf.JarURI
 	conf.State = StateDeployed
 	conf.JobState = JobStateRunning
+	exr.Resource.Labels[labelJobState] = conf.JobState
 
 	exr.Resource.Spec.Configs = modules.MustJSON(conf)
 
@@ -127,6 +128,11 @@ func (dd *daggerDriver) planChange(exr module.ExpandedResource, act module.Actio
 	immediately := dd.timeNow()
 
 	exr.Resource.Spec.Configs = modules.MustJSON(curConf)
+
+	if act.Labels != nil {
+		exr.Resource.Labels = act.Labels
+	}
+	exr.Resource.Labels[labelJobState] = curConf.JobState
 
 	err = dd.validateHelmReleaseConfigs(exr, *curConf)
 	if err != nil {
