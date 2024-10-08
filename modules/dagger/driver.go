@@ -40,6 +40,7 @@ const (
 	labelURN          = "urn"
 	labelName         = "name"
 	labelNamespace    = "namespace"
+	labelJobState     = "job_state"
 
 	orchestratorLabelValue = "entropy"
 )
