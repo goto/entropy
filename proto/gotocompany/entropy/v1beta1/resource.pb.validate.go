@@ -1509,6 +1509,8 @@ func (m *CreateResourceRequest) validate(all bool) error {
 		}
 	}
 
+	// no validation rules for DryRun
+
 	if len(errors) > 0 {
 		return CreateResourceRequestMultiError(errors)
 	}
@@ -1774,6 +1776,8 @@ func (m *UpdateResourceRequest) validate(all bool) error {
 	}
 
 	// no validation rules for Labels
+
+	// no validation rules for DryRun
 
 	if len(errors) > 0 {
 		return UpdateResourceRequestMultiError(errors)
@@ -2248,6 +2252,8 @@ func (m *ApplyActionRequest) validate(all bool) error {
 	}
 
 	// no validation rules for Labels
+
+	// no validation rules for DryRun
 
 	if len(errors) > 0 {
 		return ApplyActionRequestMultiError(errors)

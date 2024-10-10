@@ -170,6 +170,10 @@ paths:
           required: true
           schema:
             $ref: '#/definitions/Resource'
+        - name: dry_run
+          in: query
+          required: false
+          type: boolean
       tags:
         - ResourceService
   /v1beta1/resources/{urn}:
@@ -237,6 +241,8 @@ paths:
                 type: object
                 additionalProperties:
                   type: string
+              dry_run:
+                type: boolean
       tags:
         - ResourceService
   /v1beta1/resources/{urn}/actions/{action}:
@@ -264,6 +270,10 @@ paths:
           in: body
           required: true
           schema: {}
+        - name: dry_run
+          in: query
+          required: false
+          type: boolean
       tags:
         - ResourceService
   /v1beta1/resources/{urn}/logs:
@@ -457,7 +467,7 @@ definitions:
       `NullValue` is a singleton enumeration to represent the null value for the
       `Value` type union.
 
-      The JSON representation for `NullValue` is JSON `null`.
+       The JSON representation for `NullValue` is JSON `null`.
 
        - NULL_VALUE: Null value.
   Resource:

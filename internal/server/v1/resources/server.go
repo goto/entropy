@@ -14,11 +14,11 @@ import (
 type ResourceService interface {
 	GetResource(ctx context.Context, urn string) (*resource.Resource, error)
 	ListResources(ctx context.Context, filter resource.Filter, withSpecConfigs bool) (resource.PagedResource, error)
-	CreateResource(ctx context.Context, res resource.Resource) (*resource.Resource, error)
-	UpdateResource(ctx context.Context, urn string, req resource.UpdateRequest) (*resource.Resource, error)
+	CreateResource(ctx context.Context, res resource.Resource, dryrun bool) (*resource.Resource, error)
+	UpdateResource(ctx context.Context, urn string, req resource.UpdateRequest, dryrun bool) (*resource.Resource, error)
 	DeleteResource(ctx context.Context, urn string) error
 
-	ApplyAction(ctx context.Context, urn string, action module.ActionRequest) (*resource.Resource, error)
+	ApplyAction(ctx context.Context, urn string, action module.ActionRequest, dryrun bool) (*resource.Resource, error)
 	GetLog(ctx context.Context, urn string, filter map[string]string) (<-chan module.LogChunk, error)
 
 	GetRevisions(ctx context.Context, selector resource.RevisionsSelector) ([]resource.Revision, error)
@@ -48,7 +48,7 @@ func (server APIServer) CreateResource(ctx context.Context, request *entropyv1be
 	res.CreatedBy = userIdentifier
 	res.UpdatedBy = userIdentifier
 
-	result, err := server.resourceSvc.CreateResource(ctx, *res)
+	result, err := server.resourceSvc.CreateResource(ctx, *res, request.GetDryRun())
 	if err != nil {
 		return nil, serverutils.ToRPCError(err)
 	}
@@ -80,7 +80,7 @@ func (server APIServer) UpdateResource(ctx context.Context, request *entropyv1be
 		UserID: userIdentifier,
 	}
 
-	res, err := server.resourceSvc.UpdateResource(ctx, request.GetUrn(), updateRequest)
+	res, err := server.resourceSvc.UpdateResource(ctx, request.GetUrn(), updateRequest, request.GetDryRun())
 	if err != nil {
 		return nil, serverutils.ToRPCError(err)
 	}
@@ -169,7 +169,7 @@ func (server APIServer) ApplyAction(ctx context.Context, request *entropyv1beta1
 		UserID: userIdentifier,
 	}
 
-	updatedRes, err := server.resourceSvc.ApplyAction(ctx, request.GetUrn(), action)
+	updatedRes, err := server.resourceSvc.ApplyAction(ctx, request.GetUrn(), action, request.GetDryRun())
 	if err != nil {
 		return nil, serverutils.ToRPCError(err)
 	}
