@@ -9,7 +9,7 @@ import (
 	"github.com/goto/entropy/pkg/errors"
 )
 
-func (svc *Service) CreateResource(ctx context.Context, res resource.Resource) (*resource.Resource, error) {
+func (svc *Service) CreateResource(ctx context.Context, res resource.Resource, dryRun bool) (*resource.Resource, error) {
 	if err := res.Validate(true); err != nil {
 		return nil, err
 	}
@@ -22,10 +22,10 @@ func (svc *Service) CreateResource(ctx context.Context, res resource.Resource) (
 	}
 	res.Spec.Configs = nil
 
-	return svc.execAction(ctx, res, act)
+	return svc.execAction(ctx, res, act, dryRun)
 }
 
-func (svc *Service) UpdateResource(ctx context.Context, urn string, req resource.UpdateRequest) (*resource.Resource, error) {
+func (svc *Service) UpdateResource(ctx context.Context, urn string, req resource.UpdateRequest, dryRun bool) (*resource.Resource, error) {
 	if len(req.Spec.Dependencies) != 0 {
 		return nil, errors.ErrUnsupported.WithMsgf("updating dependencies is not supported")
 	} else if len(req.Spec.Configs) == 0 {
@@ -37,17 +37,17 @@ func (svc *Service) UpdateResource(ctx context.Context, urn string, req resource
 		Params: req.Spec.Configs,
 		Labels: req.Labels,
 		UserID: req.UserID,
-	})
+	}, dryRun)
 }
 
 func (svc *Service) DeleteResource(ctx context.Context, urn string) error {
 	_, actionErr := svc.ApplyAction(ctx, urn, module.ActionRequest{
 		Name: module.DeleteAction,
-	})
+	}, false)
 	return actionErr
 }
 
-func (svc *Service) ApplyAction(ctx context.Context, urn string, act module.ActionRequest) (*resource.Resource, error) {
+func (svc *Service) ApplyAction(ctx context.Context, urn string, act module.ActionRequest, dryRun bool) (*resource.Resource, error) {
 	res, err := svc.GetResource(ctx, urn)
 	if err != nil {
 		return nil, err
@@ -56,10 +56,10 @@ func (svc *Service) ApplyAction(ctx context.Context, urn string, act module.Acti
 			WithMsgf("cannot perform '%s' on resource in '%s'", act.Name, res.State.Status)
 	}
 
-	return svc.execAction(ctx, *res, act)
+	return svc.execAction(ctx, *res, act, dryRun)
 }
 
-func (svc *Service) execAction(ctx context.Context, res resource.Resource, act module.ActionRequest) (*resource.Resource, error) {
+func (svc *Service) execAction(ctx context.Context, res resource.Resource, act module.ActionRequest, dryRun bool) (*resource.Resource, error) {
 	planned, err := svc.planChange(ctx, res, act)
 	if err != nil {
 		return nil, err
@@ -77,8 +77,11 @@ func (svc *Service) execAction(ctx context.Context, res resource.Resource, act m
 	}
 
 	reason := fmt.Sprintf("action:%s", act.Name)
-	if err := svc.upsert(ctx, *planned, isCreate(act.Name), true, reason); err != nil {
-		return nil, err
+
+	if !dryRun {
+		if err := svc.upsert(ctx, *planned, isCreate(act.Name), true, reason); err != nil {
+			return nil, err
+		}
 	}
 	return planned, nil
 }

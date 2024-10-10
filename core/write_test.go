@@ -26,6 +26,7 @@ func TestService_CreateResource(t *testing.T) {
 		setup   func(t *testing.T) *core.Service
 		res     resource.Resource
 		want    *resource.Resource
+		dryrun  bool
 		wantErr error
 	}{
 		{
@@ -286,7 +287,7 @@ func TestService_CreateResource(t *testing.T) {
 			t.Parallel()
 			svc := tt.setup(t)
 
-			got, err := svc.CreateResource(context.Background(), tt.res)
+			got, err := svc.CreateResource(context.Background(), tt.res, tt.dryrun)
 			if tt.wantErr != nil {
 				assert.Error(t, err)
 				assert.True(t, errors.Is(err, tt.wantErr))
@@ -316,6 +317,7 @@ func TestService_UpdateResource(t *testing.T) {
 		urn     string
 		update  resource.UpdateRequest
 		want    *resource.Resource
+		dryrun  bool
 		wantErr error
 	}{
 		{
@@ -480,7 +482,7 @@ func TestService_UpdateResource(t *testing.T) {
 			t.Parallel()
 			svc := tt.setup(t)
 
-			got, err := svc.UpdateResource(context.Background(), tt.urn, tt.update)
+			got, err := svc.UpdateResource(context.Background(), tt.urn, tt.update, tt.dryrun)
 			if tt.wantErr != nil {
 				assert.Error(t, err)
 				assert.True(t, errors.Is(err, tt.wantErr))
@@ -641,6 +643,7 @@ func TestService_ApplyAction(t *testing.T) {
 		urn     string
 		action  module.ActionRequest
 		want    *resource.Resource
+		dryrun  bool
 		wantErr error
 	}{
 		{
@@ -779,7 +782,7 @@ func TestService_ApplyAction(t *testing.T) {
 			t.Parallel()
 			svc := tt.setup(t)
 
-			got, err := svc.ApplyAction(context.Background(), tt.urn, tt.action)
+			got, err := svc.ApplyAction(context.Background(), tt.urn, tt.action, tt.dryrun)
 			if tt.wantErr != nil {
 				assert.Error(t, err)
 				assert.True(t, errors.Is(err, tt.wantErr), cmp.Diff(tt.want, err))
