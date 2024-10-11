@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	helmReleaseNameMaxLength = 53
+	helmReleaseNameMaxLength = 45
 )
 
 // Stream-related constants
@@ -253,6 +253,10 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 		return nil, errors.ErrInvalid.WithMsgf("deployment_id must not have more than 53 chars")
 	}
 
+	//transformation #7
+	cfg.EnvVariables[keySinkInfluxURL] = flinkOut.Influx.URL
+	cfg.EnvVariables[keySinkInfluxUsername] = flinkOut.Influx.Username
+
 	//SINK_INFLUX_DB_NAME is added by client
 	//SINK_INFLUX_MEASUREMENT_NAME is added by client
 	//REDIS_SERVER is skipped
@@ -274,10 +278,7 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 		cfg.EnvVariables[keySinkKafkaKey] = cfg.Sink.SinkKafka.SinkKafkaProtoKey
 		cfg.EnvVariables[keySinkKafkaLingerMs] = cfg.Sink.SinkKafka.SinkKafkaLingerMs
 	} else if cfg.SinkType == SinkTypeInflux {
-		//transformation #7
-		cfg.EnvVariables[keySinkInfluxURL] = flinkOut.Influx.URL
 		cfg.EnvVariables[keySinkInfluxPassword] = flinkOut.Influx.Password
-		cfg.EnvVariables[keySinkInfluxUsername] = flinkOut.Influx.Username
 		cfg.EnvVariables[keySinkInfluxDBName] = cfg.Sink.SinkInflux.SinkInfluxDBName
 		cfg.EnvVariables[keySinkInfluxMeasurementName] = cfg.Sink.SinkInflux.SinkInfluxMeasurementName
 	} else if cfg.SinkType == SinkTypeBigquery {
