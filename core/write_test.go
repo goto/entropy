@@ -279,6 +279,41 @@ func TestService_CreateResource(t *testing.T) {
 			},
 			wantErr: nil,
 		},
+		{
+			name: "AlreadyExistsWithDryRun",
+			setup: func(t *testing.T) *core.Service {
+				t.Helper()
+				mod := &mocks.ModuleService{}
+				mod.EXPECT().
+					PlanAction(mock.Anything, mock.Anything, mock.Anything).
+					Return(&resource.Resource{
+						Kind:    "mock",
+						Name:    "child",
+						Project: "project",
+						State:   resource.State{Status: resource.StatusCompleted},
+					}, nil).Once()
+
+				resourceRepo := &mocks.ResourceStore{}
+
+				return core.New(resourceRepo, mod, deadClock, defaultSyncBackoff, defaultMaxRetries)
+			},
+			res: resource.Resource{
+				Kind:    "mock",
+				Name:    "child",
+				Project: "project",
+			},
+			want: &resource.Resource{
+				URN:       "orn:entropy:mock:project:child",
+				Kind:      "mock",
+				Name:      "child",
+				Project:   "project",
+				State:     resource.State{Status: resource.StatusCompleted},
+				CreatedAt: frozenTime,
+				UpdatedAt: frozenTime,
+			},
+			dryrun:  true,
+			wantErr: nil,
+		},
 	}
 
 	for _, tt := range tests {
@@ -308,6 +343,18 @@ func TestService_UpdateResource(t *testing.T) {
 		Name:      "child",
 		Project:   "project",
 		State:     resource.State{Status: resource.StatusCompleted},
+		CreatedAt: frozenTime,
+	}
+
+	testResourceForDryRun := resource.Resource{
+		URN:     "orn:entropy:mock:project:childtwo",
+		Kind:    "mock",
+		Name:    "childtwo",
+		Project: "project",
+		State:   resource.State{Status: resource.StatusCompleted},
+		Spec: resource.Spec{
+			Configs: []byte(`{"foo": "bar-old"}`),
+		},
 		CreatedAt: frozenTime,
 	}
 
@@ -472,6 +519,57 @@ func TestService_UpdateResource(t *testing.T) {
 					Configs: []byte(`{"foo": "bar"}`),
 				},
 			},
+			wantErr: nil,
+		},
+		{
+			name: "SuccessWithDryRun",
+			setup: func(t *testing.T) *core.Service {
+				t.Helper()
+				mod := &mocks.ModuleService{}
+				mod.EXPECT().
+					PlanAction(mock.Anything, mock.Anything, mock.Anything).
+					Return(&resource.Resource{
+						URN:     "orn:entropy:mock:project:childtwo",
+						Kind:    "mock",
+						Name:    "childtwo",
+						Project: "project",
+						Spec: resource.Spec{
+							Configs: []byte(`{"foo": "bar"}`),
+						},
+						State:     resource.State{Status: resource.StatusPending},
+						CreatedAt: frozenTime,
+					}, nil).Once()
+				mod.EXPECT().
+					GetOutput(mock.Anything, mock.Anything).
+					Return(nil, nil).
+					Once()
+
+				resourceRepo := &mocks.ResourceStore{}
+				resourceRepo.EXPECT().
+					GetByURN(mock.Anything, "orn:entropy:mock:project:childtwo").
+					Return(&testResourceForDryRun, nil).Once()
+
+				return core.New(resourceRepo, mod, deadClock, defaultSyncBackoff, defaultMaxRetries)
+			},
+			urn: "orn:entropy:mock:project:childtwo",
+			update: resource.UpdateRequest{
+				Spec:   resource.Spec{Configs: []byte(`{"foo": "bar"}`)},
+				Labels: map[string]string{"created_by": "test_user", "group": "test_group"},
+			},
+			want: &resource.Resource{
+				URN:       "orn:entropy:mock:project:childtwo",
+				Kind:      "mock",
+				Name:      "childtwo",
+				Project:   "project",
+				CreatedAt: frozenTime,
+				UpdatedAt: frozenTime,
+				State:     resource.State{Status: resource.StatusPending},
+				Labels:    map[string]string{"created_by": "test_user", "group": "test_group"},
+				Spec: resource.Spec{
+					Configs: []byte(`{"foo": "bar"}`),
+				},
+			},
+			dryrun:  true,
 			wantErr: nil,
 		},
 	}
@@ -773,6 +871,54 @@ func TestService_ApplyAction(t *testing.T) {
 				UpdatedAt: frozenTime,
 			},
 			wantErr: nil,
+		},
+		{
+			name: "SuccessWithDryRun",
+			setup: func(t *testing.T) *core.Service {
+				t.Helper()
+				mod := &mocks.ModuleService{}
+				mod.EXPECT().
+					PlanAction(mock.Anything, mock.Anything, sampleAction).
+					Return(&resource.Resource{
+						URN:     "orn:entropy:mock:foo:bar",
+						Kind:    "mock",
+						Project: "foo",
+						Name:    "bar",
+						State:   resource.State{Status: resource.StatusPending},
+					}, nil).Once()
+				mod.EXPECT().
+					GetOutput(mock.Anything, mock.Anything).
+					Return(nil, nil).
+					Once()
+
+				resourceRepo := &mocks.ResourceStore{}
+				resourceRepo.EXPECT().
+					GetByURN(mock.Anything, "orn:entropy:mock:foo:bar").
+					Return(&resource.Resource{
+						URN:       "orn:entropy:mock:foo:bar",
+						Kind:      "mock",
+						Project:   "foo",
+						Name:      "bar",
+						CreatedAt: frozenTime,
+						State:     resource.State{Status: resource.StatusCompleted},
+					}, nil).
+					Once()
+
+				return core.New(resourceRepo, mod, deadClock, defaultSyncBackoff, defaultMaxRetries)
+			},
+			urn:    "orn:entropy:mock:foo:bar",
+			action: sampleAction,
+			want: &resource.Resource{
+				URN:       "orn:entropy:mock:foo:bar",
+				Kind:      "mock",
+				Project:   "foo",
+				Name:      "bar",
+				State:     resource.State{Status: resource.StatusPending},
+				CreatedAt: frozenTime,
+				UpdatedAt: frozenTime,
+			},
+			wantErr: nil,
+			dryrun:  true,
 		},
 	}
 
