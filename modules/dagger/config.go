@@ -61,22 +61,23 @@ const (
 
 // BigQuery-related constants
 const (
-	keySinkBigqueryGoogleCloudProjectID    = "SINK_BIGQUERY_GOOGLE_CLOUD_PROJECT_ID"
-	keySinkBigqueryDatasetName             = "SINK_BIGQUERY_DATASET_NAME"
-	keySinkBigqueryTableName               = "SINK_BIGQUERY_TABLE_NAME"
-	keySinkBigqueryDatasetLabels           = "SINK_BIGQUERY_DATASET_LABELS"
-	keySinkBigqueryTableLabels             = "SINK_BIGQUERY_TABLE_LABELS"
-	keySinkBigqueryTablePartitioningEnable = "SINK_BIGQUERY_TABLE_PARTITIONING_ENABLE"
-	keySinkBigqueryTableClusteringEnable   = "SINK_BIGQUERY_TABLE_CLUSTERING_ENABLE"
-	keySinkBigqueryBatchSize               = "SINK_BIGQUERY_BATCH_SIZE"
-	keySinkBigqueryTablePartitionKey       = "SINK_BIGQUERY_TABLE_PARTITION_KEY"
-	keySinkBigqueryRowInsertIDEnable       = "SINK_BIGQUERY_ROW_INSERT_ID_ENABLE"
-	keySinkBigqueryClientReadTimeoutMs     = "SINK_BIGQUERY_CLIENT_READ_TIMEOUT_MS"
-	keySinkBigqueryClientConnectTimeoutMs  = "SINK_BIGQUERY_CLIENT_CONNECT_TIMEOUT_MS"
-	keySinkBigqueryTablePartitionExpiryMs  = "SINK_BIGQUERY_TABLE_PARTITION_EXPIRY_MS"
-	keySinkBigqueryDatasetLocation         = "SINK_BIGQUERY_DATASET_LOCATION"
-	keySinkErrorTypesForFailure            = "SINK_ERROR_TYPES_FOR_FAILURE"
-	keySinkBigqueryTableClusteringKeys     = "SINK_BIGQUERY_TABLE_CLUSTERING_KEYS"
+	keySinkBigqueryGoogleCloudProjectID     = "SINK_BIGQUERY_GOOGLE_CLOUD_PROJECT_ID"
+	keySinkBigqueryDatasetName              = "SINK_BIGQUERY_DATASET_NAME"
+	keySinkBigqueryTableName                = "SINK_BIGQUERY_TABLE_NAME"
+	keySinkBigqueryDatasetLabels            = "SINK_BIGQUERY_DATASET_LABELS"
+	keySinkBigqueryTableLabels              = "SINK_BIGQUERY_TABLE_LABELS"
+	keySinkBigqueryTablePartitioningEnable  = "SINK_BIGQUERY_TABLE_PARTITIONING_ENABLE"
+	keySinkBigqueryTableClusteringEnable    = "SINK_BIGQUERY_TABLE_CLUSTERING_ENABLE"
+	keySinkBigqueryBatchSize                = "SINK_BIGQUERY_BATCH_SIZE"
+	keySinkBigqueryTablePartitionKey        = "SINK_BIGQUERY_TABLE_PARTITION_KEY"
+	keySinkBigqueryRowInsertIDEnable        = "SINK_BIGQUERY_ROW_INSERT_ID_ENABLE"
+	keySinkBigqueryClientReadTimeoutMs      = "SINK_BIGQUERY_CLIENT_READ_TIMEOUT_MS"
+	keySinkBigqueryClientConnectTimeoutMs   = "SINK_BIGQUERY_CLIENT_CONNECT_TIMEOUT_MS"
+	keySinkBigqueryTablePartitionExpiryMs   = "SINK_BIGQUERY_TABLE_PARTITION_EXPIRY_MS"
+	keySinkBigqueryDatasetLocation          = "SINK_BIGQUERY_DATASET_LOCATION"
+	keySinkErrorTypesForFailure             = "SINK_ERROR_TYPES_FOR_FAILURE"
+	keySinkBigqueryTableClusteringKeys      = "SINK_BIGQUERY_TABLE_CLUSTERING_KEYS"
+	keySinkConnectorSchemaProtoMessageClass = "SINK_CONNECTOR_SCHEMA_PROTO_MESSAGE_CLASS"
 )
 
 var (
@@ -172,22 +173,23 @@ type SinkInflux struct {
 }
 
 type SinkBigquery struct {
-	SinkBigqueryGoogleCloudProjectID    string `json:"SINK_BIGQUERY_GOOGLE_CLOUD_PROJECT_ID"`
-	SinkBigqueryTableName               string `json:"SINK_BIGQUERY_TABLE_NAME"`
-	SinkBigqueryDatasetLabels           string `json:"SINK_BIGQUERY_DATASET_LABELS"`
-	SinkBigqueryTableLabels             string `json:"SINK_BIGQUERY_TABLE_LABELS"`
-	SinkBigqueryDatasetName             string `json:"SINK_BIGQUERY_DATASET_NAME"`
-	SinkBigqueryTablePartitioningEnable string `json:"SINK_BIGQUERY_TABLE_PARTITIONING_ENABLE"`
-	SinkBigqueryTablePartitionKey       string `json:"SINK_BIGQUERY_TABLE_PARTITION_KEY"`
-	SinkBigqueryRowInsertIDEnable       string `json:"SINK_BIGQUERY_ROW_INSERT_ID_ENABLE"`
-	SinkBigqueryClientReadTimeoutMs     string `json:"SINK_BIGQUERY_CLIENT_READ_TIMEOUT_MS"`
-	SinkBigqueryClientConnectTimeoutMs  string `json:"SINK_BIGQUERY_CLIENT_CONNECT_TIMEOUT_MS"`
-	SinkBigqueryTablePartitionExpiryMs  string `json:"SINK_BIGQUERY_TABLE_PARTITION_EXPIRY_MS"`
-	SinkBigqueryDatasetLocation         string `json:"SINK_BIGQUERY_DATASET_LOCATION"`
-	SinkBigqueryBatchSize               string `json:"SINK_BIGQUERY_BATCH_SIZE"`
-	SinkBigqueryTableClusteringEnable   string `json:"SINK_BIGQUERY_TABLE_CLUSTERING_ENABLE"`
-	SinkBigqueryTableClusteringKeys     string `json:"SINK_BIGQUERY_TABLE_CLUSTERING_KEYS"`
-	SinkErrorTypesForFailure            string `json:"SINK_ERROR_TYPES_FOR_FAILURE"`
+	SinkBigqueryGoogleCloudProjectID     string `json:"SINK_BIGQUERY_GOOGLE_CLOUD_PROJECT_ID"`
+	SinkBigqueryTableName                string `json:"SINK_BIGQUERY_TABLE_NAME"`
+	SinkBigqueryDatasetLabels            string `json:"SINK_BIGQUERY_DATASET_LABELS"`
+	SinkBigqueryTableLabels              string `json:"SINK_BIGQUERY_TABLE_LABELS"`
+	SinkBigqueryDatasetName              string `json:"SINK_BIGQUERY_DATASET_NAME"`
+	SinkBigqueryTablePartitioningEnable  string `json:"SINK_BIGQUERY_TABLE_PARTITIONING_ENABLE"`
+	SinkBigqueryTablePartitionKey        string `json:"SINK_BIGQUERY_TABLE_PARTITION_KEY"`
+	SinkBigqueryRowInsertIDEnable        string `json:"SINK_BIGQUERY_ROW_INSERT_ID_ENABLE"`
+	SinkBigqueryClientReadTimeoutMs      string `json:"SINK_BIGQUERY_CLIENT_READ_TIMEOUT_MS"`
+	SinkBigqueryClientConnectTimeoutMs   string `json:"SINK_BIGQUERY_CLIENT_CONNECT_TIMEOUT_MS"`
+	SinkBigqueryTablePartitionExpiryMs   string `json:"SINK_BIGQUERY_TABLE_PARTITION_EXPIRY_MS"`
+	SinkBigqueryDatasetLocation          string `json:"SINK_BIGQUERY_DATASET_LOCATION"`
+	SinkBigqueryBatchSize                string `json:"SINK_BIGQUERY_BATCH_SIZE"`
+	SinkBigqueryTableClusteringEnable    string `json:"SINK_BIGQUERY_TABLE_CLUSTERING_ENABLE"`
+	SinkBigqueryTableClusteringKeys      string `json:"SINK_BIGQUERY_TABLE_CLUSTERING_KEYS"`
+	SinkErrorTypesForFailure             string `json:"SINK_ERROR_TYPES_FOR_FAILURE"`
+	SinkConnectorSchemaProtoMessageClass string `json:"SINK_CONNECTOR_SCHEMA_PROTO_MESSAGE_CLASS"`
 }
 
 type Sink struct {
@@ -298,6 +300,7 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 		cfg.EnvVariables[keySinkBigqueryTableClusteringEnable] = cfg.Sink.SinkBigquery.SinkBigqueryTableClusteringEnable
 		cfg.EnvVariables[keySinkBigqueryTableClusteringKeys] = cfg.Sink.SinkBigquery.SinkBigqueryTableClusteringKeys
 		cfg.EnvVariables[keySinkErrorTypesForFailure] = cfg.Sink.SinkBigquery.SinkErrorTypesForFailure
+		cfg.EnvVariables[keySinkConnectorSchemaProtoMessageClass] = cfg.Sink.SinkBigquery.SinkConnectorSchemaProtoMessageClass
 	}
 
 	//transformation #14
