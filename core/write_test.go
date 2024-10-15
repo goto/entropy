@@ -26,7 +26,7 @@ func TestService_CreateResource(t *testing.T) {
 		setup   func(t *testing.T) *core.Service
 		res     resource.Resource
 		want    *resource.Resource
-		dryrun  bool
+		options []core.Options
 		wantErr error
 	}{
 		{
@@ -311,7 +311,7 @@ func TestService_CreateResource(t *testing.T) {
 				CreatedAt: frozenTime,
 				UpdatedAt: frozenTime,
 			},
-			dryrun:  true,
+			options: []core.Options{core.WithDryRun(true)},
 			wantErr: nil,
 		},
 	}
@@ -322,7 +322,7 @@ func TestService_CreateResource(t *testing.T) {
 			t.Parallel()
 			svc := tt.setup(t)
 
-			got, err := svc.CreateResource(context.Background(), tt.res, tt.dryrun)
+			got, err := svc.CreateResource(context.Background(), tt.res, tt.options...)
 			if tt.wantErr != nil {
 				assert.Error(t, err)
 				assert.True(t, errors.Is(err, tt.wantErr))
@@ -364,7 +364,7 @@ func TestService_UpdateResource(t *testing.T) {
 		urn     string
 		update  resource.UpdateRequest
 		want    *resource.Resource
-		dryrun  bool
+		options []core.Options
 		wantErr error
 	}{
 		{
@@ -569,7 +569,7 @@ func TestService_UpdateResource(t *testing.T) {
 					Configs: []byte(`{"foo": "bar"}`),
 				},
 			},
-			dryrun:  true,
+			options: []core.Options{core.WithDryRun(true)},
 			wantErr: nil,
 		},
 	}
@@ -580,7 +580,7 @@ func TestService_UpdateResource(t *testing.T) {
 			t.Parallel()
 			svc := tt.setup(t)
 
-			got, err := svc.UpdateResource(context.Background(), tt.urn, tt.update, tt.dryrun)
+			got, err := svc.UpdateResource(context.Background(), tt.urn, tt.update, tt.options...)
 			if tt.wantErr != nil {
 				assert.Error(t, err)
 				assert.True(t, errors.Is(err, tt.wantErr))
@@ -741,7 +741,7 @@ func TestService_ApplyAction(t *testing.T) {
 		urn     string
 		action  module.ActionRequest
 		want    *resource.Resource
-		dryrun  bool
+		options []core.Options
 		wantErr error
 	}{
 		{
@@ -918,7 +918,7 @@ func TestService_ApplyAction(t *testing.T) {
 				UpdatedAt: frozenTime,
 			},
 			wantErr: nil,
-			dryrun:  true,
+			options: []core.Options{core.WithDryRun(true)},
 		},
 	}
 
@@ -928,7 +928,7 @@ func TestService_ApplyAction(t *testing.T) {
 			t.Parallel()
 			svc := tt.setup(t)
 
-			got, err := svc.ApplyAction(context.Background(), tt.urn, tt.action, tt.dryrun)
+			got, err := svc.ApplyAction(context.Background(), tt.urn, tt.action, tt.options...)
 			if tt.wantErr != nil {
 				assert.Error(t, err)
 				assert.True(t, errors.Is(err, tt.wantErr), cmp.Diff(tt.want, err))

@@ -5,8 +5,10 @@ package mocks
 import (
 	context "context"
 
-	module "github.com/goto/entropy/core/module"
+	core "github.com/goto/entropy/core"
 	mock "github.com/stretchr/testify/mock"
+
+	module "github.com/goto/entropy/core/module"
 
 	resource "github.com/goto/entropy/core/resource"
 )
@@ -24,9 +26,16 @@ func (_m *ResourceService) EXPECT() *ResourceService_Expecter {
 	return &ResourceService_Expecter{mock: &_m.Mock}
 }
 
-// ApplyAction provides a mock function with given fields: ctx, urn, action, dryrun
-func (_m *ResourceService) ApplyAction(ctx context.Context, urn string, action module.ActionRequest, dryrun bool) (*resource.Resource, error) {
-	ret := _m.Called(ctx, urn, action, dryrun)
+// ApplyAction provides a mock function with given fields: ctx, urn, action, resourceOpts
+func (_m *ResourceService) ApplyAction(ctx context.Context, urn string, action module.ActionRequest, resourceOpts ...core.Options) (*resource.Resource, error) {
+	_va := make([]interface{}, len(resourceOpts))
+	for _i := range resourceOpts {
+		_va[_i] = resourceOpts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, urn, action)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ApplyAction")
@@ -34,19 +43,19 @@ func (_m *ResourceService) ApplyAction(ctx context.Context, urn string, action m
 
 	var r0 *resource.Resource
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, module.ActionRequest, bool) (*resource.Resource, error)); ok {
-		return rf(ctx, urn, action, dryrun)
+	if rf, ok := ret.Get(0).(func(context.Context, string, module.ActionRequest, ...core.Options) (*resource.Resource, error)); ok {
+		return rf(ctx, urn, action, resourceOpts...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, module.ActionRequest, bool) *resource.Resource); ok {
-		r0 = rf(ctx, urn, action, dryrun)
+	if rf, ok := ret.Get(0).(func(context.Context, string, module.ActionRequest, ...core.Options) *resource.Resource); ok {
+		r0 = rf(ctx, urn, action, resourceOpts...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*resource.Resource)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, module.ActionRequest, bool) error); ok {
-		r1 = rf(ctx, urn, action, dryrun)
+	if rf, ok := ret.Get(1).(func(context.Context, string, module.ActionRequest, ...core.Options) error); ok {
+		r1 = rf(ctx, urn, action, resourceOpts...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -63,14 +72,21 @@ type ResourceService_ApplyAction_Call struct {
 //   - ctx context.Context
 //   - urn string
 //   - action module.ActionRequest
-//   - dryrun bool
-func (_e *ResourceService_Expecter) ApplyAction(ctx interface{}, urn interface{}, action interface{}, dryrun interface{}) *ResourceService_ApplyAction_Call {
-	return &ResourceService_ApplyAction_Call{Call: _e.mock.On("ApplyAction", ctx, urn, action, dryrun)}
+//   - resourceOpts ...core.Options
+func (_e *ResourceService_Expecter) ApplyAction(ctx interface{}, urn interface{}, action interface{}, resourceOpts ...interface{}) *ResourceService_ApplyAction_Call {
+	return &ResourceService_ApplyAction_Call{Call: _e.mock.On("ApplyAction",
+		append([]interface{}{ctx, urn, action}, resourceOpts...)...)}
 }
 
-func (_c *ResourceService_ApplyAction_Call) Run(run func(ctx context.Context, urn string, action module.ActionRequest, dryrun bool)) *ResourceService_ApplyAction_Call {
+func (_c *ResourceService_ApplyAction_Call) Run(run func(ctx context.Context, urn string, action module.ActionRequest, resourceOpts ...core.Options)) *ResourceService_ApplyAction_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(module.ActionRequest), args[3].(bool))
+		variadicArgs := make([]core.Options, len(args)-3)
+		for i, a := range args[3:] {
+			if a != nil {
+				variadicArgs[i] = a.(core.Options)
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), args[2].(module.ActionRequest), variadicArgs...)
 	})
 	return _c
 }
@@ -80,14 +96,21 @@ func (_c *ResourceService_ApplyAction_Call) Return(_a0 *resource.Resource, _a1 e
 	return _c
 }
 
-func (_c *ResourceService_ApplyAction_Call) RunAndReturn(run func(context.Context, string, module.ActionRequest, bool) (*resource.Resource, error)) *ResourceService_ApplyAction_Call {
+func (_c *ResourceService_ApplyAction_Call) RunAndReturn(run func(context.Context, string, module.ActionRequest, ...core.Options) (*resource.Resource, error)) *ResourceService_ApplyAction_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// CreateResource provides a mock function with given fields: ctx, res, dryrun
-func (_m *ResourceService) CreateResource(ctx context.Context, res resource.Resource, dryrun bool) (*resource.Resource, error) {
-	ret := _m.Called(ctx, res, dryrun)
+// CreateResource provides a mock function with given fields: ctx, res, resourceOpts
+func (_m *ResourceService) CreateResource(ctx context.Context, res resource.Resource, resourceOpts ...core.Options) (*resource.Resource, error) {
+	_va := make([]interface{}, len(resourceOpts))
+	for _i := range resourceOpts {
+		_va[_i] = resourceOpts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, res)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateResource")
@@ -95,19 +118,19 @@ func (_m *ResourceService) CreateResource(ctx context.Context, res resource.Reso
 
 	var r0 *resource.Resource
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, resource.Resource, bool) (*resource.Resource, error)); ok {
-		return rf(ctx, res, dryrun)
+	if rf, ok := ret.Get(0).(func(context.Context, resource.Resource, ...core.Options) (*resource.Resource, error)); ok {
+		return rf(ctx, res, resourceOpts...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, resource.Resource, bool) *resource.Resource); ok {
-		r0 = rf(ctx, res, dryrun)
+	if rf, ok := ret.Get(0).(func(context.Context, resource.Resource, ...core.Options) *resource.Resource); ok {
+		r0 = rf(ctx, res, resourceOpts...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*resource.Resource)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, resource.Resource, bool) error); ok {
-		r1 = rf(ctx, res, dryrun)
+	if rf, ok := ret.Get(1).(func(context.Context, resource.Resource, ...core.Options) error); ok {
+		r1 = rf(ctx, res, resourceOpts...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -123,14 +146,21 @@ type ResourceService_CreateResource_Call struct {
 // CreateResource is a helper method to define mock.On call
 //   - ctx context.Context
 //   - res resource.Resource
-//   - dryrun bool
-func (_e *ResourceService_Expecter) CreateResource(ctx interface{}, res interface{}, dryrun interface{}) *ResourceService_CreateResource_Call {
-	return &ResourceService_CreateResource_Call{Call: _e.mock.On("CreateResource", ctx, res, dryrun)}
+//   - resourceOpts ...core.Options
+func (_e *ResourceService_Expecter) CreateResource(ctx interface{}, res interface{}, resourceOpts ...interface{}) *ResourceService_CreateResource_Call {
+	return &ResourceService_CreateResource_Call{Call: _e.mock.On("CreateResource",
+		append([]interface{}{ctx, res}, resourceOpts...)...)}
 }
 
-func (_c *ResourceService_CreateResource_Call) Run(run func(ctx context.Context, res resource.Resource, dryrun bool)) *ResourceService_CreateResource_Call {
+func (_c *ResourceService_CreateResource_Call) Run(run func(ctx context.Context, res resource.Resource, resourceOpts ...core.Options)) *ResourceService_CreateResource_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(resource.Resource), args[2].(bool))
+		variadicArgs := make([]core.Options, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(core.Options)
+			}
+		}
+		run(args[0].(context.Context), args[1].(resource.Resource), variadicArgs...)
 	})
 	return _c
 }
@@ -140,7 +170,7 @@ func (_c *ResourceService_CreateResource_Call) Return(_a0 *resource.Resource, _a
 	return _c
 }
 
-func (_c *ResourceService_CreateResource_Call) RunAndReturn(run func(context.Context, resource.Resource, bool) (*resource.Resource, error)) *ResourceService_CreateResource_Call {
+func (_c *ResourceService_CreateResource_Call) RunAndReturn(run func(context.Context, resource.Resource, ...core.Options) (*resource.Resource, error)) *ResourceService_CreateResource_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -428,9 +458,16 @@ func (_c *ResourceService_ListResources_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
-// UpdateResource provides a mock function with given fields: ctx, urn, req, dryrun
-func (_m *ResourceService) UpdateResource(ctx context.Context, urn string, req resource.UpdateRequest, dryrun bool) (*resource.Resource, error) {
-	ret := _m.Called(ctx, urn, req, dryrun)
+// UpdateResource provides a mock function with given fields: ctx, urn, req, resourceOpts
+func (_m *ResourceService) UpdateResource(ctx context.Context, urn string, req resource.UpdateRequest, resourceOpts ...core.Options) (*resource.Resource, error) {
+	_va := make([]interface{}, len(resourceOpts))
+	for _i := range resourceOpts {
+		_va[_i] = resourceOpts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, urn, req)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateResource")
@@ -438,19 +475,19 @@ func (_m *ResourceService) UpdateResource(ctx context.Context, urn string, req r
 
 	var r0 *resource.Resource
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, resource.UpdateRequest, bool) (*resource.Resource, error)); ok {
-		return rf(ctx, urn, req, dryrun)
+	if rf, ok := ret.Get(0).(func(context.Context, string, resource.UpdateRequest, ...core.Options) (*resource.Resource, error)); ok {
+		return rf(ctx, urn, req, resourceOpts...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, resource.UpdateRequest, bool) *resource.Resource); ok {
-		r0 = rf(ctx, urn, req, dryrun)
+	if rf, ok := ret.Get(0).(func(context.Context, string, resource.UpdateRequest, ...core.Options) *resource.Resource); ok {
+		r0 = rf(ctx, urn, req, resourceOpts...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*resource.Resource)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, resource.UpdateRequest, bool) error); ok {
-		r1 = rf(ctx, urn, req, dryrun)
+	if rf, ok := ret.Get(1).(func(context.Context, string, resource.UpdateRequest, ...core.Options) error); ok {
+		r1 = rf(ctx, urn, req, resourceOpts...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -467,14 +504,21 @@ type ResourceService_UpdateResource_Call struct {
 //   - ctx context.Context
 //   - urn string
 //   - req resource.UpdateRequest
-//   - dryrun bool
-func (_e *ResourceService_Expecter) UpdateResource(ctx interface{}, urn interface{}, req interface{}, dryrun interface{}) *ResourceService_UpdateResource_Call {
-	return &ResourceService_UpdateResource_Call{Call: _e.mock.On("UpdateResource", ctx, urn, req, dryrun)}
+//   - resourceOpts ...core.Options
+func (_e *ResourceService_Expecter) UpdateResource(ctx interface{}, urn interface{}, req interface{}, resourceOpts ...interface{}) *ResourceService_UpdateResource_Call {
+	return &ResourceService_UpdateResource_Call{Call: _e.mock.On("UpdateResource",
+		append([]interface{}{ctx, urn, req}, resourceOpts...)...)}
 }
 
-func (_c *ResourceService_UpdateResource_Call) Run(run func(ctx context.Context, urn string, req resource.UpdateRequest, dryrun bool)) *ResourceService_UpdateResource_Call {
+func (_c *ResourceService_UpdateResource_Call) Run(run func(ctx context.Context, urn string, req resource.UpdateRequest, resourceOpts ...core.Options)) *ResourceService_UpdateResource_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(resource.UpdateRequest), args[3].(bool))
+		variadicArgs := make([]core.Options, len(args)-3)
+		for i, a := range args[3:] {
+			if a != nil {
+				variadicArgs[i] = a.(core.Options)
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), args[2].(resource.UpdateRequest), variadicArgs...)
 	})
 	return _c
 }
@@ -484,7 +528,7 @@ func (_c *ResourceService_UpdateResource_Call) Return(_a0 *resource.Resource, _a
 	return _c
 }
 
-func (_c *ResourceService_UpdateResource_Call) RunAndReturn(run func(context.Context, string, resource.UpdateRequest, bool) (*resource.Resource, error)) *ResourceService_UpdateResource_Call {
+func (_c *ResourceService_UpdateResource_Call) RunAndReturn(run func(context.Context, string, resource.UpdateRequest, ...core.Options) (*resource.Resource, error)) *ResourceService_UpdateResource_Call {
 	_c.Call.Return(run)
 	return _c
 }

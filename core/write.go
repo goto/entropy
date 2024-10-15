@@ -9,7 +9,15 @@ import (
 	"github.com/goto/entropy/pkg/errors"
 )
 
-func (svc *Service) CreateResource(ctx context.Context, res resource.Resource, dryRun bool) (*resource.Resource, error) {
+type Options struct {
+	DryRun bool
+}
+
+func WithDryRun(dryRun bool) Options {
+	return Options{DryRun: dryRun}
+}
+
+func (svc *Service) CreateResource(ctx context.Context, res resource.Resource, resourceOpts ...Options) (*resource.Resource, error) {
 	if err := res.Validate(true); err != nil {
 		return nil, err
 	}
@@ -22,10 +30,15 @@ func (svc *Service) CreateResource(ctx context.Context, res resource.Resource, d
 	}
 	res.Spec.Configs = nil
 
+	dryRun := false
+	for _, opt := range resourceOpts {
+		dryRun = opt.DryRun
+	}
+
 	return svc.execAction(ctx, res, act, dryRun)
 }
 
-func (svc *Service) UpdateResource(ctx context.Context, urn string, req resource.UpdateRequest, dryRun bool) (*resource.Resource, error) {
+func (svc *Service) UpdateResource(ctx context.Context, urn string, req resource.UpdateRequest, resourceOpts ...Options) (*resource.Resource, error) {
 	if len(req.Spec.Dependencies) != 0 {
 		return nil, errors.ErrUnsupported.WithMsgf("updating dependencies is not supported")
 	} else if len(req.Spec.Configs) == 0 {
@@ -37,23 +50,28 @@ func (svc *Service) UpdateResource(ctx context.Context, urn string, req resource
 		Params: req.Spec.Configs,
 		Labels: req.Labels,
 		UserID: req.UserID,
-	}, dryRun)
+	}, resourceOpts...)
 }
 
 func (svc *Service) DeleteResource(ctx context.Context, urn string) error {
 	_, actionErr := svc.ApplyAction(ctx, urn, module.ActionRequest{
 		Name: module.DeleteAction,
-	}, false)
+	}, WithDryRun(false))
 	return actionErr
 }
 
-func (svc *Service) ApplyAction(ctx context.Context, urn string, act module.ActionRequest, dryRun bool) (*resource.Resource, error) {
+func (svc *Service) ApplyAction(ctx context.Context, urn string, act module.ActionRequest, resourceOpts ...Options) (*resource.Resource, error) {
 	res, err := svc.GetResource(ctx, urn)
 	if err != nil {
 		return nil, err
 	} else if !res.State.IsTerminal() {
 		return nil, errors.ErrInvalid.
 			WithMsgf("cannot perform '%s' on resource in '%s'", act.Name, res.State.Status)
+	}
+
+	dryRun := false
+	for _, opt := range resourceOpts {
+		dryRun = opt.DryRun
 	}
 
 	return svc.execAction(ctx, *res, act, dryRun)

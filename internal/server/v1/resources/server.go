@@ -5,6 +5,7 @@ package resources
 import (
 	"context"
 
+	"github.com/goto/entropy/core"
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/internal/server/serverutils"
@@ -14,11 +15,11 @@ import (
 type ResourceService interface {
 	GetResource(ctx context.Context, urn string) (*resource.Resource, error)
 	ListResources(ctx context.Context, filter resource.Filter, withSpecConfigs bool) (resource.PagedResource, error)
-	CreateResource(ctx context.Context, res resource.Resource, dryrun bool) (*resource.Resource, error)
-	UpdateResource(ctx context.Context, urn string, req resource.UpdateRequest, dryrun bool) (*resource.Resource, error)
+	CreateResource(ctx context.Context, res resource.Resource, resourceOpts ...core.Options) (*resource.Resource, error)
+	UpdateResource(ctx context.Context, urn string, req resource.UpdateRequest, resourceOpts ...core.Options) (*resource.Resource, error)
 	DeleteResource(ctx context.Context, urn string) error
 
-	ApplyAction(ctx context.Context, urn string, action module.ActionRequest, dryrun bool) (*resource.Resource, error)
+	ApplyAction(ctx context.Context, urn string, action module.ActionRequest, resourceOpts ...core.Options) (*resource.Resource, error)
 	GetLog(ctx context.Context, urn string, filter map[string]string) (<-chan module.LogChunk, error)
 
 	GetRevisions(ctx context.Context, selector resource.RevisionsSelector) ([]resource.Revision, error)
@@ -48,7 +49,7 @@ func (server APIServer) CreateResource(ctx context.Context, request *entropyv1be
 	res.CreatedBy = userIdentifier
 	res.UpdatedBy = userIdentifier
 
-	result, err := server.resourceSvc.CreateResource(ctx, *res, request.GetDryRun())
+	result, err := server.resourceSvc.CreateResource(ctx, *res, core.WithDryRun(request.GetDryRun()))
 	if err != nil {
 		return nil, serverutils.ToRPCError(err)
 	}
@@ -80,7 +81,7 @@ func (server APIServer) UpdateResource(ctx context.Context, request *entropyv1be
 		UserID: userIdentifier,
 	}
 
-	res, err := server.resourceSvc.UpdateResource(ctx, request.GetUrn(), updateRequest, request.GetDryRun())
+	res, err := server.resourceSvc.UpdateResource(ctx, request.GetUrn(), updateRequest, core.WithDryRun(request.GetDryRun()))
 	if err != nil {
 		return nil, serverutils.ToRPCError(err)
 	}
@@ -169,7 +170,7 @@ func (server APIServer) ApplyAction(ctx context.Context, request *entropyv1beta1
 		UserID: userIdentifier,
 	}
 
-	updatedRes, err := server.resourceSvc.ApplyAction(ctx, request.GetUrn(), action, request.GetDryRun())
+	updatedRes, err := server.resourceSvc.ApplyAction(ctx, request.GetUrn(), action, core.WithDryRun(request.GetDryRun()))
 	if err != nil {
 		return nil, serverutils.ToRPCError(err)
 	}
