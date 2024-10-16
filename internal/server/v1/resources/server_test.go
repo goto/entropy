@@ -44,7 +44,7 @@ func TestAPIServer_CreateResource(t *testing.T) {
 				t.Helper()
 				resourceService := &mocks.ResourceService{}
 				resourceService.EXPECT().
-					CreateResource(mock.Anything, mock.Anything, false).
+					CreateResource(mock.Anything, mock.Anything).
 					Return(nil, errors.ErrConflict).Once()
 				return NewAPIServer(resourceService)
 			},
@@ -68,7 +68,7 @@ func TestAPIServer_CreateResource(t *testing.T) {
 				t.Helper()
 				resourceService := &mocks.ResourceService{}
 				resourceService.EXPECT().
-					CreateResource(mock.Anything, mock.Anything, false).
+					CreateResource(mock.Anything, mock.Anything).
 					Return(nil, errors.ErrInvalid).Once()
 
 				return NewAPIServer(resourceService)
@@ -93,7 +93,7 @@ func TestAPIServer_CreateResource(t *testing.T) {
 				t.Helper()
 				resourceService := &mocks.ResourceService{}
 				resourceService.EXPECT().
-					CreateResource(mock.Anything, mock.Anything, false).
+					CreateResource(mock.Anything, mock.Anything).
 					Return(&resource.Resource{
 						URN:       "p-testdata-gl-testname-log",
 						Kind:      "log",
@@ -189,7 +189,7 @@ func TestAPIServer_UpdateResource(t *testing.T) {
 				t.Helper()
 				resourceService := &mocks.ResourceService{}
 				resourceService.EXPECT().
-					UpdateResource(mock.Anything, "p-testdata-gl-testname-log", mock.Anything, false).
+					UpdateResource(mock.Anything, "p-testdata-gl-testname-log", mock.Anything).
 					Return(nil, errors.ErrNotFound).Once()
 				return NewAPIServer(resourceService)
 			},
@@ -208,7 +208,7 @@ func TestAPIServer_UpdateResource(t *testing.T) {
 				t.Helper()
 				resourceService := &mocks.ResourceService{}
 				resourceService.EXPECT().
-					UpdateResource(mock.Anything, "p-testdata-gl-testname-log", mock.Anything, false).
+					UpdateResource(mock.Anything, "p-testdata-gl-testname-log", mock.Anything).
 					Return(nil, errors.ErrInvalid).Once()
 				return NewAPIServer(resourceService)
 			},
@@ -227,7 +227,7 @@ func TestAPIServer_UpdateResource(t *testing.T) {
 				t.Helper()
 				resourceService := &mocks.ResourceService{}
 				resourceService.EXPECT().
-					UpdateResource(mock.Anything, "p-testdata-gl-testname-log", mock.Anything, false).
+					UpdateResource(mock.Anything, "p-testdata-gl-testname-log", mock.Anything).
 					Return(&resource.Resource{
 						URN:       "p-testdata-gl-testname-log",
 						Kind:      "log",
@@ -593,7 +593,7 @@ func TestAPIServer_ApplyAction(t *testing.T) {
 				t.Helper()
 				resourceService := &mocks.ResourceService{}
 				resourceService.EXPECT().
-					ApplyAction(mock.Anything, "p-testdata-gl-testname-log", mock.Anything, false).
+					ApplyAction(mock.Anything, "p-testdata-gl-testname-log", mock.Anything).
 					Return(nil, errors.ErrNotFound).Once()
 				return NewAPIServer(resourceService)
 			},
@@ -610,7 +610,7 @@ func TestAPIServer_ApplyAction(t *testing.T) {
 				t.Helper()
 				resourceService := &mocks.ResourceService{}
 				resourceService.EXPECT().
-					ApplyAction(mock.Anything, "p-testdata-gl-testname-log", mock.Anything, false).
+					ApplyAction(mock.Anything, "p-testdata-gl-testname-log", mock.Anything).
 					Return(&resource.Resource{
 						URN:       "p-testdata-gl-testname-log",
 						Kind:      "log",
