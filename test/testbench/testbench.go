@@ -121,6 +121,11 @@ func SetupTests(t *testing.T, spawnWorkers bool, setupKube bool) (context.Contex
 		t.Fatal()
 	}
 
+	err = BootstrapFlinkModule(ctx, moduleClient, TestDataPath)
+	if err != nil {
+		t.Fatal()
+	}
+
 	if setupKube {
 		err = BootstrapKubernetesResource(ctx, resourceClient, provider, TestDataPath)
 		if err != nil {
