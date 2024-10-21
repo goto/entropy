@@ -87,8 +87,8 @@ var (
 	validateConfig = validator.FromJSONSchema(configSchemaRaw)
 )
 
-type StartParams struct {
-	StopTime *time.Time `json:"stop_time"`
+type StencilSchemaRegistryURLsParams struct {
+	StencilSchemaRegistryURLs string `json:"stencil_schema_registry_urls"`
 }
 
 type UsageSpec struct {

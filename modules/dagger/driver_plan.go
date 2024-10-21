@@ -14,11 +14,13 @@ import (
 
 const SourceKafkaConsumerAutoOffsetReset = "SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_OFFSET_RESET"
 const (
-	JobStateRunning    = "running"
-	JobStateSuspended  = "suspended"
-	StateDeployed      = "DEPLOYED"
-	StateUserStopped   = "USER_STOPPED"
-	StateSystemStopped = "SYSTEM_STOPPED"
+	JobStateRunning                          = "running"
+	JobStateSuspended                        = "suspended"
+	StateDeployed                            = "DEPLOYED"
+	StateUserStopped                         = "USER_STOPPED"
+	StateSystemStopped                       = "SYSTEM_STOPPED"
+	KeySchemaRegistryStencilCacheAutoRefresh = "SCHEMA_REGISTRY_STENCIL_CACHE_AUTO_REFRESH"
+	KeyStencilSchemaRegistryURLs             = "STENCIL_SCHEMA_REGISTRY_URLS"
 )
 
 func (dd *daggerDriver) Plan(_ context.Context, exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
@@ -54,6 +56,7 @@ func (dd *daggerDriver) planCreate(exr module.ExpandedResource, act module.Actio
 	conf.State = StateDeployed
 	conf.JobState = JobStateRunning
 	exr.Resource.Labels[labelJobState] = conf.JobState
+	exr.Resource.Labels[labelState] = conf.State
 
 	exr.Resource.Spec.Configs = modules.MustJSON(conf)
 
@@ -115,12 +118,9 @@ func (dd *daggerDriver) planChange(exr module.ExpandedResource, act module.Actio
 		curConf.State = StateDeployed
 		curConf.JobState = JobStateRunning
 
-		var startParams StartParams
-		if err := json.Unmarshal(act.Params, &startParams); err != nil {
-			return nil, errors.ErrInvalid.WithMsgf("invalid params for start action").WithCausef(err.Error())
-		}
-		if startParams.StopTime != nil {
-			curConf.StopTime = startParams.StopTime
+		err := updateStencilSchemaRegistryURLsParams(curConf, act)
+		if err != nil {
+			return nil, err
 		}
 
 	}
@@ -133,6 +133,7 @@ func (dd *daggerDriver) planChange(exr module.ExpandedResource, act module.Actio
 		exr.Resource.Labels = act.Labels
 	}
 	exr.Resource.Labels[labelJobState] = curConf.JobState
+	exr.Resource.Labels[labelState] = curConf.State
 
 	err = dd.validateHelmReleaseConfigs(exr, *curConf)
 	if err != nil {
@@ -160,6 +161,11 @@ func (dd *daggerDriver) planReset(exr module.ExpandedResource, act module.Action
 	immediately := dd.timeNow()
 
 	curConf, err := readConfig(exr, exr.Resource.Spec.Configs, dd.conf)
+	if err != nil {
+		return nil, err
+	}
+
+	err = updateStencilSchemaRegistryURLsParams(curConf, act)
 	if err != nil {
 		return nil, err
 	}
@@ -212,4 +218,16 @@ func mergeConsumerGroupId(currStreams, newStreams []Source) []Source {
 	}
 
 	return newStreams
+}
+
+func updateStencilSchemaRegistryURLsParams(curConf *Config, act module.ActionRequest) error {
+	if curConf.EnvVariables[KeySchemaRegistryStencilCacheAutoRefresh] != "" && curConf.EnvVariables[KeySchemaRegistryStencilCacheAutoRefresh] == "false" {
+		stencilSchemaRegistryURLsParams := StencilSchemaRegistryURLsParams{}
+		err := json.Unmarshal([]byte(act.Params), &stencilSchemaRegistryURLsParams)
+		if err != nil {
+			return err
+		}
+		curConf.EnvVariables[KeyStencilSchemaRegistryURLs] = stencilSchemaRegistryURLsParams.StencilSchemaRegistryURLs
+	}
+	return nil
 }
