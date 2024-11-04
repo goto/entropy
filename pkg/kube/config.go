@@ -52,6 +52,7 @@ func (conf *Config) RESTConfig(ctx context.Context) (*rest.Config, error) {
 			KeyData:  []byte(conf.ClientKey),
 			CertData: []byte(conf.ClientCertificate),
 		},
+		BearerToken: conf.Token,
 	}
 
 	if conf.ProviderType != "" {
