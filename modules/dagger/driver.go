@@ -91,6 +91,8 @@ type driverConf struct {
 
 	// timeout value for a kube deployment run
 	KubeDeployTimeout int `json:"kube_deploy_timeout_seconds"`
+
+	GCPCredential string `json:"gcp_credential,omitempty"`
 }
 
 type Output struct {
@@ -212,10 +214,11 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 				"memory": conf.Resources.JobManager.Memory,
 			},
 		},
-		"jarURI":      conf.JarURI,
-		"programArgs": append([]string{"--encodedArgs"}, encodedProgramArgs),
-		"state":       conf.JobState,
-		"namespace":   conf.Namespace,
+		"jarURI":          conf.JarURI,
+		"programArgs":     append([]string{"--encodedArgs"}, encodedProgramArgs),
+		"state":           conf.JobState,
+		"namespace":       conf.Namespace,
+		"gcp_credentials": dd.conf.GCPCredential,
 	}
 
 	return rc, nil
