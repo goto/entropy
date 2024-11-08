@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"math"
 	"strings"
 	"time"
 
@@ -198,7 +199,7 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 			"FLINK_PARALLELISM": conf.Replicas,
 		},
 		"projectID":      res.Project,
-		"name":           conf.DeploymentID,
+		"name":           modules.BuildResourceName("dagger", res.Name, res.Project, math.MaxInt),
 		"team":           conf.Team,
 		"flink_name":     conf.FlinkName,
 		"prometheus_url": conf.PrometheusURL,

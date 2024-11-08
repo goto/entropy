@@ -82,7 +82,7 @@ func BuildResourceName(kind, name, projectID string, limit int) string {
 	if charSizeToRemove >= 0 {
 		qualifiedName = sluggedName
 	} else {
-		qualifiedName = fmt.Sprintf("%s-%s", sluggedName[:charSizeToRemove+-(hashLength+1)], hashStr)
+		qualifiedName = fmt.Sprintf("%s-%s", sluggedName[:len(sluggedName)+(charSizeToRemove+-(hashLength+1))], hashStr)
 	}
 
 	return slug(strings.Join([]string{projectID, qualifiedName, kind}, "-"))
