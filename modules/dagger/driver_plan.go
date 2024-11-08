@@ -51,6 +51,13 @@ func (dd *daggerDriver) planCreate(exr module.ExpandedResource, act module.Actio
 	}
 	conf.ChartValues = chartVals
 
+	if conf.State == "" {
+		conf.State = StateDeployed
+	}
+	if conf.JobState == "" {
+		conf.JobState = JobStateRunning
+	}
+
 	immediately := dd.timeNow()
 	conf.JarURI = dd.conf.JarURI
 	exr.Resource.Labels[labelJobState] = conf.JobState
@@ -101,6 +108,12 @@ func (dd *daggerDriver) planChange(exr module.ExpandedResource, act module.Actio
 		newConf.DeploymentID = curConf.DeploymentID
 		newConf.ChartValues = chartVals
 		newConf.JarURI = curConf.JarURI
+		if newConf.State == "" {
+			newConf.State = curConf.State
+		}
+		if newConf.JobState == "" {
+			newConf.JobState = curConf.JobState
+		}
 
 		newConf.Resources = mergeResources(curConf.Resources, newConf.Resources)
 
