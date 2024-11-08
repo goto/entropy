@@ -205,6 +205,14 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 		return nil, errors.ErrInvalid.WithMsgf("invalid config json").WithCausef(err.Error())
 	}
 
+	//transformation #6
+	// note: enforce the kubernetes deployment name length limit.
+	if len(cfg.DeploymentID) == 0 {
+		cfg.DeploymentID = modules.BuildResourceName("dagger", r.Name, r.Project, helmReleaseNameMaxLength)
+	} else if len(cfg.DeploymentID) > helmReleaseNameMaxLength {
+		return nil, errors.ErrInvalid.WithMsgf("deployment_id must not have more than 53 chars")
+	}
+
 	//transformation #9 and #11
 	//transformation #1
 	source := cfg.Source
@@ -213,7 +221,7 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 		for i := range source {
 			//TODO: check how to handle increment group id on update
 			if source[i].SourceKafkaConsumerConfigGroupID == "" {
-				source[i].SourceKafkaConsumerConfigGroupID = incrementGroupId(r.Name+"-0001", i)
+				source[i].SourceKafkaConsumerConfigGroupID = incrementGroupId(cfg.DeploymentID+"-0001", i)
 			}
 			if source[i].SourceKafkaConsumerConfigAutoCommitEnable == "" {
 				source[i].SourceKafkaConsumerConfigAutoCommitEnable = dc.EnvVariables[SourceKafkaConsumerConfigAutoCommitEnable]
@@ -245,15 +253,7 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 
 	//transformation #5
 	//TODO: build name from title as project-<title>-dagger
-	cfg.EnvVariables[keyFlinkJobID] = r.Name
-
-	//transformation #6
-	// note: enforce the kubernetes deployment name length limit.
-	if len(cfg.DeploymentID) == 0 {
-		cfg.DeploymentID = modules.SafeName(fmt.Sprintf("%s-%s", r.Project, r.Name), "-dagger", helmReleaseNameMaxLength)
-	} else if len(cfg.DeploymentID) > helmReleaseNameMaxLength {
-		return nil, errors.ErrInvalid.WithMsgf("deployment_id must not have more than 53 chars")
-	}
+	cfg.EnvVariables[keyFlinkJobID] = cfg.DeploymentID
 
 	//transformation #7
 	cfg.EnvVariables[keySinkInfluxURL] = flinkOut.Influx.URL
