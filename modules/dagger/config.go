@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -253,7 +254,7 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 
 	//transformation #5
 	//TODO: build name from title as project-<title>-dagger
-	cfg.EnvVariables[keyFlinkJobID] = cfg.DeploymentID
+	cfg.EnvVariables[keyFlinkJobID] = modules.BuildResourceName("dagger", r.Name, r.Project, math.MaxInt)
 
 	//transformation #7
 	cfg.EnvVariables[keySinkInfluxURL] = flinkOut.Influx.URL
