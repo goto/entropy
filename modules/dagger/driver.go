@@ -210,7 +210,7 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 			},
 			"taskmanager": map[string]any{
 				"cpu":    conf.Resources.TaskManager.CPU,
-				"memory": conf.Resources.JobManager.Memory,
+				"memory": conf.Resources.TaskManager.Memory,
 			},
 		},
 		"jarURI":      conf.JarURI,
