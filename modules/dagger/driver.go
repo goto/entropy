@@ -91,8 +91,6 @@ type driverConf struct {
 
 	// timeout value for a kube deployment run
 	KubeDeployTimeout int `json:"kube_deploy_timeout_seconds"`
-
-	GCPCredential string `json:"gcp_credential,omitempty"`
 }
 
 type Output struct {
@@ -200,7 +198,7 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 			"FLINK_PARALLELISM": conf.Replicas,
 		},
 		"projectID":      res.Project,
-		"name":           res.Name,
+		"name":           conf.DeploymentID,
 		"team":           conf.Team,
 		"flink_name":     conf.FlinkName,
 		"prometheus_url": conf.PrometheusURL,
@@ -214,11 +212,10 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 				"memory": conf.Resources.JobManager.Memory,
 			},
 		},
-		"jarURI":          conf.JarURI,
-		"programArgs":     append([]string{"--encodedArgs"}, encodedProgramArgs),
-		"state":           conf.JobState,
-		"namespace":       conf.Namespace,
-		"gcp_credentials": dd.conf.GCPCredential,
+		"jarURI":      conf.JarURI,
+		"programArgs": append([]string{"--encodedArgs"}, encodedProgramArgs),
+		"state":       conf.JobState,
+		"namespace":   conf.Namespace,
 	}
 
 	return rc, nil
