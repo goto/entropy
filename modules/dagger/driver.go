@@ -177,6 +177,8 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 		imageRepository = conf.ChartValues.ImageRepository
 	}
 
+	conf.EnvVariables["SINK_TYPE"] = strings.ToLower(conf.EnvVariables["SINK_TYPE"])
+
 	var programArgs []string
 	for key, value := range conf.EnvVariables {
 		// Check if the value is a JSON object and escape quotes if necessary
