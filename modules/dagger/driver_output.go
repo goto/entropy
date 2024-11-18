@@ -10,6 +10,7 @@ import (
 	"github.com/goto/entropy/modules/flink"
 	"github.com/goto/entropy/modules/kubernetes"
 	"github.com/goto/entropy/pkg/errors"
+	"github.com/goto/entropy/pkg/kube"
 )
 
 func (dd *daggerDriver) Output(ctx context.Context, exr module.ExpandedResource) (json.RawMessage, error) {
@@ -39,21 +40,10 @@ func (dd *daggerDriver) refreshOutput(ctx context.Context, r resource.Resource,
 		return nil, err
 	}
 
-	var kubeErr error
-
-	pods, err := dd.kubeGetPod(ctx, kubeOut.Configs, rc.Namespace, map[string]string{"app": conf.DeploymentID})
+	pods, crd, err := dd.getKubeResources(ctx, kubeOut.Configs, rc.Namespace, rc.Name, conf.DeploymentID)
 	if err != nil {
-		kubeErr = err
-	}
-
-	crd, err := dd.kubeGetCRD(ctx, kubeOut.Configs, rc.Namespace, rc.Name)
-	if err != nil {
-		kubeErr = err
-	}
-
-	if kubeErr != nil {
 		return modules.MustJSON(Output{
-			Error: kubeErr,
+			Error: err,
 		}), nil
 	}
 
@@ -65,4 +55,18 @@ func (dd *daggerDriver) refreshOutput(ctx context.Context, r resource.Resource,
 	output.Reconcilation = crd.Reconciliation
 
 	return modules.MustJSON(output), nil
+}
+
+func (dd *daggerDriver) getKubeResources(ctx context.Context, configs kube.Config, namespace, name, deploymentID string) ([]kube.Pod, kube.FlinkDeploymentStatus, error) {
+	pods, err := dd.kubeGetPod(ctx, configs, namespace, map[string]string{"app": deploymentID})
+	if err != nil {
+		return nil, kube.FlinkDeploymentStatus{}, err
+	}
+
+	crd, err := dd.kubeGetCRD(ctx, configs, namespace, name)
+	if err != nil {
+		return nil, kube.FlinkDeploymentStatus{}, err
+	}
+
+	return pods, crd, nil
 }
