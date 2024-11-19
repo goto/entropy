@@ -181,16 +181,15 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 
 	var programArgs []string
 	for key, value := range conf.EnvVariables {
-		// Check if the value is a JSON object and escape quotes if necessary
-		if json.Valid([]byte(value)) {
-			value = strings.ReplaceAll(value, `"`, `\"`)
-		}
-		programArgs = append(programArgs, fmt.Sprintf("\"%s\"", "--"+key), fmt.Sprintf("\"%v\"", value))
+		//this will preserve the \ and \n in the value as it is
+		value = strings.ReplaceAll(value, `"`, `\"`)
+		value = strings.ReplaceAll(value, "\n", "\\n")
+
+		//wrapping key and value in quotes
+		programArgs = append(programArgs, fmt.Sprintf("\"%s\"", "--"+key), fmt.Sprintf("\"%s\"", value))
 	}
 
-	//fmt.Printf("programArgs: %v\n", programArgs)
 	formatted := fmt.Sprintf("[%s]", strings.Join(programArgs, ","))
-	//fmt.Printf("formatted: %v\n", formatted)
 	encodedProgramArgs := base64.StdEncoding.EncodeToString([]byte(formatted))
 
 	rc.Values = map[string]any{
