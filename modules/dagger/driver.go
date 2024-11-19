@@ -184,6 +184,7 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 		//this will preserve the \ and \n in the value as it is
 		value = strings.ReplaceAll(value, `"`, `\"`)
 		value = strings.ReplaceAll(value, "\n", "\\n")
+		value = strings.ReplaceAll(value, "\t", "\\t")
 
 		//wrapping key and value in quotes
 		programArgs = append(programArgs, fmt.Sprintf("\"%s\"", "--"+key), fmt.Sprintf("\"%s\"", value))
