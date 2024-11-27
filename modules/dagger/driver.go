@@ -101,7 +101,7 @@ type Output struct {
 	Pods           []kube.Pod `json:"pods,omitempty"`
 	Namespace      string     `json:"namespace,omitempty"`
 	JobID          string     `json:"job_id,omitempty"`
-	Error          error      `json:"error,omitempty"`
+	Error          string     `json:"error,omitempty"`
 }
 
 type transientData struct {

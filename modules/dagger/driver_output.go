@@ -43,7 +43,7 @@ func (dd *daggerDriver) refreshOutput(ctx context.Context, r resource.Resource,
 	pods, crd, err := dd.getKubeResources(ctx, kubeOut.Configs, rc.Namespace, rc.Name, conf.DeploymentID)
 	if err != nil {
 		return modules.MustJSON(Output{
-			Error: err,
+			Error: err.Error(),
 		}), nil
 	}
 
