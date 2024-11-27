@@ -98,6 +98,7 @@ func (dd *daggerDriver) planChange(exr module.ExpandedResource, act module.Actio
 		}
 
 		newConf.Source = mergeConsumerGroupId(curConf.Source, newConf.Source)
+		newConf.EnvVariables[keyStreams] = string(mustMarshalJSON(newConf.Source))
 
 		chartVals, err := mergeChartValues(curConf.ChartValues, newConf.ChartValues)
 		if err != nil {

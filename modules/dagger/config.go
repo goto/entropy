@@ -38,6 +38,9 @@ const (
 	keySinkInfluxDBName          = "SINK_INFLUX_DB_NAME"
 	keySinkInfluxUsername        = "SINK_INFLUX_USERNAME"
 	keySinkInfluxMeasurementName = "SINK_INFLUX_MEASUREMENT_NAME"
+	keySinkInfluxRetentionPolicy = "SINK_INFLUX_RETENTION_POLICY"
+	keySinkInfluxFlushDurationMs = "SINK_INFLUX_FLUSH_DURATION_MS"
+	keySinkInfluxBatchSize       = "SINK_INFLUX_BATCH_SIZE"
 )
 
 // Kafka-related constants
@@ -79,6 +82,8 @@ const (
 	keySinkErrorTypesForFailure             = "SINK_ERROR_TYPES_FOR_FAILURE"
 	keySinkBigqueryTableClusteringKeys      = "SINK_BIGQUERY_TABLE_CLUSTERING_KEYS"
 	keySinkConnectorSchemaProtoMessageClass = "SINK_CONNECTOR_SCHEMA_PROTO_MESSAGE_CLASS"
+	keySinkKafkaProduceLargeMessageEnable   = "SINK_KAFKA_PRODUCE_LARGE_MESSAGE_ENABLE"
+	keySinkBigqueryCredentialPath           = "SINK_BIGQUERY_CREDENTIAL_PATH"
 )
 
 var (
@@ -160,20 +165,33 @@ type Source struct {
 }
 
 type SinkKafka struct {
-	SinkKafkaBrokers  string `json:"SINK_KAFKA_BROKERS"`
-	SinkKafkaStream   string `json:"SINK_KAFKA_STREAM"`
-	SinkKafkaTopic    string `json:"SINK_KAFKA_TOPIC"`
-	SinkKafkaProtoMsg string `json:"SINK_KAFKA_PROTO_MESSAGE"`
-	SinkKafkaLingerMs string `json:"SINK_KAFKA_LINGER_MS"`
-	SinkKafkaProtoKey string `json:"SINK_KAFKA_PROTO_KEY"`
+	SinkKafkaBrokers                   string `json:"SINK_KAFKA_BROKERS"`
+	SinkKafkaStream                    string `json:"SINK_KAFKA_STREAM"`
+	SinkKafkaTopic                     string `json:"SINK_KAFKA_TOPIC"`
+	SinkKafkaProtoMsg                  string `json:"SINK_KAFKA_PROTO_MESSAGE"`
+	SinkKafkaLingerMs                  string `json:"SINK_KAFKA_LINGER_MS"`
+	SinkKafkaProtoKey                  string `json:"SINK_KAFKA_PROTO_KEY"`
+	SinkKafkaProduceLargeMessageEnable string `json:"SINK_KAFKA_PRODUCE_LARGE_MESSAGE_ENABLE"`
 }
 
 type SinkInflux struct {
-	SinkInfluxDBName          string `json:"SINK_INFLUX_DB_NAME"`
+	SinkInfluxBatchSize       string `json:"SINK_INFLUX_BATCH_SIZE,omitempty" source:"entropy"`
+	SinkInfluxDBName          string `json:"SINK_INFLUX_DB_NAME,omitempty" source:"dex"`
+	SinkInfluxFlushDurationMs string `json:"SINK_INFLUX_FLUSH_DURATION_MS,omitempty" source:"entropy"`
+	SinkInfluxPassword        string `json:"SINK_INFLUX_PASSWORD,omitempty" source:"entropy"`
+	SinkInfluxRetentionPolicy string `json:"SINK_INFLUX_RETENTION_POLICY,omitempty" source:"entropy"`
+	SinkInfluxURL             string `json:"SINK_INFLUX_URL,omitempty" source:"entropy"`
+	SinkInfluxUsername        string `json:"SINK_INFLUX_USERNAME,omitempty" source:"entropy"`
 	SinkInfluxMeasurementName string `json:"SINK_INFLUX_MEASUREMENT_NAME"`
 }
 
 type SinkBigquery struct {
+	SinkBigqueryTablePartitionExpiryMs string `json:"SINK_BIGQUERY_TABLE_PARTITION_EXPIRY_MS"`
+	SinkBigqueryRowInsertIDEnable      string `json:"SINK_BIGQUERY_ROW_INSERT_ID_ENABLE"`
+	SinkBigqueryClientReadTimeoutMs    string `json:"SINK_BIGQUERY_CLIENT_READ_TIMEOUT_MS"`
+	SinkBigqueryClientConnectTimeoutMs string `json:"SINK_BIGQUERY_CLIENT_CONNECT_TIMEOUT_MS"`
+	SinkBigqueryCredentialPath         string `json:"SINK_BIGQUERY_CREDENTIAL_PATH"`
+
 	SinkBigqueryGoogleCloudProjectID     string `json:"SINK_BIGQUERY_GOOGLE_CLOUD_PROJECT_ID"`
 	SinkBigqueryTableName                string `json:"SINK_BIGQUERY_TABLE_NAME"`
 	SinkBigqueryDatasetLabels            string `json:"SINK_BIGQUERY_DATASET_LABELS"`
@@ -181,10 +199,6 @@ type SinkBigquery struct {
 	SinkBigqueryDatasetName              string `json:"SINK_BIGQUERY_DATASET_NAME"`
 	SinkBigqueryTablePartitioningEnable  string `json:"SINK_BIGQUERY_TABLE_PARTITIONING_ENABLE"`
 	SinkBigqueryTablePartitionKey        string `json:"SINK_BIGQUERY_TABLE_PARTITION_KEY"`
-	SinkBigqueryRowInsertIDEnable        string `json:"SINK_BIGQUERY_ROW_INSERT_ID_ENABLE"`
-	SinkBigqueryClientReadTimeoutMs      string `json:"SINK_BIGQUERY_CLIENT_READ_TIMEOUT_MS"`
-	SinkBigqueryClientConnectTimeoutMs   string `json:"SINK_BIGQUERY_CLIENT_CONNECT_TIMEOUT_MS"`
-	SinkBigqueryTablePartitionExpiryMs   string `json:"SINK_BIGQUERY_TABLE_PARTITION_EXPIRY_MS"`
 	SinkBigqueryDatasetLocation          string `json:"SINK_BIGQUERY_DATASET_LOCATION"`
 	SinkBigqueryBatchSize                string `json:"SINK_BIGQUERY_BATCH_SIZE"`
 	SinkBigqueryTableClusteringEnable    string `json:"SINK_BIGQUERY_TABLE_CLUSTERING_ENABLE"`
@@ -237,15 +251,100 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 	}
 
 	cfg.Source = source
-
-	//transformation #2
-	cfg.EnvVariables = modules.CloneAndMergeMaps(dc.EnvVariables, cfg.EnvVariables)
-
 	//transformation #3
 	var flinkOut flink.Output
 	if err := json.Unmarshal(r.Dependencies[keyFlinkDependency].Output, &flinkOut); err != nil {
 		return nil, errors.ErrInternal.WithMsgf("invalid flink state").WithCausef(err.Error())
 	}
+
+	//transformation #13
+	cfg.EnvVariables[keySinkType] = cfg.SinkType
+	if cfg.SinkType == SinkTypeKafka {
+		if cfg.Sink.SinkKafka.SinkKafkaProduceLargeMessageEnable == "" {
+			cfg.Sink.SinkKafka.SinkKafkaProduceLargeMessageEnable = dc.EnvVariables[keySinkKafkaProduceLargeMessageEnable]
+		}
+
+		cfg.EnvVariables[keySinkKafkaStream] = cfg.Sink.SinkKafka.SinkKafkaStream
+		cfg.EnvVariables[keySinkKafkaBrokers] = cfg.Sink.SinkKafka.SinkKafkaBrokers
+		cfg.EnvVariables[keySinkKafkaProtoMsg] = cfg.Sink.SinkKafka.SinkKafkaProtoMsg
+		cfg.EnvVariables[keySinkKafkaTopic] = cfg.Sink.SinkKafka.SinkKafkaTopic
+		cfg.EnvVariables[keySinkKafkaKey] = cfg.Sink.SinkKafka.SinkKafkaProtoKey
+		cfg.EnvVariables[keySinkKafkaLingerMs] = cfg.Sink.SinkKafka.SinkKafkaLingerMs
+	} else if cfg.SinkType == SinkTypeInflux {
+		if cfg.Sink.SinkInflux.SinkInfluxPassword == "" {
+			cfg.Sink.SinkInflux.SinkInfluxPassword = flinkOut.Influx.Password
+		}
+
+		if cfg.Sink.SinkInflux.SinkInfluxURL == "" {
+			cfg.Sink.SinkInflux.SinkInfluxURL = flinkOut.Influx.URL
+		}
+
+		if cfg.Sink.SinkInflux.SinkInfluxUsername == "" {
+			cfg.Sink.SinkInflux.SinkInfluxUsername = flinkOut.Influx.Username
+		}
+
+		if cfg.Sink.SinkInflux.SinkInfluxFlushDurationMs == "" {
+			cfg.Sink.SinkInflux.SinkInfluxFlushDurationMs = dc.EnvVariables[keySinkInfluxFlushDurationMs]
+		}
+
+		if cfg.Sink.SinkInflux.SinkInfluxRetentionPolicy == "" {
+			cfg.Sink.SinkInflux.SinkInfluxRetentionPolicy = dc.EnvVariables[keySinkInfluxRetentionPolicy]
+		}
+
+		if cfg.Sink.SinkInflux.SinkInfluxBatchSize == "" {
+			cfg.Sink.SinkInflux.SinkInfluxBatchSize = dc.EnvVariables[keySinkInfluxBatchSize]
+		}
+
+		cfg.EnvVariables[keySinkInfluxPassword] = cfg.Sink.SinkInflux.SinkInfluxPassword
+		cfg.EnvVariables[keySinkInfluxURL] = cfg.Sink.SinkInflux.SinkInfluxURL
+		cfg.EnvVariables[keySinkInfluxUsername] = cfg.Sink.SinkInflux.SinkInfluxUsername
+
+		cfg.EnvVariables[keySinkInfluxFlushDurationMs] = cfg.Sink.SinkInflux.SinkInfluxFlushDurationMs
+		cfg.EnvVariables[keySinkInfluxRetentionPolicy] = cfg.Sink.SinkInflux.SinkInfluxRetentionPolicy
+		cfg.EnvVariables[keySinkInfluxBatchSize] = cfg.Sink.SinkInflux.SinkInfluxBatchSize
+
+		cfg.EnvVariables[keySinkInfluxDBName] = cfg.Sink.SinkInflux.SinkInfluxDBName
+		cfg.EnvVariables[keySinkInfluxMeasurementName] = cfg.Sink.SinkInflux.SinkInfluxMeasurementName
+	} else if cfg.SinkType == SinkTypeBigquery {
+		if cfg.Sink.SinkBigquery.SinkBigqueryRowInsertIDEnable == "" {
+			cfg.Sink.SinkBigquery.SinkBigqueryRowInsertIDEnable = dc.EnvVariables[keySinkBigqueryRowInsertIDEnable]
+		}
+		if cfg.Sink.SinkBigquery.SinkBigqueryClientReadTimeoutMs == "" {
+			cfg.Sink.SinkBigquery.SinkBigqueryClientReadTimeoutMs = dc.EnvVariables[keySinkBigqueryClientReadTimeoutMs]
+		}
+		if cfg.Sink.SinkBigquery.SinkBigqueryClientConnectTimeoutMs == "" {
+			cfg.Sink.SinkBigquery.SinkBigqueryClientConnectTimeoutMs = dc.EnvVariables[keySinkBigqueryClientConnectTimeoutMs]
+		}
+		if cfg.Sink.SinkBigquery.SinkBigqueryTablePartitionExpiryMs == "" {
+			cfg.Sink.SinkBigquery.SinkBigqueryTablePartitionExpiryMs = dc.EnvVariables[keySinkBigqueryTablePartitionExpiryMs]
+		}
+		if cfg.Sink.SinkBigquery.SinkBigqueryCredentialPath == "" {
+			cfg.Sink.SinkBigquery.SinkBigqueryCredentialPath = dc.EnvVariables[keySinkBigqueryCredentialPath]
+		}
+
+		cfg.EnvVariables[keySinkBigqueryRowInsertIDEnable] = cfg.Sink.SinkBigquery.SinkBigqueryRowInsertIDEnable
+		cfg.EnvVariables[keySinkBigqueryClientReadTimeoutMs] = cfg.Sink.SinkBigquery.SinkBigqueryClientReadTimeoutMs
+		cfg.EnvVariables[keySinkBigqueryClientConnectTimeoutMs] = cfg.Sink.SinkBigquery.SinkBigqueryClientConnectTimeoutMs
+		cfg.EnvVariables[keySinkBigqueryTablePartitionExpiryMs] = cfg.Sink.SinkBigquery.SinkBigqueryTablePartitionExpiryMs
+		cfg.EnvVariables[keySinkBigqueryCredentialPath] = cfg.Sink.SinkBigquery.SinkBigqueryCredentialPath
+
+		cfg.EnvVariables[keySinkBigqueryGoogleCloudProjectID] = cfg.Sink.SinkBigquery.SinkBigqueryGoogleCloudProjectID
+		cfg.EnvVariables[keySinkBigqueryDatasetName] = cfg.Sink.SinkBigquery.SinkBigqueryDatasetName
+		cfg.EnvVariables[keySinkBigqueryTableName] = cfg.Sink.SinkBigquery.SinkBigqueryTableName
+		cfg.EnvVariables[keySinkBigqueryDatasetLabels] = cfg.Sink.SinkBigquery.SinkBigqueryDatasetLabels
+		cfg.EnvVariables[keySinkBigqueryTableLabels] = cfg.Sink.SinkBigquery.SinkBigqueryTableLabels
+		cfg.EnvVariables[keySinkBigqueryTablePartitioningEnable] = cfg.Sink.SinkBigquery.SinkBigqueryTablePartitioningEnable
+		cfg.EnvVariables[keySinkBigqueryTablePartitionKey] = cfg.Sink.SinkBigquery.SinkBigqueryTablePartitionKey
+		cfg.EnvVariables[keySinkBigqueryDatasetLocation] = cfg.Sink.SinkBigquery.SinkBigqueryDatasetLocation
+		cfg.EnvVariables[keySinkBigqueryBatchSize] = cfg.Sink.SinkBigquery.SinkBigqueryBatchSize
+		cfg.EnvVariables[keySinkBigqueryTableClusteringEnable] = cfg.Sink.SinkBigquery.SinkBigqueryTableClusteringEnable
+		cfg.EnvVariables[keySinkBigqueryTableClusteringKeys] = cfg.Sink.SinkBigquery.SinkBigqueryTableClusteringKeys
+		cfg.EnvVariables[keySinkErrorTypesForFailure] = cfg.Sink.SinkBigquery.SinkErrorTypesForFailure
+		cfg.EnvVariables[keySinkConnectorSchemaProtoMessageClass] = cfg.Sink.SinkBigquery.SinkConnectorSchemaProtoMessageClass
+	}
+
+	//transformation #2
+	cfg.EnvVariables = modules.CloneAndMergeMaps(dc.EnvVariables, cfg.EnvVariables)
 
 	cfg.Namespace = flinkOut.KubeNamespace
 
@@ -270,39 +369,6 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 	//transformation #10
 	//this shall check if the project of the conf.EnvVars.STREAMS is same as that of the corresponding flink
 	//do we need to check this?
-
-	//transformation #13
-	cfg.EnvVariables[keySinkType] = cfg.SinkType
-	if cfg.SinkType == SinkTypeKafka {
-		cfg.EnvVariables[keySinkKafkaStream] = cfg.Sink.SinkKafka.SinkKafkaStream
-		cfg.EnvVariables[keySinkKafkaBrokers] = cfg.Sink.SinkKafka.SinkKafkaBrokers
-		cfg.EnvVariables[keySinkKafkaProtoMsg] = cfg.Sink.SinkKafka.SinkKafkaProtoMsg
-		cfg.EnvVariables[keySinkKafkaTopic] = cfg.Sink.SinkKafka.SinkKafkaTopic
-		cfg.EnvVariables[keySinkKafkaKey] = cfg.Sink.SinkKafka.SinkKafkaProtoKey
-		cfg.EnvVariables[keySinkKafkaLingerMs] = cfg.Sink.SinkKafka.SinkKafkaLingerMs
-	} else if cfg.SinkType == SinkTypeInflux {
-		cfg.EnvVariables[keySinkInfluxPassword] = flinkOut.Influx.Password
-		cfg.EnvVariables[keySinkInfluxDBName] = cfg.Sink.SinkInflux.SinkInfluxDBName
-		cfg.EnvVariables[keySinkInfluxMeasurementName] = cfg.Sink.SinkInflux.SinkInfluxMeasurementName
-	} else if cfg.SinkType == SinkTypeBigquery {
-		cfg.EnvVariables[keySinkBigqueryGoogleCloudProjectID] = cfg.Sink.SinkBigquery.SinkBigqueryGoogleCloudProjectID
-		cfg.EnvVariables[keySinkBigqueryDatasetName] = cfg.Sink.SinkBigquery.SinkBigqueryDatasetName
-		cfg.EnvVariables[keySinkBigqueryTableName] = cfg.Sink.SinkBigquery.SinkBigqueryTableName
-		cfg.EnvVariables[keySinkBigqueryDatasetLabels] = cfg.Sink.SinkBigquery.SinkBigqueryDatasetLabels
-		cfg.EnvVariables[keySinkBigqueryTableLabels] = cfg.Sink.SinkBigquery.SinkBigqueryTableLabels
-		cfg.EnvVariables[keySinkBigqueryTablePartitioningEnable] = cfg.Sink.SinkBigquery.SinkBigqueryTablePartitioningEnable
-		cfg.EnvVariables[keySinkBigqueryTablePartitionKey] = cfg.Sink.SinkBigquery.SinkBigqueryTablePartitionKey
-		cfg.EnvVariables[keySinkBigqueryRowInsertIDEnable] = cfg.Sink.SinkBigquery.SinkBigqueryRowInsertIDEnable
-		cfg.EnvVariables[keySinkBigqueryClientReadTimeoutMs] = cfg.Sink.SinkBigquery.SinkBigqueryClientReadTimeoutMs
-		cfg.EnvVariables[keySinkBigqueryClientConnectTimeoutMs] = cfg.Sink.SinkBigquery.SinkBigqueryClientConnectTimeoutMs
-		cfg.EnvVariables[keySinkBigqueryTablePartitionExpiryMs] = cfg.Sink.SinkBigquery.SinkBigqueryTablePartitionExpiryMs
-		cfg.EnvVariables[keySinkBigqueryDatasetLocation] = cfg.Sink.SinkBigquery.SinkBigqueryDatasetLocation
-		cfg.EnvVariables[keySinkBigqueryBatchSize] = cfg.Sink.SinkBigquery.SinkBigqueryBatchSize
-		cfg.EnvVariables[keySinkBigqueryTableClusteringEnable] = cfg.Sink.SinkBigquery.SinkBigqueryTableClusteringEnable
-		cfg.EnvVariables[keySinkBigqueryTableClusteringKeys] = cfg.Sink.SinkBigquery.SinkBigqueryTableClusteringKeys
-		cfg.EnvVariables[keySinkErrorTypesForFailure] = cfg.Sink.SinkBigquery.SinkErrorTypesForFailure
-		cfg.EnvVariables[keySinkConnectorSchemaProtoMessageClass] = cfg.Sink.SinkBigquery.SinkConnectorSchemaProtoMessageClass
-	}
 
 	//transformation #14
 	cfg.Resources = mergeResources(dc.Resources, cfg.Resources)
