@@ -214,6 +214,7 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 		"programArgs": append([]string{"--encodedArgs"}, encodedProgramArgs),
 		"state":       conf.JobState,
 		"namespace":   conf.Namespace,
+		"urn":         res.URN,
 	}
 
 	return rc, nil
