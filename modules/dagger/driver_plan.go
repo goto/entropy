@@ -100,6 +100,10 @@ func (dd *daggerDriver) planChange(exr module.ExpandedResource, act module.Actio
 		newConf.Source = mergeConsumerGroupId(curConf.Source, newConf.Source)
 		newConf.EnvVariables[keyStreams] = string(mustMarshalJSON(newConf.Source))
 
+		if newConf.ChartValues == nil {
+			newConf.ChartValues = &dd.conf.ChartValues
+		}
+
 		chartVals, err := mergeChartValues(curConf.ChartValues, newConf.ChartValues)
 		if err != nil {
 			return nil, err
@@ -127,6 +131,7 @@ func (dd *daggerDriver) planChange(exr module.ExpandedResource, act module.Actio
 	case StartAction:
 		curConf.State = StateDeployed
 		curConf.JobState = JobStateRunning
+		curConf.ChartValues = &dd.conf.ChartValues
 
 		err := updateStencilSchemaRegistryURLsParams(curConf, act)
 		if err != nil {
