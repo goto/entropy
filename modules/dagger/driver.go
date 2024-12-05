@@ -109,16 +109,27 @@ type transientData struct {
 	ResetOffsetTo string   `json:"reset_offset_to,omitempty"`
 }
 
-func mergeChartValues(cur, newVal *ChartValues) (*ChartValues, error) {
+func mergeChartValues(cur, newVal *ChartValues) *ChartValues {
 	if newVal == nil {
-		return cur, nil
+		return cur
 	}
 
-	merged := ChartValues{
-		ChartVersion: newVal.ChartVersion,
+	merged := cur
+
+	if newVal.ChartVersion != "" {
+		merged.ChartVersion = newVal.ChartVersion
+	}
+	if newVal.ImageRepository != "" {
+		merged.ImageRepository = newVal.ImageRepository
+	}
+	if newVal.ImageTag != "" {
+		merged.ImageTag = newVal.ImageTag
+	}
+	if newVal.ImagePullPolicy != "" {
+		merged.ImagePullPolicy = newVal.ImagePullPolicy
 	}
 
-	return &merged, nil
+	return merged
 }
 
 func readOutputData(exr module.ExpandedResource) (*Output, error) {

@@ -45,10 +45,7 @@ func (dd *daggerDriver) planCreate(exr module.ExpandedResource, act module.Actio
 	//transformation #12
 	conf.EnvVariables[keyStreams] = string(mustMarshalJSON(conf.Source))
 
-	chartVals, err := mergeChartValues(&dd.conf.ChartValues, conf.ChartValues)
-	if err != nil {
-		return nil, err
-	}
+	chartVals := mergeChartValues(&dd.conf.ChartValues, conf.ChartValues)
 	conf.ChartValues = chartVals
 
 	if conf.State == "" {
@@ -100,14 +97,8 @@ func (dd *daggerDriver) planChange(exr module.ExpandedResource, act module.Actio
 		newConf.Source = mergeConsumerGroupId(curConf.Source, newConf.Source)
 		newConf.EnvVariables[keyStreams] = string(mustMarshalJSON(newConf.Source))
 
-		if newConf.ChartValues == nil {
-			newConf.ChartValues = &dd.conf.ChartValues
-		}
-
-		chartVals, err := mergeChartValues(curConf.ChartValues, newConf.ChartValues)
-		if err != nil {
-			return nil, err
-		}
+		newConf.ChartValues = mergeChartValues(&dd.conf.ChartValues, newConf.ChartValues)
+		chartVals := mergeChartValues(curConf.ChartValues, newConf.ChartValues)
 
 		// restore configs that are not user-controlled.
 		newConf.DeploymentID = curConf.DeploymentID
@@ -131,7 +122,7 @@ func (dd *daggerDriver) planChange(exr module.ExpandedResource, act module.Actio
 	case StartAction:
 		curConf.State = StateDeployed
 		curConf.JobState = JobStateRunning
-		curConf.ChartValues = &dd.conf.ChartValues
+		curConf.ChartValues.ChartVersion = dd.conf.ChartValues.ChartVersion
 
 		err := updateStencilSchemaRegistryURLsParams(curConf, act)
 		if err != nil {
