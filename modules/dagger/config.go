@@ -233,7 +233,7 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 	source := cfg.Source
 
 	if !(len(source[0].SourceParquet.SourceParquetFilePaths) > 0) {
-		maxConsumerGroupIDSuffix := "0001"
+		maxConsumerGroupIDSuffix := "0000"
 		for i := range source {
 			_, number := splitNameAndNumber(source[i].SourceKafkaConsumerConfigGroupID)
 			if number > maxConsumerGroupIDSuffix {
