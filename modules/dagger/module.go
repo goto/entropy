@@ -144,12 +144,21 @@ func parseFlinkCRDStatus(flinkDeployment map[string]interface{}) (kube.FlinkDepl
 }
 
 func consumerReset(ctx context.Context, conf Config, resetTo string) []Source {
-	baseGroup := conf.Source[0].SourceKafkaConsumerConfigGroupID
-	groupId := incrementGroupId(baseGroup, len(conf.Source))
+	if !(len(conf.Source[0].SourceParquet.SourceParquetFilePaths) > 0) {
+		baseGroup := conf.Source[0].SourceKafkaConsumerConfigGroupID
+		for i := range conf.Source {
+			if conf.Source[i].SourceKafkaConsumerConfigGroupID > baseGroup {
+				baseGroup = conf.Source[i].SourceKafkaConsumerConfigGroupID
+			}
+		}
 
-	for i := range conf.Source {
-		conf.Source[i].SourceKafkaConsumerConfigGroupID = incrementGroupId(groupId, i)
-		conf.Source[i].SourceKafkaConsumerConfigAutoOffsetReset = resetTo
+		offset := 0
+
+		for i := range conf.Source {
+			offset += 1
+			conf.Source[i].SourceKafkaConsumerConfigGroupID = incrementGroupId(baseGroup, offset)
+			conf.Source[i].SourceKafkaConsumerConfigAutoOffsetReset = resetTo
+		}
 	}
 
 	return conf.Source

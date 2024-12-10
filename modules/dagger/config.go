@@ -232,11 +232,22 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 	//transformation #1
 	source := cfg.Source
 
-	if !(source[0].SourceParquet.SourceParquetFilePaths != nil && len(source[0].SourceParquet.SourceParquetFilePaths) > 0) {
+	if !(len(source[0].SourceParquet.SourceParquetFilePaths) > 0) {
+		maxConsumerGroupIDSuffix := "0001"
+		for i := range source {
+			_, number := splitNameAndNumber(source[i].SourceKafkaConsumerConfigGroupID)
+			if number > maxConsumerGroupIDSuffix {
+				maxConsumerGroupIDSuffix = number
+			}
+		}
+
+		numberOffset := 0
+
 		for i := range source {
 			//TODO: check how to handle increment group id on update
 			if source[i].SourceKafkaConsumerConfigGroupID == "" {
-				source[i].SourceKafkaConsumerConfigGroupID = incrementGroupId(cfg.DeploymentID+"-0001", i)
+				numberOffset += 1
+				source[i].SourceKafkaConsumerConfigGroupID = incrementGroupId(cfg.DeploymentID+"-"+maxConsumerGroupIDSuffix, numberOffset)
 			}
 			if source[i].SourceKafkaConsumerConfigAutoCommitEnable == "" {
 				source[i].SourceKafkaConsumerConfigAutoCommitEnable = dc.EnvVariables[SourceKafkaConsumerConfigAutoCommitEnable]
@@ -397,14 +408,19 @@ func incrementGroupId(groupId string, step int) string {
 		return fmt.Sprintf("%04d", number)
 	}
 
+	name, number := splitNameAndNumber(groupId)
+
+	updatedNumber := leftZeroPad(incrementNumberInString(number))
+	return strings.Join(append(name, updatedNumber), "-")
+}
+
+func splitNameAndNumber(groupId string) ([]string, string) {
 	getLastAndRestFromArray := func(arr []string) ([]string, string) {
 		return arr[:len(arr)-1], arr[len(arr)-1]
 	}
 
 	parts := strings.Split(groupId, "-")
-	name, number := getLastAndRestFromArray(parts)
-	updatedNumber := leftZeroPad(incrementNumberInString(number))
-	return strings.Join(append(name, updatedNumber), "-")
+	return getLastAndRestFromArray(parts)
 }
 
 func mustMarshalJSON(v interface{}) []byte {
