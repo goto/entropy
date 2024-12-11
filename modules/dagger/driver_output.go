@@ -54,6 +54,16 @@ func (dd *daggerDriver) refreshOutput(ctx context.Context, r resource.Resource,
 	output.JobStatus = crd.JobStatus
 	output.Reconcilation = crd.Reconciliation
 
+	state := output.JobStatus
+	if state == "FINISHED" {
+		state = "CANCELED"
+	} else if state == "RUNNING" {
+		state = "RUNNING"
+	} else {
+		state = "INITIALIZING"
+	}
+	output.State = state
+
 	return modules.MustJSON(output), nil
 }
 

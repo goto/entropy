@@ -97,6 +97,7 @@ type driverConf struct {
 type Output struct {
 	JMDeployStatus string     `json:"jm_deploy_status,omitempty"`
 	JobStatus      string     `json:"job_status,omitempty"`
+	State          string     `json:"state,omitempty"`
 	Reconcilation  string     `json:"reconcilation,omitempty"`
 	Pods           []kube.Pod `json:"pods,omitempty"`
 	Namespace      string     `json:"namespace,omitempty"`
