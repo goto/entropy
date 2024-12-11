@@ -63,6 +63,7 @@ func (dd *daggerDriver) refreshOutput(ctx context.Context, r resource.Resource,
 		state = "INITIALIZING"
 	}
 	output.State = state
+	output.Error = ""
 
 	return modules.MustJSON(output), nil
 }
