@@ -97,13 +97,16 @@ func (dd *daggerDriver) planChange(exr module.ExpandedResource, act module.Actio
 		newConf.Source = mergeConsumerGroupId(curConf.Source, newConf.Source)
 		newConf.EnvVariables[keyStreams] = string(mustMarshalJSON(newConf.Source))
 
-		newConf.ChartValues = mergeChartValues(&dd.conf.ChartValues, newConf.ChartValues)
+		//we want to update these irrespective of the user input
+		newConf.ChartValues = &dd.conf.ChartValues
+		newConf.JarURI = dd.conf.JarURI
+
 		chartVals := mergeChartValues(curConf.ChartValues, newConf.ChartValues)
 
 		// restore configs that are not user-controlled.
 		newConf.DeploymentID = curConf.DeploymentID
 		newConf.ChartValues = chartVals
-		newConf.JarURI = curConf.JarURI
+
 		if newConf.State == "" {
 			newConf.State = curConf.State
 		}
@@ -122,13 +125,13 @@ func (dd *daggerDriver) planChange(exr module.ExpandedResource, act module.Actio
 	case StartAction:
 		curConf.State = StateDeployed
 		curConf.JobState = JobStateRunning
-		curConf.ChartValues.ChartVersion = dd.conf.ChartValues.ChartVersion
+		curConf.ChartValues = &dd.conf.ChartValues
+		curConf.JarURI = dd.conf.JarURI
 
 		err := updateStencilSchemaRegistryURLsParams(curConf, act)
 		if err != nil {
 			return nil, err
 		}
-
 	}
 
 	immediately := dd.timeNow()
