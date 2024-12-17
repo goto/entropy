@@ -184,6 +184,9 @@ func (dd *daggerDriver) planReset(exr module.ExpandedResource, act module.Action
 	curConf.Source = dd.consumerReset(context.Background(), *curConf, resetValue)
 	curConf.EnvVariables[keyStreams] = string(mustMarshalJSON(curConf.Source))
 
+	curConf.ChartValues = &dd.conf.ChartValues
+	curConf.JarURI = dd.conf.JarURI
+
 	exr.Resource.Spec.Configs = modules.MustJSON(curConf)
 	exr.Resource.State = resource.State{
 		Status:     resource.StatusPending,
