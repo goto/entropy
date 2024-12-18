@@ -370,6 +370,9 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 	cfg.EnvVariables[keySinkInfluxURL] = flinkOut.Influx.URL
 	cfg.EnvVariables[keySinkInfluxUsername] = flinkOut.Influx.Username
 
+	delete(cfg.EnvVariables, SourceKafkaConsumerConfigAutoOffsetReset)
+	delete(cfg.EnvVariables, SourceKafkaConsumerConfigAutoCommitEnable)
+
 	//SINK_INFLUX_DB_NAME is added by client
 	//SINK_INFLUX_MEASUREMENT_NAME is added by client
 	//REDIS_SERVER is skipped
