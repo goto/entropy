@@ -15,9 +15,12 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	typedbatchv1 "k8s.io/client-go/kubernetes/typed/batch/v1"
 	"k8s.io/client-go/rest"
@@ -53,6 +56,13 @@ type Pod struct {
 	Name       string   `json:"name"`
 	Containers []string `json:"containers"`
 	Status     string   `json:"status"`
+}
+
+type FlinkDeploymentStatus struct {
+	State          string `json:"state"`
+	JMDeployStatus string `json:"jm_deploy_status"`
+	JobStatus      string `json:"job_status"`
+	Reconciliation string `json:"reconciliation"`
 }
 
 type LogOptions struct {
@@ -321,6 +331,29 @@ func (c Client) GetPodDetails(ctx context.Context, namespace string, labelSelect
 	}
 
 	return podDetails, nil
+}
+
+func (c Client) GetCRDDetails(ctx context.Context, namespace string, name string) (*unstructured.Unstructured, error) {
+	// Initialize the dynamic client
+	dynamicClient, err := dynamic.NewForConfig(&c.restConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create dynamic client: %v", err)
+	}
+
+	// Define the GVR (GroupVersionResource) for the FlinkDeployment CRD
+	gvr := schema.GroupVersionResource{
+		Group:    "flink.apache.org",
+		Version:  "v1beta1",
+		Resource: "flinkdeployments",
+	}
+
+	// Fetch the FlinkDeployment CRD details
+	flinkDeployment, err := dynamicClient.Resource(gvr).Namespace(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get FlinkDeployment: %v", err)
+	}
+
+	return flinkDeployment, nil
 }
 
 func streamContainerLogs(ctx context.Context, ns, podName string, logCh chan<- LogChunk, clientSet *kubernetes.Clientset,
