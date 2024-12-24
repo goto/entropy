@@ -65,11 +65,23 @@ func (fd *firehoseDriver) planChange(exr module.ExpandedResource, act module.Act
 		if override, ok := fd.conf.Namespace[newConf.EnvVariables[confSinkType]]; ok {
 			ns = override
 		}
-		if curConf.Namespace != ns {
+
+		// override namespace during update
+		var kubeOut kubernetes.Output
+		if err := json.Unmarshal(exr.Dependencies[keyKubeDependency].Output, &kubeOut); err != nil {
+			return nil, errors.ErrInternal.WithMsgf("invalid kube state").WithCausef(err.Error())
+		}
+
+		if kubeOut.Configs.Namespace != "" {
+			ns = kubeOut.Configs.Namespace
+		}
+
+		newConf.Namespace = ns
+
+		if curConf.Namespace != newConf.Namespace {
 			if !curConf.Stopped {
 				return nil, errors.ErrInvalid.WithCausef(errCauseInvalidNamespaceUpdate)
 			}
-			newConf.Namespace = ns
 		}
 
 		curConf = newConf
@@ -138,6 +150,16 @@ func (fd *firehoseDriver) planCreate(exr module.ExpandedResource, act module.Act
 	// set project defaults.
 	conf.Telegraf = fd.conf.Telegraf
 	conf.ChartValues = chartVals
+
+	// override namespace during creation
+	var kubeOut kubernetes.Output
+	if err := json.Unmarshal(exr.Dependencies[keyKubeDependency].Output, &kubeOut); err != nil {
+		return nil, errors.ErrInternal.WithMsgf("invalid kube state").WithCausef(err.Error())
+	}
+
+	if kubeOut.Configs.Namespace != "" {
+		conf.Namespace = kubeOut.Configs.Namespace
+	}
 
 	immediately := fd.timeNow()
 
