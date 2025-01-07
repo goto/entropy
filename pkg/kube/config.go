@@ -40,6 +40,11 @@ type Config struct {
 	// If it is `gke`, entropy will fetch auth from the default source
 	// left it empty if token or client key will be used
 	ProviderType string `json:"provider_type"`
+
+	// Namespace defines where the resources that depend on this kube resource deployed to
+	// namespace is optional, if it is being defined, it will force all resources that depend
+	// on this kube resource to be deployed to the defined namespace
+	Namespace string `json:"namespace"`
 }
 
 func (conf *Config) RESTConfig(ctx context.Context) (*rest.Config, error) {
