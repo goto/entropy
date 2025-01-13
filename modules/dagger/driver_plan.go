@@ -96,6 +96,7 @@ func (dd *daggerDriver) planChange(exr module.ExpandedResource, act module.Actio
 
 		newConf.Source = mergeConsumerGroupId(curConf.Source, newConf.Source)
 		newConf.EnvVariables[keyStreams] = string(mustMarshalJSON(newConf.Source))
+		newConf.EnvVariables[keyFlinkParallelism] = string(newConf.Replicas)
 
 		//we want to update these irrespective of the user input
 		newConf.ChartValues = &dd.conf.ChartValues

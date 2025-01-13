@@ -28,7 +28,8 @@ const (
 
 // Flink-related constants
 const (
-	keyFlinkJobID = "FLINK_JOB_ID"
+	keyFlinkJobID       = "FLINK_JOB_ID"
+	keyFlinkParallelism = "FLINK_PARALLELISM"
 )
 
 // Influx-related constants
