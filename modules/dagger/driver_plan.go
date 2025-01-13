@@ -3,6 +3,7 @@ package dagger
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
@@ -96,7 +97,7 @@ func (dd *daggerDriver) planChange(exr module.ExpandedResource, act module.Actio
 
 		newConf.Source = mergeConsumerGroupId(curConf.Source, newConf.Source)
 		newConf.EnvVariables[keyStreams] = string(mustMarshalJSON(newConf.Source))
-		newConf.EnvVariables[keyFlinkParallelism] = string(newConf.Replicas)
+		newConf.EnvVariables[keyFlinkParallelism] = fmt.Sprint(newConf.Replicas)
 
 		//we want to update these irrespective of the user input
 		newConf.ChartValues = &dd.conf.ChartValues
