@@ -45,6 +45,7 @@ func (dd *daggerDriver) planCreate(exr module.ExpandedResource, act module.Actio
 
 	//transformation #12
 	conf.EnvVariables[keyStreams] = string(mustMarshalJSON(conf.Source))
+	conf.EnvVariables[keyFlinkParallelism] = fmt.Sprint(conf.Replicas)
 
 	chartVals := mergeChartValues(&dd.conf.ChartValues, conf.ChartValues)
 	conf.ChartValues = chartVals
