@@ -94,8 +94,8 @@ var (
 	validateConfig = validator.FromJSONSchema(configSchemaRaw)
 )
 
-type StencilSchemaRegistryURLsParams struct {
-	StencilSchemaRegistryURLs string `json:"stencil_schema_registry_urls"`
+type SchemaRegistryStencilURLsParams struct {
+	SchemaRegistryStencilURLs string `json:"schema_registry_stencil_urls"`
 }
 
 type UsageSpec struct {

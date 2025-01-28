@@ -21,7 +21,7 @@ const (
 	StateUserStopped                         = "USER_STOPPED"
 	StateSystemStopped                       = "SYSTEM_STOPPED"
 	KeySchemaRegistryStencilCacheAutoRefresh = "SCHEMA_REGISTRY_STENCIL_CACHE_AUTO_REFRESH"
-	KeyStencilSchemaRegistryURLs             = "STENCIL_SCHEMA_REGISTRY_URLS"
+	KeySchemaRegistryStencilURLs             = "SCHEMA_REGISTRY_STENCIL_URLS"
 )
 
 func (dd *daggerDriver) Plan(_ context.Context, exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
@@ -237,12 +237,12 @@ func mergeConsumerGroupId(currStreams, newStreams []Source) []Source {
 
 func updateStencilSchemaRegistryURLsParams(curConf *Config, act module.ActionRequest) error {
 	if curConf.EnvVariables[KeySchemaRegistryStencilCacheAutoRefresh] != "" && curConf.EnvVariables[KeySchemaRegistryStencilCacheAutoRefresh] == "false" {
-		stencilSchemaRegistryURLsParams := StencilSchemaRegistryURLsParams{}
-		err := json.Unmarshal([]byte(act.Params), &stencilSchemaRegistryURLsParams)
+		schemaRegistryStencilURLsParams := SchemaRegistryStencilURLsParams{}
+		err := json.Unmarshal([]byte(act.Params), &schemaRegistryStencilURLsParams)
 		if err != nil {
 			return err
 		}
-		curConf.EnvVariables[KeyStencilSchemaRegistryURLs] = stencilSchemaRegistryURLsParams.StencilSchemaRegistryURLs
+		curConf.EnvVariables[KeySchemaRegistryStencilURLs] = schemaRegistryStencilURLsParams.SchemaRegistryStencilURLs
 	}
 	return nil
 }
