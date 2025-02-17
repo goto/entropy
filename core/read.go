@@ -36,6 +36,11 @@ func (svc *Service) GetResource(ctx context.Context, urn string) (*resource.Reso
 		}
 	}
 
+	*res, err = svc.moduleSvc.MaskSecrets(ctx, *res)
+	if err != nil {
+		return nil, err
+	}
+
 	return res, nil
 }
 

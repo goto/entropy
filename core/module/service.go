@@ -7,17 +7,20 @@ import (
 
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/pkg/errors"
+	jsonpkg "github.com/goto/entropy/pkg/json"
 )
 
 type Service struct {
-	store    Store
-	registry Registry
+	store      Store
+	registry   Registry
+	secretMask string
 }
 
-func NewService(registry Registry, store Store) *Service {
+func NewService(registry Registry, store Store, secretMask string) *Service {
 	return &Service{
-		store:    store,
-		registry: registry,
+		store:      store,
+		registry:   registry,
+		secretMask: secretMask,
 	}
 }
 
@@ -176,4 +179,31 @@ func (mr *Service) initDriver(ctx context.Context, mod Module) (Driver, Descript
 
 func generateURN(name, project string) string {
 	return fmt.Sprintf("orn:entropy:module:%s:%s", project, name)
+}
+
+func (mr *Service) MaskSecrets(ctx context.Context, res resource.Resource) (resource.Resource, error) {
+	mod, err := mr.discoverModule(ctx, res.Kind, res.Project)
+	if err != nil {
+		return resource.Resource{}, err
+	}
+
+	_, desc, err := mr.initDriver(ctx, *mod)
+	if err != nil {
+		return resource.Resource{}, err
+	}
+
+	for _, secret := range desc.Secrets {
+		maskedResSpecConfigs, err := jsonpkg.SetJSONField(res.Spec.Configs, secret, mr.secretMask)
+		if err != nil {
+			return resource.Resource{}, errors.ErrInternal.WithCausef(err.Error())
+		}
+		res.Spec.Configs = maskedResSpecConfigs
+
+		maskedResStateOutput, err := jsonpkg.SetJSONField(res.State.Output, secret, mr.secretMask)
+		if err != nil {
+			return resource.Resource{}, errors.ErrInternal.WithCausef(err.Error())
+		}
+		res.State.Output = maskedResStateOutput
+	}
+	return res, nil
 }

@@ -17,6 +17,7 @@ import (
 const (
 	defaultMaxRetries  = 5
 	defaultSyncBackoff = 5 * time.Second
+	secretMask         = "[MASKED]"
 )
 
 func TestService_GetResource(t *testing.T) {

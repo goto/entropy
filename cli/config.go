@@ -22,11 +22,12 @@ const configFlag = "config"
 
 // Config contains the application configuration.
 type Config struct {
-	Log       logger.LogConfig `mapstructure:"log"`
-	Syncer    SyncerConf       `mapstructure:"syncer"`
-	Service   ServeConfig      `mapstructure:"service"`
-	PGConnStr string           `mapstructure:"pg_conn_str" default:"postgres://postgres@localhost:5432/entropy?sslmode=disable"`
-	Telemetry telemetry.Config `mapstructure:"telemetry"`
+	Log        logger.LogConfig `mapstructure:"log"`
+	Syncer     SyncerConf       `mapstructure:"syncer"`
+	Service    ServeConfig      `mapstructure:"service"`
+	PGConnStr  string           `mapstructure:"pg_conn_str" default:"postgres://postgres@localhost:5432/entropy?sslmode=disable"`
+	Telemetry  telemetry.Config `mapstructure:"telemetry"`
+	SecretMask string           `mapstructure:"secret_mask"`
 }
 
 type SyncerConf struct {
