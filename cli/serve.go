@@ -63,7 +63,7 @@ func StartServer(ctx context.Context, cfg Config, migrate, spawnWorker bool) err
 	)
 
 	store := setupStorage(cfg.PGConnStr, cfg.Syncer, cfg.Service)
-	moduleService := module.NewService(setupRegistry(), store)
+	moduleService := module.NewService(setupRegistry(), store, cfg.SecretMask)
 	resourceService := core.New(store, moduleService, time.Now, cfg.Syncer.SyncBackoffInterval, cfg.Syncer.MaxRetries)
 
 	if migrate {

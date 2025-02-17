@@ -2,7 +2,10 @@ package modules
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"reflect"
+	"strings"
 	"sync"
 
 	"github.com/goto/entropy/core/module"
@@ -53,6 +56,10 @@ func (mr *Registry) Register(desc module.Descriptor) error {
 		}
 		desc.Actions[i] = action
 	}
+
+	secretKey := fmt.Sprintf("%s_SECRET", strings.ToUpper(desc.Kind))
+	secrets := os.Getenv(secretKey)
+	desc.Secrets = strings.Split(secrets, ",")
 	mr.modules[desc.Kind] = desc
 	return nil
 }

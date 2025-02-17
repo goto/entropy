@@ -29,6 +29,7 @@ type Descriptor struct {
 	Actions       []ActionDesc                               `json:"actions"`
 	Dependencies  map[string]string                          `json:"dependencies"`
 	DriverFactory func(conf json.RawMessage) (Driver, error) `json:"-"`
+	Secrets       []string                                   `json:"secrets"`
 }
 
 // Registry is responsible for installing and managing module-drivers as per
