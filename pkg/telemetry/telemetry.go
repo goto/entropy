@@ -27,9 +27,13 @@ type Config struct {
 	// OpenTelemetry Agent exporter.
 	EnableOtelAgent  bool   `mapstructure:"enable_otel_agent"`
 	OpenTelAgentAddr string `mapstructure:"otel_agent_addr"`
+
+	OTLPEndpoint  string `mapstructure:"otlp_endpoint"`
+	EnableMetrics bool   `mapstructure:"enable_metrics"`
+	EnableTraces  bool   `mapstructure:"enable_traces"`
 }
 
-// Init initialises OpenCensus based async-telemetry processes and
+// Init initialises OpenTelemetry based async-telemetry processes and
 // returns (i.e., it does not block).
 func Init(ctx context.Context, cfg Config) {
 	mux := http.NewServeMux()
@@ -38,9 +42,11 @@ func Init(ctx context.Context, cfg Config) {
 	mux.Handle("/debug/pprof/threadcreate", pprof.Handler("threadcreate"))
 	mux.Handle("/debug/pprof/block", pprof.Handler("block"))
 
-	if err := setupOpenCensus(ctx, mux, cfg); err != nil {
-		zap.L().Error("failed to setup OpenCensus", zap.Error(err))
+	if err := setupOpenTelemetry(ctx, mux, cfg); err != nil {
+		zap.L().Error("failed to setup OpenTelemetry", zap.Error(err))
 	}
+
+	zap.L().Info("telemetry server started", zap.String("debug_addr", cfg.Debug))
 
 	if cfg.Debug != "" {
 		go func() {
