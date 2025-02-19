@@ -58,7 +58,7 @@ func cmdWorker() *cobra.Command {
 func StartWorkers(ctx context.Context, cfg Config) error {
 	store := setupStorage(cfg.PGConnStr, cfg.Syncer, cfg.Service)
 	moduleService := module.NewService(setupRegistry(), store)
-	resourceService := core.New(store, moduleService, time.Now, cfg.Syncer.SyncBackoffInterval, cfg.Syncer.MaxRetries)
+	resourceService := core.New(store, moduleService, time.Now, cfg.Syncer.SyncBackoffInterval, cfg.Syncer.MaxRetries, cfg.Telemetry.ServiceName)
 
 	eg := &errgroup.Group{}
 	spawnWorkers(ctx, resourceService, cfg.Syncer.Workers, cfg.Syncer.SyncInterval, eg)

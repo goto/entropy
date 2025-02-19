@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/metric"
@@ -63,56 +62,10 @@ func setupMetrics(ctx context.Context, cfg Config, res *resource.Resource, mux *
 
 	otel.SetMeterProvider(meterProvider)
 
-	err = setupCommonMetrics(GetMeter(cfg.ServiceName))
-	if err != nil {
-		return err
-	}
-
 	go func() {
 		<-ctx.Done()
 		if err := meterProvider.Shutdown(context.Background()); err != nil {
 			otel.Handle(err)
-		}
-	}()
-
-	return nil
-}
-
-func setupCommonMetrics(meter metric.Meter) error {
-	pending_count, err := meter.Int64UpDownCounter(
-		"pending_count",
-		metric.WithDescription("Total number of resources with status PENDING"),
-		metric.WithUnit("1"),
-	)
-	if err != nil {
-		return err
-	}
-
-	_, err = meter.Int64UpDownCounter(
-		"completed_count",
-		metric.WithDescription("Total number of resources with status COMPLETED"),
-		metric.WithUnit("1"),
-	)
-	if err != nil {
-		return err
-	}
-
-	_, err = meter.Int64UpDownCounter(
-		"error_counter",
-		metric.WithDescription("Total number of resources with status ERROR"),
-		metric.WithUnit("1"),
-	)
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		for {
-			// Simulate request count increment
-			pending_count.Add(context.Background(), 1,
-				metric.WithAttributes(attribute.String("status", "PENDING")),
-			)
-			time.Sleep(5 * time.Second)
 		}
 	}()
 

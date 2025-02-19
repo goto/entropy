@@ -7,6 +7,7 @@ import (
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/pkg/errors"
+	"github.com/goto/entropy/pkg/telemetry"
 )
 
 type Options struct {
@@ -101,6 +102,16 @@ func (svc *Service) execAction(ctx context.Context, res resource.Resource, act m
 			return nil, err
 		}
 	}
+
+	meter := telemetry.GetMeter(svc.serviceName)
+	pendingCounter, err := setupCounter(meter, PendingCounter)
+	if err != nil {
+		return nil, err
+	}
+
+	// Increment the pending counter.
+	pendingCounter.Add(context.Background(), 1)
+
 	return planned, nil
 }
 
