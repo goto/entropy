@@ -28,9 +28,7 @@ type Config struct {
 	EnableOtelAgent  bool   `mapstructure:"enable_otel_agent"`
 	OpenTelAgentAddr string `mapstructure:"otel_agent_addr"`
 
-	OTLPEndpoint  string `mapstructure:"otlp_endpoint"`
-	EnableMetrics bool   `mapstructure:"enable_metrics"`
-	EnableTraces  bool   `mapstructure:"enable_traces"`
+	EnableMetrics bool `mapstructure:"enable_metrics"`
 }
 
 // Init initialises OpenTelemetry based async-telemetry processes and
