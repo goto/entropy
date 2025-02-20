@@ -25,39 +25,18 @@ func setupOpenTelemetry(ctx context.Context, mux *http.ServeMux, cfg Config) err
 		return err
 	}
 
+	var options []sdkmetric.Option
 	// Setup metrics if enabled
 	if cfg.EnableMetrics {
-		if err := setupMetrics(ctx, cfg, res, mux); err != nil {
+		opt, err := setupOTELMetrics(ctx, cfg)
+		if err != nil {
 			return err
 		}
-	}
-
-	return nil
-}
-
-func setupMetrics(ctx context.Context, cfg Config, res *resource.Resource, mux *http.ServeMux) error {
-	promExporter, err := prometheus.New(prometheus.WithNamespace(cfg.ServiceName))
-	if err != nil {
-		return err
-	}
-
-	otlpExporter, err := otlpmetricgrpc.New(ctx,
-		otlpmetricgrpc.WithInsecure(),
-		otlpmetricgrpc.WithEndpoint(cfg.OpenTelAgentAddr),
-	)
-	if err != nil {
-		return err
+		options = append(options, opt...)
 	}
 
 	meterProvider := sdkmetric.NewMeterProvider(
-		sdkmetric.WithResource(res),
-		sdkmetric.WithReader(promExporter),
-		sdkmetric.WithReader(
-			sdkmetric.NewPeriodicReader(
-				otlpExporter,
-				sdkmetric.WithInterval(10*time.Second),
-			),
-		),
+		append([]sdkmetric.Option{sdkmetric.WithResource(res)}, options...)...,
 	)
 
 	otel.SetMeterProvider(meterProvider)
@@ -70,6 +49,32 @@ func setupMetrics(ctx context.Context, cfg Config, res *resource.Resource, mux *
 	}()
 
 	return nil
+}
+
+func setupOTELMetrics(ctx context.Context, cfg Config) ([]sdkmetric.Option, error) {
+	var options []sdkmetric.Option
+
+	promExporter, err := prometheus.New(prometheus.WithNamespace(cfg.ServiceName))
+	if err != nil {
+		return nil, err
+	}
+
+	otlpExporter, err := otlpmetricgrpc.New(ctx,
+		otlpmetricgrpc.WithInsecure(),
+		otlpmetricgrpc.WithEndpoint(cfg.OpenTelAgentAddr),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	options = append(options, sdkmetric.WithReader(promExporter))
+	options = append(options, sdkmetric.WithReader(sdkmetric.NewPeriodicReader(
+		otlpExporter,
+		sdkmetric.WithInterval(10*time.Second),
+	)))
+
+	return options, nil
+
 }
 
 func GetMeter(name string) metric.Meter {
