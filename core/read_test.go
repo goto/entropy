@@ -17,6 +17,7 @@ import (
 const (
 	defaultMaxRetries  = 5
 	defaultSyncBackoff = 5 * time.Second
+	serviceName        = "test-service"
 )
 
 func TestService_GetResource(t *testing.T) {
@@ -38,7 +39,7 @@ func TestService_GetResource(t *testing.T) {
 					GetByURN(mock.Anything, mock.Anything).
 					Return(nil, errors.ErrNotFound).
 					Once()
-				return core.New(repo, nil, nil, defaultSyncBackoff, defaultMaxRetries)
+				return core.New(repo, nil, nil, defaultSyncBackoff, defaultMaxRetries, serviceName)
 			},
 			urn:     "foo:bar:baz",
 			wantErr: errors.ErrNotFound,
@@ -58,7 +59,7 @@ func TestService_GetResource(t *testing.T) {
 					Return(nil, nil).
 					Once()
 
-				return core.New(repo, mod, deadClock, defaultSyncBackoff, defaultMaxRetries)
+				return core.New(repo, mod, deadClock, defaultSyncBackoff, defaultMaxRetries, serviceName)
 			},
 			urn:     "foo:bar:baz",
 			want:    &sampleResource,
@@ -105,7 +106,7 @@ func TestService_ListResources(t *testing.T) {
 					List(mock.Anything, mock.Anything, false).
 					Return(nil, nil).
 					Once()
-				return core.New(repo, nil, deadClock, defaultSyncBackoff, defaultMaxRetries)
+				return core.New(repo, nil, deadClock, defaultSyncBackoff, defaultMaxRetries, serviceName)
 			},
 			want:    resource.PagedResource{},
 			wantErr: nil,
@@ -119,7 +120,7 @@ func TestService_ListResources(t *testing.T) {
 					List(mock.Anything, mock.Anything, false).
 					Return(nil, errStoreFailure).
 					Once()
-				return core.New(repo, nil, deadClock, defaultSyncBackoff, defaultMaxRetries)
+				return core.New(repo, nil, deadClock, defaultSyncBackoff, defaultMaxRetries, serviceName)
 			},
 			want:    resource.PagedResource{},
 			wantErr: errors.ErrInternal,
@@ -133,7 +134,7 @@ func TestService_ListResources(t *testing.T) {
 					List(mock.Anything, mock.Anything, false).
 					Return([]resource.Resource{sampleResource}, nil).
 					Once()
-				return core.New(repo, nil, deadClock, defaultSyncBackoff, defaultMaxRetries)
+				return core.New(repo, nil, deadClock, defaultSyncBackoff, defaultMaxRetries, serviceName)
 			},
 			want: resource.PagedResource{
 				Count:     1,
