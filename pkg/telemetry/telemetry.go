@@ -13,9 +13,7 @@ type Config struct {
 	Debug string `mapstructure:"debug_addr" default:"localhost:8090"`
 
 	// OpenTelemetry trace & metrics configurations.
-	EnableCPU        bool    `mapstructure:"enable_cpu"`
-	EnableMemory     bool    `mapstructure:"enable_memory"`
-	SamplingFraction float64 `mapstructure:"sampling_fraction"`
+	EnableRuntimeMetrics bool `mapstructure:"enable_runtime_metrics"`
 
 	// OpenTelemetry exporter configurations.
 	ServiceName string `mapstructure:"service_name"`

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/prometheus"
@@ -15,6 +16,7 @@ import (
 )
 
 func setupOpenTelemetry(ctx context.Context, mux *http.ServeMux, cfg Config) error {
+	var options []sdkmetric.Option
 	// Create resource with service information
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
@@ -25,7 +27,6 @@ func setupOpenTelemetry(ctx context.Context, mux *http.ServeMux, cfg Config) err
 		return err
 	}
 
-	var options []sdkmetric.Option
 	// Setup metrics if enabled
 	if cfg.EnableOtelAgent {
 		opt, err := setupOTELMetrics(ctx, cfg)
@@ -52,7 +53,8 @@ func setupOpenTelemetry(ctx context.Context, mux *http.ServeMux, cfg Config) err
 }
 
 func setupOTELMetrics(ctx context.Context, cfg Config) ([]sdkmetric.Option, error) {
-	var options []sdkmetric.Option
+	var sdkMetricOptions []sdkmetric.Option
+	var periodicReaderOptions []sdkmetric.PeriodicReaderOption
 
 	promExporter, err := prometheus.New(prometheus.WithNamespace(cfg.ServiceName))
 	if err != nil {
@@ -67,13 +69,19 @@ func setupOTELMetrics(ctx context.Context, cfg Config) ([]sdkmetric.Option, erro
 		return nil, err
 	}
 
-	options = append(options, sdkmetric.WithReader(promExporter))
-	options = append(options, sdkmetric.WithReader(sdkmetric.NewPeriodicReader(
+	periodicReaderOptions = append(periodicReaderOptions, sdkmetric.WithInterval(10*time.Second))
+
+	if cfg.EnableRuntimeMetrics {
+		periodicReaderOptions = append(periodicReaderOptions, sdkmetric.WithProducer(runtime.NewProducer()))
+	}
+
+	sdkMetricOptions = append(sdkMetricOptions, sdkmetric.WithReader(promExporter))
+	sdkMetricOptions = append(sdkMetricOptions, sdkmetric.WithReader(sdkmetric.NewPeriodicReader(
 		otlpExporter,
-		sdkmetric.WithInterval(10*time.Second),
+		periodicReaderOptions...,
 	)))
 
-	return options, nil
+	return sdkMetricOptions, nil
 
 }
 
