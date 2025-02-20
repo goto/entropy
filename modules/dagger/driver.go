@@ -90,6 +90,12 @@ type driverConf struct {
 
 	JarURI string `json:"jar_uri" validate:"required"`
 
+	DaggerCheckpointURL string `json:"dagger_checkpoint_url" validate:"required"`
+
+	DaggerSavepointURL string `json:"dagger_savepoint_url" validate:"required"`
+
+	DaggerK8sHAURL string `json:"dagger_k8s_ha_url" validate:"required"`
+
 	// timeout value for a kube deployment run
 	KubeDeployTimeout int `json:"kube_deploy_timeout_seconds"`
 }
@@ -222,11 +228,14 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 				"memory": conf.Resources.TaskManager.Memory,
 			},
 		},
-		"jarURI":      conf.JarURI,
-		"programArgs": append([]string{"--encodedArgs"}, encodedProgramArgs),
-		"state":       conf.JobState,
-		"namespace":   conf.Namespace,
-		"urn":         res.URN,
+		"jarURI":                conf.JarURI,
+		"programArgs":           append([]string{"--encodedArgs"}, encodedProgramArgs),
+		"state":                 conf.JobState,
+		"namespace":             conf.Namespace,
+		"urn":                   res.URN,
+		"dagger_checkpoint_url": conf.DaggerCheckpointURL,
+		"dagger_savepoint_url":  conf.DaggerSavepointURL,
+		"dagger_k8s_ha_url":     conf.DaggerK8sHAURL,
 	}
 
 	return rc, nil
