@@ -12,23 +12,20 @@ type Config struct {
 	// Debug sets the bind address for pprof & zpages server.
 	Debug string `mapstructure:"debug_addr" default:"localhost:8090"`
 
-	// OpenCensus trace & metrics configurations.
+	// OpenTelemetry trace & metrics configurations.
 	EnableCPU        bool    `mapstructure:"enable_cpu"`
 	EnableMemory     bool    `mapstructure:"enable_memory"`
 	SamplingFraction float64 `mapstructure:"sampling_fraction"`
 
-	// OpenCensus exporter configurations.
+	// OpenTelemetry exporter configurations.
 	ServiceName string `mapstructure:"service_name"`
 
-	// NewRelic exporter.
-	EnableNewrelic bool   `mapstructure:"enable_newrelic"`
+	// NewRelic configs.
 	NewRelicAPIKey string `mapstructure:"newrelic_api_key"`
 
 	// OpenTelemetry Agent exporter.
 	EnableOtelAgent  bool   `mapstructure:"enable_otel_agent"`
 	OpenTelAgentAddr string `mapstructure:"otel_agent_addr"`
-
-	EnableMetrics bool `mapstructure:"enable_metrics"`
 }
 
 // Init initialises OpenTelemetry based async-telemetry processes and

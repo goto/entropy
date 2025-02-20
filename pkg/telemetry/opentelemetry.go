@@ -27,7 +27,7 @@ func setupOpenTelemetry(ctx context.Context, mux *http.ServeMux, cfg Config) err
 
 	var options []sdkmetric.Option
 	// Setup metrics if enabled
-	if cfg.EnableMetrics {
+	if cfg.EnableOtelAgent {
 		opt, err := setupOTELMetrics(ctx, cfg)
 		if err != nil {
 			return err
