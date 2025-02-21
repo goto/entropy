@@ -90,11 +90,11 @@ type driverConf struct {
 
 	JarURI string `json:"jar_uri" validate:"required"`
 
-	DaggerCheckpointURL string `json:"dagger_checkpoint_url" validate:"required"`
+	DaggerCheckpointURL string `json:"dagger_checkpoint_url"`
 
-	DaggerSavepointURL string `json:"dagger_savepoint_url" validate:"required"`
+	DaggerSavepointURL string `json:"dagger_savepoint_url"`
 
-	DaggerK8sHAURL string `json:"dagger_k8s_ha_url" validate:"required"`
+	DaggerK8sHAURL string `json:"dagger_k8s_ha_url"`
 
 	// timeout value for a kube deployment run
 	KubeDeployTimeout int `json:"kube_deploy_timeout_seconds"`
