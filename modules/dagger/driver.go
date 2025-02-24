@@ -96,6 +96,8 @@ type driverConf struct {
 
 	DaggerK8sHAURL string `json:"dagger_k8s_ha_url"`
 
+	CloudProvider string `json:"cloud_provider"`
+
 	// timeout value for a kube deployment run
 	KubeDeployTimeout int `json:"kube_deploy_timeout_seconds"`
 }
@@ -236,6 +238,7 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 		"dagger_checkpoint_url": conf.DaggerCheckpointURL,
 		"dagger_savepoint_url":  conf.DaggerSavepointURL,
 		"dagger_k8s_ha_url":     conf.DaggerK8sHAURL,
+		"cloud_provider":        conf.CloudProvider,
 	}
 
 	return rc, nil

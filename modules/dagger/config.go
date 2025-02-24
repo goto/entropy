@@ -131,6 +131,7 @@ type Config struct {
 	DaggerCheckpointURL string            `json:"dagger_checkpoint_url,omitempty"`
 	DaggerSavepointURL  string            `json:"dagger_savepoint_url,omitempty"`
 	DaggerK8sHAURL      string            `json:"dagger_k8s_ha_url,omitempty"`
+	CloudProvider       string            `json:"cloud_provider,omitempty"`
 }
 
 type ChartValues struct {
@@ -405,6 +406,7 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 	cfg.DaggerCheckpointURL = dc.DaggerCheckpointURL
 	cfg.DaggerK8sHAURL = dc.DaggerK8sHAURL
 	cfg.DaggerSavepointURL = dc.DaggerSavepointURL
+	cfg.CloudProvider = dc.CloudProvider
 
 	return &cfg, nil
 }
