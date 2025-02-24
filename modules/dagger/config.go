@@ -406,7 +406,11 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 	cfg.DaggerCheckpointURL = dc.DaggerCheckpointURL
 	cfg.DaggerK8sHAURL = dc.DaggerK8sHAURL
 	cfg.DaggerSavepointURL = dc.DaggerSavepointURL
+
 	cfg.CloudProvider = dc.CloudProvider
+	if cfg.CloudProvider == "" {
+		cfg.CloudProvider = "gcp"
+	}
 
 	return &cfg, nil
 }
