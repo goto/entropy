@@ -18,6 +18,7 @@ type Service struct {
 	moduleSvc      ModuleService
 	syncBackoff    time.Duration
 	maxSyncRetries int
+	serviceName    string
 }
 
 type ModuleService interface {
@@ -27,7 +28,7 @@ type ModuleService interface {
 	GetOutput(ctx context.Context, res module.ExpandedResource) (json.RawMessage, error)
 }
 
-func New(repo resource.Store, moduleSvc ModuleService, clockFn func() time.Time, syncBackoffInterval time.Duration, maxRetries int) *Service {
+func New(repo resource.Store, moduleSvc ModuleService, clockFn func() time.Time, syncBackoffInterval time.Duration, maxRetries int, serviceName string) *Service {
 	if clockFn == nil {
 		clockFn = time.Now
 	}
@@ -38,6 +39,7 @@ func New(repo resource.Store, moduleSvc ModuleService, clockFn func() time.Time,
 		syncBackoff:    syncBackoffInterval,
 		maxSyncRetries: maxRetries,
 		moduleSvc:      moduleSvc,
+		serviceName:    serviceName,
 	}
 }
 

@@ -25,6 +25,6 @@ var (
 
 func TestNew(t *testing.T) {
 	t.Parallel()
-	s := core.New(&mocks.ResourceStore{}, &mocks.ModuleService{}, deadClock, defaultSyncBackoff, defaultMaxRetries)
+	s := core.New(&mocks.ResourceStore{}, &mocks.ModuleService{}, deadClock, defaultSyncBackoff, defaultMaxRetries, serviceName)
 	assert.NotNil(t, s)
 }

@@ -12,16 +12,13 @@ type Config struct {
 	// Debug sets the bind address for pprof & zpages server.
 	Debug string `mapstructure:"debug_addr" default:"localhost:8090"`
 
-	// OpenCensus trace & metrics configurations.
-	EnableCPU        bool    `mapstructure:"enable_cpu"`
-	EnableMemory     bool    `mapstructure:"enable_memory"`
-	SamplingFraction float64 `mapstructure:"sampling_fraction"`
+	// OpenTelemetry trace & metrics configurations.
+	EnableRuntimeMetrics bool `mapstructure:"enable_runtime_metrics"`
 
-	// OpenCensus exporter configurations.
+	// OpenTelemetry exporter configurations.
 	ServiceName string `mapstructure:"service_name"`
 
-	// NewRelic exporter.
-	EnableNewrelic bool   `mapstructure:"enable_newrelic"`
+	// NewRelic configs.
 	NewRelicAPIKey string `mapstructure:"newrelic_api_key"`
 
 	// OpenTelemetry Agent exporter.
@@ -29,7 +26,7 @@ type Config struct {
 	OpenTelAgentAddr string `mapstructure:"otel_agent_addr"`
 }
 
-// Init initialises OpenCensus based async-telemetry processes and
+// Init initialises OpenTelemetry based async-telemetry processes and
 // returns (i.e., it does not block).
 func Init(ctx context.Context, cfg Config) {
 	mux := http.NewServeMux()
@@ -38,9 +35,11 @@ func Init(ctx context.Context, cfg Config) {
 	mux.Handle("/debug/pprof/threadcreate", pprof.Handler("threadcreate"))
 	mux.Handle("/debug/pprof/block", pprof.Handler("block"))
 
-	if err := setupOpenCensus(ctx, mux, cfg); err != nil {
-		zap.L().Error("failed to setup OpenCensus", zap.Error(err))
+	if err := setupOpenTelemetry(ctx, mux, cfg); err != nil {
+		zap.L().Error("failed to setup OpenTelemetry", zap.Error(err))
 	}
+
+	zap.L().Info("telemetry server started", zap.String("debug_addr", cfg.Debug))
 
 	if cfg.Debug != "" {
 		go func() {
