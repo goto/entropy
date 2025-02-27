@@ -8,6 +8,7 @@ import (
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/telemetry"
+	"go.uber.org/zap"
 )
 
 type Options struct {
@@ -79,6 +80,13 @@ func (svc *Service) ApplyAction(ctx context.Context, urn string, act module.Acti
 }
 
 func (svc *Service) execAction(ctx context.Context, res resource.Resource, act module.ActionRequest, dryRun bool) (*resource.Resource, error) {
+	logEntry := zap.L().With(
+		zap.String("resource_urn", res.URN),
+		zap.String("resource_status", res.State.Status),
+		zap.Int("retries", res.State.SyncResult.Retries),
+		zap.String("last_err", res.State.SyncResult.LastError),
+	)
+
 	planned, err := svc.planChange(ctx, res, act)
 	if err != nil {
 		return nil, err
@@ -110,6 +118,7 @@ func (svc *Service) execAction(ctx context.Context, res resource.Resource, act m
 	}
 
 	// Increment the pending counter.
+	logEntry.Debug("Incrementing pending counter")
 	pendingCounter.Add(context.Background(), 1)
 
 	return planned, nil
