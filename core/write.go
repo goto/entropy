@@ -118,7 +118,7 @@ func (svc *Service) execAction(ctx context.Context, res resource.Resource, act m
 	}
 
 	// Increment the pending counter.
-	logEntry.Debug("Incrementing pending counter")
+	logEntry.Info("Incrementing pending counter")
 	pendingCounter.Add(context.Background(), 1)
 
 	return planned, nil
