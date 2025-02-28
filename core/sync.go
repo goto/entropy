@@ -85,7 +85,7 @@ func (svc *Service) handleSync(ctx context.Context, res resource.Resource) (*res
 		res.State.SyncResult.Retries++
 
 		// Increment the retry counter.
-		logEntry.Debug("Incrementing retry counter")
+		logEntry.Info("Incrementing retry counter")
 		retryCounter.Add(context.Background(), 1, metric.WithAttributes(attribute.String("resource", res.URN)))
 
 		if errors.Is(err, errors.ErrInvalid) {
@@ -95,7 +95,7 @@ func (svc *Service) handleSync(ctx context.Context, res resource.Resource) (*res
 			res.State.NextSyncAt = nil
 
 			// Increment the error counter.
-			logEntry.Debug("Incrementing error counter")
+			logEntry.Info("Incrementing error counter")
 			errorCounter.Add(context.Background(), 1)
 		} else if svc.maxSyncRetries > 0 && res.State.SyncResult.Retries >= svc.maxSyncRetries {
 			// Some other error occurred and no more retries remaining.
@@ -104,7 +104,7 @@ func (svc *Service) handleSync(ctx context.Context, res resource.Resource) (*res
 			res.State.NextSyncAt = nil
 
 			// Increment the error counter.
-			logEntry.Debug("Incrementing error counter")
+			logEntry.Info("Incrementing error counter")
 			errorCounter.Add(context.Background(), 1)
 		} else {
 			// Some other error occurred and we still have remaining retries.
@@ -119,7 +119,7 @@ func (svc *Service) handleSync(ctx context.Context, res resource.Resource) (*res
 		res.State = *newState
 
 		// Increment the completed counter.
-		logEntry.Debug("Incrementing completed counter")
+		logEntry.Info("Incrementing completed counter")
 		completedCounter.Add(context.Background(), 1)
 
 		logEntry.Info("SyncOne() finished",
