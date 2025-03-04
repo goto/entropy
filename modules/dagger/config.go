@@ -109,25 +109,29 @@ type Resources struct {
 }
 
 type Config struct {
-	Resources     Resources         `json:"resources,omitempty"`
-	Source        []Source          `json:"source,omitempty"`
-	Sink          Sink              `json:"sink,omitempty"`
-	EnvVariables  map[string]string `json:"env_variables,omitempty"`
-	Replicas      int               `json:"replicas"`
-	SinkType      string            `json:"sink_type"`
-	Team          string            `json:"team"`
-	FlinkName     string            `json:"flink_name,omitempty"`
-	DeploymentID  string            `json:"deployment_id,omitempty"`
-	Savepoint     any               `json:"savepoint,omitempty"`
-	ChartValues   *ChartValues      `json:"chart_values,omitempty"`
-	Deleted       bool              `json:"deleted,omitempty"`
-	Namespace     string            `json:"namespace,omitempty"`
-	PrometheusURL string            `json:"prometheus_url,omitempty"`
-	JarURI        string            `json:"jar_uri,omitempty"`
-	State         string            `json:"state"`
-	JobState      string            `json:"job_state"`
-	ResetOffset   string            `json:"reset_offset"`
-	StopTime      *time.Time        `json:"stop_time,omitempty"`
+	Resources           Resources         `json:"resources,omitempty"`
+	Source              []Source          `json:"source,omitempty"`
+	Sink                Sink              `json:"sink,omitempty"`
+	EnvVariables        map[string]string `json:"env_variables,omitempty"`
+	Replicas            int               `json:"replicas"`
+	SinkType            string            `json:"sink_type"`
+	Team                string            `json:"team"`
+	FlinkName           string            `json:"flink_name,omitempty"`
+	DeploymentID        string            `json:"deployment_id,omitempty"`
+	Savepoint           any               `json:"savepoint,omitempty"`
+	ChartValues         *ChartValues      `json:"chart_values,omitempty"`
+	Deleted             bool              `json:"deleted,omitempty"`
+	Namespace           string            `json:"namespace,omitempty"`
+	PrometheusURL       string            `json:"prometheus_url,omitempty"`
+	JarURI              string            `json:"jar_uri,omitempty"`
+	State               string            `json:"state"`
+	JobState            string            `json:"job_state"`
+	ResetOffset         string            `json:"reset_offset"`
+	StopTime            *time.Time        `json:"stop_time,omitempty"`
+	DaggerCheckpointURL string            `json:"dagger_checkpoint_url,omitempty"`
+	DaggerSavepointURL  string            `json:"dagger_savepoint_url,omitempty"`
+	DaggerK8sHAURL      string            `json:"dagger_k8s_ha_url,omitempty"`
+	CloudProvider       string            `json:"cloud_provider,omitempty"`
 }
 
 type ChartValues struct {
@@ -397,6 +401,15 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 
 	if err := validateConfig(confJSON); err != nil {
 		return nil, err
+	}
+
+	cfg.DaggerCheckpointURL = dc.DaggerCheckpointURL
+	cfg.DaggerK8sHAURL = dc.DaggerK8sHAURL
+	cfg.DaggerSavepointURL = dc.DaggerSavepointURL
+
+	cfg.CloudProvider = dc.CloudProvider
+	if cfg.CloudProvider == "" {
+		cfg.CloudProvider = "gcp"
 	}
 
 	return &cfg, nil
