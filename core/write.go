@@ -8,6 +8,8 @@ import (
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/telemetry"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/zap"
 )
 
@@ -119,7 +121,7 @@ func (svc *Service) execAction(ctx context.Context, res resource.Resource, act m
 
 	// Increment the pending counter.
 	logEntry.Info("Incrementing pending counter")
-	pendingCounter.Add(context.Background(), 1)
+	pendingCounter.Add(context.Background(), 1, metric.WithAttributes(attribute.String("resource", res.URN)))
 
 	return planned, nil
 }
