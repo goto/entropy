@@ -310,6 +310,9 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		imageRepository = conf.ChartValues.ImageRepository
 	}
 
+	requiredDuringSchedulingIgnoredDuringExecutionInterface := preferenceSliceToInterfaceSlice(requiredDuringSchedulingIgnoredDuringExecution)
+	preferredDuringSchedulingIgnoredDuringExecutionInterface := weightedPreferencesToInterfaceSlice(preferredDuringSchedulingIgnoredDuringExecution)
+
 	rc.Values = map[string]any{
 		labelsConfKey:  modules.CloneAndMergeMaps(deploymentLabels, entropyLabels),
 		"replicaCount": conf.Replicas,
@@ -333,8 +336,8 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		},
 		"tolerations": tolerations,
 		"nodeAffinityMatchExpressions": map[string]any{
-			"requiredDuringSchedulingIgnoredDuringExecution":  requiredDuringSchedulingIgnoredDuringExecution,
-			"preferredDuringSchedulingIgnoredDuringExecution": preferredDuringSchedulingIgnoredDuringExecution,
+			"requiredDuringSchedulingIgnoredDuringExecution":  requiredDuringSchedulingIgnoredDuringExecutionInterface,
+			"preferredDuringSchedulingIgnoredDuringExecution": preferredDuringSchedulingIgnoredDuringExecutionInterface,
 		},
 		"init-firehose": map[string]any{
 			"enabled": fd.conf.InitContainer.Enabled,
@@ -466,4 +469,27 @@ func renderTplOfMapStringAny(labelsTpl map[string]any, labelsValues map[string]s
 	}
 
 	return labelsTpl, nil
+}
+
+func preferenceSliceToInterfaceSlice(prefs []Preference) []map[string]interface{} {
+	var result []map[string]interface{}
+	for _, p := range prefs {
+		result = append(result, map[string]interface{}{
+			"key":      p.Key,
+			"operator": p.Operator,
+			"values":   p.Values,
+		})
+	}
+	return result
+}
+
+func weightedPreferencesToInterfaceSlice(weightedPrefs []WeightedPreference) []map[string]interface{} {
+	var result []map[string]interface{}
+	for _, wp := range weightedPrefs {
+		result = append(result, map[string]interface{}{
+			"weight":     wp.Weight,
+			"preference": preferenceSliceToInterfaceSlice(wp.Preference),
+		})
+	}
+	return result
 }
