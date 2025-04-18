@@ -242,7 +242,11 @@ func updateStencilSchemaRegistryURLsParams(curConf *Config, act module.ActionReq
 		if err != nil {
 			return err
 		}
-		curConf.EnvVariables[KeySchemaRegistryStencilURLs] = schemaRegistryStencilURLsParams.SchemaRegistryStencilURLs
+
+		if schemaRegistryStencilURLsParams.SchemaRegistryStencilURLs != "" {
+			curConf.EnvVariables[KeySchemaRegistryStencilURLs] = schemaRegistryStencilURLsParams.SchemaRegistryStencilURLs
+		}
+
 	}
 	return nil
 }
