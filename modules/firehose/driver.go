@@ -16,6 +16,7 @@ import (
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/helm"
 	"github.com/goto/entropy/pkg/kube"
+	"github.com/mitchellh/mapstructure"
 )
 
 const (
@@ -310,6 +311,9 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		imageRepository = conf.ChartValues.ImageRepository
 	}
 
+	requiredDuringSchedulingIgnoredDuringExecutionInterface := preferenceSliceToInterfaceSlice(requiredDuringSchedulingIgnoredDuringExecution)
+	preferredDuringSchedulingIgnoredDuringExecutionInterface := weightedPreferencesToInterfaceSlice(preferredDuringSchedulingIgnoredDuringExecution)
+
 	rc.Values = map[string]any{
 		labelsConfKey:  modules.CloneAndMergeMaps(deploymentLabels, entropyLabels),
 		"replicaCount": conf.Replicas,
@@ -333,8 +337,8 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		},
 		"tolerations": tolerations,
 		"nodeAffinityMatchExpressions": map[string]any{
-			"requiredDuringSchedulingIgnoredDuringExecution":  requiredDuringSchedulingIgnoredDuringExecution,
-			"preferredDuringSchedulingIgnoredDuringExecution": preferredDuringSchedulingIgnoredDuringExecution,
+			"requiredDuringSchedulingIgnoredDuringExecution":  requiredDuringSchedulingIgnoredDuringExecutionInterface,
+			"preferredDuringSchedulingIgnoredDuringExecution": preferredDuringSchedulingIgnoredDuringExecutionInterface,
 		},
 		"init-firehose": map[string]any{
 			"enabled": fd.conf.InitContainer.Enabled,
@@ -466,4 +470,48 @@ func renderTplOfMapStringAny(labelsTpl map[string]any, labelsValues map[string]s
 	}
 
 	return labelsTpl, nil
+}
+
+func preferenceSliceToInterfaceSlice(prefs []Preference) []map[string]interface{} {
+	result := make([]map[string]interface{}, len(prefs))
+
+	for i, pref := range prefs {
+		var prefMap map[string]interface{}
+		if err := mapstructure.Decode(pref, &prefMap); err != nil {
+			continue
+		}
+
+		lowercaseMap := make(map[string]interface{})
+		for k, v := range prefMap {
+			lowercaseMap[strings.ToLower(k)] = v
+		}
+		result[i] = lowercaseMap
+	}
+
+	return result
+}
+
+func weightedPreferencesToInterfaceSlice(weightedPrefs []WeightedPreference) []map[string]interface{} {
+	result := make([]map[string]interface{}, len(weightedPrefs))
+
+	for i, wp := range weightedPrefs {
+		var wpMap map[string]interface{}
+		if err := mapstructure.Decode(wp, &wpMap); err != nil {
+			continue
+		}
+
+		lowercaseMap := make(map[string]interface{})
+		for k, v := range wpMap {
+			// Special handling for the preference field
+			if k == "Preference" && v != nil {
+				// Convert the nested Preference slice
+				lowercaseMap["preference"] = preferenceSliceToInterfaceSlice(wp.Preference)
+			} else {
+				lowercaseMap[strings.ToLower(k)] = v
+			}
+		}
+		result[i] = lowercaseMap
+	}
+
+	return result
 }
