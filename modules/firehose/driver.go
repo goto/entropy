@@ -16,6 +16,7 @@ import (
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/helm"
 	"github.com/goto/entropy/pkg/kube"
+	"github.com/mitchellh/mapstructure"
 )
 
 const (
@@ -472,24 +473,45 @@ func renderTplOfMapStringAny(labelsTpl map[string]any, labelsValues map[string]s
 }
 
 func preferenceSliceToInterfaceSlice(prefs []Preference) []map[string]interface{} {
-	var result []map[string]interface{}
-	for _, p := range prefs {
-		result = append(result, map[string]interface{}{
-			"key":      p.Key,
-			"operator": p.Operator,
-			"values":   p.Values,
-		})
+	result := make([]map[string]interface{}, len(prefs))
+
+	for i, pref := range prefs {
+		var prefMap map[string]interface{}
+		if err := mapstructure.Decode(pref, &prefMap); err != nil {
+			continue
+		}
+
+		lowercaseMap := make(map[string]interface{})
+		for k, v := range prefMap {
+			lowercaseMap[strings.ToLower(k)] = v
+		}
+		result[i] = lowercaseMap
 	}
+
 	return result
 }
 
 func weightedPreferencesToInterfaceSlice(weightedPrefs []WeightedPreference) []map[string]interface{} {
-	var result []map[string]interface{}
-	for _, wp := range weightedPrefs {
-		result = append(result, map[string]interface{}{
-			"weight":     wp.Weight,
-			"preference": preferenceSliceToInterfaceSlice(wp.Preference),
-		})
+	result := make([]map[string]interface{}, len(weightedPrefs))
+
+	for i, wp := range weightedPrefs {
+		var wpMap map[string]interface{}
+		if err := mapstructure.Decode(wp, &wpMap); err != nil {
+			continue
+		}
+
+		lowercaseMap := make(map[string]interface{})
+		for k, v := range wpMap {
+			// Special handling for the preference field
+			if k == "Preference" && v != nil {
+				// Convert the nested Preference slice
+				lowercaseMap["preference"] = preferenceSliceToInterfaceSlice(wp.Preference)
+			} else {
+				lowercaseMap[strings.ToLower(k)] = v
+			}
+		}
+		result[i] = lowercaseMap
 	}
+
 	return result
 }
