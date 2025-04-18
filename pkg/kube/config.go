@@ -15,6 +15,10 @@ const (
 	providerTypeGKE = "gke"
 )
 
+type HelmConfig struct {
+	MaxHistory int `json:"max_history" default:"256"`
+}
+
 type Config struct {
 	// Host - The hostname (in form of URI) of Kubernetes master.
 	Host string `json:"host"`
@@ -45,6 +49,8 @@ type Config struct {
 	// namespace is optional, if it is being defined, it will force all resources that depend
 	// on this kube resource to be deployed to the defined namespace
 	Namespace string `json:"namespace"`
+
+	HelmConfig HelmConfig `json:"helm_config"`
 }
 
 func (conf *Config) RESTConfig(ctx context.Context) (*rest.Config, error) {
