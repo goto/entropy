@@ -112,6 +112,7 @@ func (p *Client) doUpdate(actionConfig *action.Configuration, config *ReleaseCon
 	act.Timeout = time.Duration(config.Timeout) * time.Second
 	act.Namespace = config.Namespace
 	act.Description = config.Description
+	act.MaxHistory = p.config.Kubernetes.HelmConfig.MaxHistory
 
 	rel, err := act.Run(config.Name, fetchedChart, config.Values)
 	if err != nil {
