@@ -56,6 +56,10 @@ test-coverage: test
 	@echo "Generating coverage report..."
 	@go tool cover -html=${COVERAGE_DIR}/coverage.out
 
+benchmark: tidy
+	@echo "Running benchmark tests..."
+	@go test ./... -bench=. -benchmem
+
 build: clean
 	@mkdir -p ${BUILD_DIR}
 	@echo "Running build for '${VERSION}' in '${BUILD_DIR}/'..."

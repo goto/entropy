@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"sync"
 	"time"
 
 	"helm.sh/helm/v3/pkg/release"
@@ -29,6 +30,8 @@ const (
 	ResetV2Action = "reset-v2"
 	UpgradeAction = "upgrade"
 )
+
+var mu sync.Mutex
 
 var Module = module.Descriptor{
 	Kind: "firehose",
@@ -66,6 +69,9 @@ var Module = module.Descriptor{
 		},
 	},
 	DriverFactory: func(confJSON json.RawMessage) (module.Driver, error) {
+		mu.Lock()
+		defer mu.Unlock()
+
 		conf := defaultDriverConf // clone the default value
 		if err := json.Unmarshal(confJSON, &conf); err != nil {
 			return nil, err
