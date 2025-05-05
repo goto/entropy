@@ -52,6 +52,10 @@ var Module = module.Descriptor{
 			Description: "Stop firehose, reset consumer group, restart",
 		},
 		{
+			Name:        ResetV2Action,
+			Description: "Stop firehose, reset consumer group, restart with datetime option",
+		},
+		{
 			Name:        StopAction,
 			Description: "Stop all replicas of this firehose.",
 		},
