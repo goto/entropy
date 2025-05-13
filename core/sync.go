@@ -133,7 +133,7 @@ func (svc *Service) handleSync(ctx context.Context, res resource.Resource) (*res
 
 func setupCounter(meter metric.Meter, countername SyncStatus) (metric.Int64Counter, error) {
 	return meter.Int64Counter(
-		fmt.Sprintf("%s_counter", countername),
+		fmt.Sprintf("entropy_%s_counter", countername),
 		metric.WithDescription(fmt.Sprintf("Total number of %s performed", countername)),
 		metric.WithUnit("1"),
 	)

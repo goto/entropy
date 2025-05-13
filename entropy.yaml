@@ -63,8 +63,8 @@ telemetry:
   newrelic_api_key: ""
 
   # enable_otel_agent enables the OpenTelemetry Exporter for both traces and views.
-  enable_otel_agent: false
+  enable_otel_agent: true
 
   # otel_agent_addr is the addr of OpenTelemetry Collector/Agent. This is where the
   # opene-telemetry exporter will publish the collected traces/views to.
-  otel_agent_addr: "localhost:8088"
+  otel_agent_addr: "localhost:4317"
