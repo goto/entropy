@@ -53,10 +53,10 @@ type Config struct {
 	HelmConfig HelmConfig `json:"helm_config"`
 
 	// Maximum burst for throttle.
-	Burst int `json:"burst" default:"1000"`
+	Burst int `json:"burst" default:"10"`
 
 	// QPS indicates the maximum QPS to the master from this client.
-	QPS float32 `json:"qps" default:"1000"`
+	QPS float32 `json:"qps" default:"5"`
 }
 
 func (conf *Config) RESTConfig(ctx context.Context) (*rest.Config, error) {
