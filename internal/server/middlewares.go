@@ -121,13 +121,13 @@ func requestLogger() gorillamux.MiddlewareFunc {
 
 			fields := []zap.Field{
 				zap.Time("timestamp", time.Now().UTC()),
-				zap.String("path", req.URL.Path),
 				zap.String("method", req.Method),
+				zap.Int("status", wrapped.Status),
+				zap.String("path", req.URL.Path),
+				zap.Duration("response_time", time.Since(t)),
 				zap.String("request_id", req.Header.Get(headerRequestID)),
 				zap.String("client_id", clientID),
 				zap.String("trace_id", span.SpanContext().TraceID.String()),
-				zap.Duration("response_time", time.Since(t)),
-				zap.Int("status", wrapped.Status),
 			}
 
 			if len(bodyBytes) > 0 {
