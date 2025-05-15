@@ -120,6 +120,7 @@ func requestLogger() gorillamux.MiddlewareFunc {
 			}
 
 			fields := []zap.Field{
+				zap.Time("timestamp", time.Now().UTC()),
 				zap.String("path", req.URL.Path),
 				zap.String("method", req.Method),
 				zap.String("request_id", req.Header.Get(headerRequestID)),
