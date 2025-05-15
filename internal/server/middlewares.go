@@ -25,12 +25,22 @@ const (
 type wrappedWriter struct {
 	http.ResponseWriter
 
-	Status int
+	Status         int
+	ResponseBuffer *bytes.Buffer
 }
 
 func (wr *wrappedWriter) WriteHeader(statusCode int) {
 	wr.Status = statusCode
 	wr.ResponseWriter.WriteHeader(statusCode)
+}
+
+func (wr *wrappedWriter) Write(data []byte) (int, error) {
+	// write to the buffer to capture the response body
+	if wr.ResponseBuffer != nil {
+		wr.ResponseBuffer.Write(data)
+	}
+	// write to the actual ResponseWriter
+	return wr.ResponseWriter.Write(data)
 }
 
 func withOpenCensus() gorillamux.MiddlewareFunc {
@@ -92,6 +102,7 @@ func requestLogger() gorillamux.MiddlewareFunc {
 			wrapped := &wrappedWriter{
 				Status:         http.StatusOK,
 				ResponseWriter: wr,
+				ResponseBuffer: &bytes.Buffer{},
 			}
 
 			bodyBytes, err := io.ReadAll(req.Body)
@@ -109,13 +120,14 @@ func requestLogger() gorillamux.MiddlewareFunc {
 			}
 
 			fields := []zap.Field{
-				zap.String("path", req.URL.Path),
+				zap.Time("timestamp", time.Now().UTC()),
 				zap.String("method", req.Method),
+				zap.Int("status", wrapped.Status),
+				zap.String("path", req.URL.Path),
+				zap.Duration("response_time", time.Since(t)),
 				zap.String("request_id", req.Header.Get(headerRequestID)),
 				zap.String("client_id", clientID),
 				zap.String("trace_id", span.SpanContext().TraceID.String()),
-				zap.Duration("response_time", time.Since(t)),
-				zap.Int("status", wrapped.Status),
 			}
 
 			if len(bodyBytes) > 0 {
@@ -129,7 +141,8 @@ func requestLogger() gorillamux.MiddlewareFunc {
 			}
 
 			if !is2xx(wrapped.Status) {
-				zap.L().Warn("request handled with non-2xx response", fields...)
+				fields = append(fields, zap.String("response_body", wrapped.ResponseBuffer.String()))
+				zap.L().Error("request handled with non-2xx response", fields...)
 			} else {
 				zap.L().Info("request handled", fields...)
 			}
