@@ -141,7 +141,7 @@ func requestLogger() gorillamux.MiddlewareFunc {
 
 			if !is2xx(wrapped.Status) {
 				fields = append(fields, zap.String("response_body", wrapped.ResponseBuffer.String()))
-				zap.L().Warn("request handled with non-2xx response", fields...)
+				zap.L().Error("request handled with non-2xx response", fields...)
 			} else {
 				zap.L().Info("request handled", fields...)
 			}
