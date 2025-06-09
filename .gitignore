@@ -30,3 +30,4 @@ test_*.yml
 test_*.json
 requests.http
 entropy.yaml
+.DS_Store

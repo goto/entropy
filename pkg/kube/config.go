@@ -2,8 +2,10 @@ package kube
 
 import (
 	"context"
+	"net/http"
 	"time"
 
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/container/v1"
 	"k8s.io/client-go/rest"
@@ -60,16 +62,38 @@ type Config struct {
 }
 
 func (conf *Config) RESTConfig(ctx context.Context) (*rest.Config, error) {
-	rc := &rest.Config{
-		Host:    conf.Host,
-		Timeout: conf.Timeout,
-		TLSClientConfig: rest.TLSClientConfig{
-			Insecure: conf.Insecure,
-			CAData:   []byte(conf.ClusterCACertificate),
-			KeyData:  []byte(conf.ClientKey),
-			CertData: []byte(conf.ClientCertificate),
-		},
+	restTLSClientConfig := rest.TLSClientConfig{
+		Insecure: conf.Insecure,
 	}
+	if conf.ClusterCACertificate != "" {
+		restTLSClientConfig.CAData = []byte(conf.ClusterCACertificate)
+	}
+	if conf.ClientKey != "" {
+		restTLSClientConfig.KeyData = []byte(conf.ClientKey)
+	}
+	if conf.ClientCertificate != "" {
+		restTLSClientConfig.CertData = []byte(conf.ClientCertificate)
+	}
+
+	rc := &rest.Config{
+		Host:            conf.Host,
+		Timeout:         conf.Timeout,
+		TLSClientConfig: restTLSClientConfig,
+	}
+
+	// Override with req's Transport.
+	tlsConfig, err := rest.TLSConfigFor(rc)
+	if err != nil {
+		return nil, errors.ErrInternal.WithMsgf("kube: failed to create TLS config").WithCausef(err.Error())
+	}
+
+	defaultTransport := http.DefaultTransport.(*http.Transport).Clone()
+	defaultTransport.TLSClientConfig = tlsConfig
+	transport := otelhttp.NewTransport(defaultTransport)
+	rc.Transport = transport
+	// rest.Config.TLSClientConfig should be empty if
+	// custom Transport been set.
+	rc.TLSClientConfig = rest.TLSClientConfig{}
 
 	if conf.ProviderType != "" {
 		switch conf.ProviderType {
