@@ -299,6 +299,10 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 			cfg.Sink.SinkInflux.SinkInfluxUsername = flinkOut.Influx.Username
 		}
 
+		if cfg.Sink.SinkInflux.SinkInfluxDBName == "" {
+			cfg.Sink.SinkInflux.SinkInfluxDBName = flinkOut.Influx.DatabaseName
+		}
+
 		if cfg.Sink.SinkInflux.SinkInfluxFlushDurationMs == "" {
 			cfg.Sink.SinkInflux.SinkInfluxFlushDurationMs = dc.EnvVariables[keySinkInfluxFlushDurationMs]
 		}

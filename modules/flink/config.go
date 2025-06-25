@@ -16,9 +16,10 @@ var (
 )
 
 type Influx struct {
-	URL      string `json:"url,omitempty"`
-	Username string `json:"username,omitempty"`
-	Password string `json:"password,omitempty"`
+	URL          string `json:"url,omitempty"`
+	Username     string `json:"username,omitempty"`
+	Password     string `json:"password,omitempty"`
+	DatabaseName string `json:"database_name,omitempty"`
 }
 
 type Config struct {
@@ -40,6 +41,7 @@ func readConfig(confJSON json.RawMessage, dc driverConf) (*Config, error) {
 		cfg.Influx.URL = dc.Influx.URL
 		cfg.Influx.Username = dc.Influx.Username
 		cfg.Influx.Password = dc.Influx.Password
+		cfg.Influx.DatabaseName = dc.Influx.DatabaseName
 	}
 
 	if cfg.SinkKafkaStream == "" {
