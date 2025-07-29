@@ -21,9 +21,10 @@ func TestFirehoseDriver_Sync(t *testing.T) {
 	t.Parallel()
 
 	table := []struct {
-		title      string
-		kubeDeploy func(t *testing.T) kubeDeployFn
-		kubeGetPod func(t *testing.T) kubeGetPodFn
+		title             string
+		kubeDeploy        func(t *testing.T) kubeDeployFn
+		kubeGetPod        func(t *testing.T) kubeGetPodFn
+		kubeGetDeployment func(t *testing.T) kubeGetDeploymentFn
 
 		exr     module.ExpandedResource
 		want    *resource.State
@@ -95,6 +96,20 @@ func TestFirehoseDriver_Sync(t *testing.T) {
 					}, nil
 				}
 			},
+			kubeGetDeployment: func(t *testing.T) kubeGetDeploymentFn {
+				t.Helper()
+				return func(ctx context.Context, conf kube.Config, ns string, name string) (kube.Deployment, error) {
+					assert.Equal(t, ns, "firehose")
+					return kube.Deployment{
+						Name:                "foo-1",
+						Paused:              false,
+						ReadyReplicas:       1,
+						AvailableReplicas:   1,
+						UnavailableReplicas: 2,
+						Conditions:          []map[string]string{},
+					}, nil
+				}
+			},
 			want: &resource.State{
 				Status: resource.StatusCompleted,
 				Output: modules.MustJSON(Output{
@@ -104,6 +119,14 @@ func TestFirehoseDriver_Sync(t *testing.T) {
 							Name:       "foo-1",
 							Containers: []string{"firehose"},
 						},
+					},
+					Deployment: &kube.Deployment{
+						Name:                "foo-1",
+						Paused:              false,
+						ReadyReplicas:       1,
+						AvailableReplicas:   1,
+						UnavailableReplicas: 2,
+						Conditions:          []map[string]string{},
 					},
 				}),
 				ModuleData: nil,
@@ -246,6 +269,10 @@ func TestFirehoseDriver_Sync(t *testing.T) {
 
 			if tt.kubeDeploy != nil {
 				fd.kubeDeploy = tt.kubeDeploy(t)
+			}
+
+			if tt.kubeGetDeployment != nil {
+				fd.kubeGetDeployment = tt.kubeGetDeployment(t)
 			}
 
 			got, err := fd.Sync(context.Background(), tt.exr)

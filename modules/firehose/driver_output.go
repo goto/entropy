@@ -45,5 +45,11 @@ func (fd *firehoseDriver) refreshOutput(ctx context.Context, r resource.Resource
 	output.Pods = pods
 	output.Namespace = conf.Namespace
 
+	deployment, err := fd.kubeGetDeployment(ctx, kubeOut.Configs, rc.Namespace, conf.DeploymentID)
+	if err != nil {
+		return nil, errors.ErrInternal.WithCausef(err.Error())
+	}
+	output.Deployment = &deployment
+
 	return modules.MustJSON(output), nil
 }

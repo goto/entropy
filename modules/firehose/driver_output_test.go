@@ -20,11 +20,12 @@ func TestFirehoseDriver_Output(t *testing.T) {
 	t.Parallel()
 
 	table := []struct {
-		title      string
-		kubeGetPod func(t *testing.T) kubeGetPodFn
-		exr        module.ExpandedResource
-		want       json.RawMessage
-		wantErr    error
+		title             string
+		kubeGetPod        func(t *testing.T) kubeGetPodFn
+		kubeGetDeployment func(t *testing.T) kubeGetDeploymentFn
+		exr               module.ExpandedResource
+		want              json.RawMessage
+		wantErr           error
 	}{
 		{
 			title: "InvalidModuleData",
@@ -109,12 +110,122 @@ func TestFirehoseDriver_Output(t *testing.T) {
 					}, nil
 				}
 			},
+			kubeGetDeployment: func(t *testing.T) kubeGetDeploymentFn {
+				t.Helper()
+				return func(ctx context.Context, conf kube.Config, ns string, name string) (kube.Deployment, error) {
+					assert.Equal(t, ns, "firehose")
+					return kube.Deployment{
+						Name:                "foo-bar",
+						Paused:              false,
+						ReadyReplicas:       1,
+						AvailableReplicas:   1,
+						UnavailableReplicas: 2,
+						Conditions:          []map[string]string{},
+					}, nil
+				}
+			},
 			want: modules.MustJSON(Output{
 				Pods: []kube.Pod{
 					{
 						Name:       "foo-1",
 						Containers: []string{"firehose"},
 					},
+				},
+				Deployment: &kube.Deployment{
+					Name:                "foo-bar",
+					Paused:              false,
+					ReadyReplicas:       1,
+					AvailableReplicas:   1,
+					UnavailableReplicas: 2,
+					Conditions:          []map[string]string{},
+				},
+				Namespace:   "firehose",
+				ReleaseName: "foo-bar",
+			}),
+		},
+		{
+			title: "GetDeployment_Failure",
+			exr: sampleResourceWithState(resource.State{
+				Status: resource.StatusCompleted,
+				Output: modules.MustJSON(Output{
+					Pods:        nil,
+					Namespace:   "firehose",
+					ReleaseName: "foo-bar",
+				}),
+			}, "LOG", "firehose"),
+			kubeGetPod: func(t *testing.T) kubeGetPodFn {
+				t.Helper()
+				return func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error) {
+					assert.Equal(t, ns, "firehose")
+					assert.Equal(t, labels["app"], "firehose-foo-fh1")
+					return []kube.Pod{
+						{
+							Name:       "foo-1",
+							Containers: []string{"firehose"},
+						},
+					}, nil
+				}
+			},
+			kubeGetDeployment: func(t *testing.T) kubeGetDeploymentFn {
+				t.Helper()
+				return func(ctx context.Context, conf kube.Config, ns string, name string) (kube.Deployment, error) {
+					assert.Equal(t, ns, "firehose")
+					return kube.Deployment{}, errors.New("failed")
+				}
+			},
+			wantErr: errors.ErrInternal,
+		},
+		{
+			title: "GetDeployment_Success",
+			exr: sampleResourceWithState(resource.State{
+				Status: resource.StatusCompleted,
+				Output: modules.MustJSON(Output{
+					Pods:        nil,
+					Namespace:   "firehose",
+					ReleaseName: "foo-bar",
+				}),
+			}, "LOG", "firehose"),
+			kubeGetPod: func(t *testing.T) kubeGetPodFn {
+				t.Helper()
+				return func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error) {
+					assert.Equal(t, ns, "firehose")
+					assert.Equal(t, labels["app"], "firehose-foo-fh1")
+					return []kube.Pod{
+						{
+							Name:       "foo-1",
+							Containers: []string{"firehose"},
+						},
+					}, nil
+				}
+			},
+			kubeGetDeployment: func(t *testing.T) kubeGetDeploymentFn {
+				t.Helper()
+				return func(ctx context.Context, conf kube.Config, ns string, name string) (kube.Deployment, error) {
+					assert.Equal(t, ns, "firehose")
+					return kube.Deployment{
+						Name:                "foo-bar",
+						Paused:              false,
+						ReadyReplicas:       1,
+						AvailableReplicas:   1,
+						UnavailableReplicas: 2,
+						Conditions:          []map[string]string{},
+					}, nil
+				}
+			},
+			want: modules.MustJSON(Output{
+				Pods: []kube.Pod{
+					{
+						Name:       "foo-1",
+						Containers: []string{"firehose"},
+					},
+				},
+				Deployment: &kube.Deployment{
+					Name:                "foo-bar",
+					Paused:              false,
+					ReadyReplicas:       1,
+					AvailableReplicas:   1,
+					UnavailableReplicas: 2,
+					Conditions:          []map[string]string{},
 				},
 				Namespace:   "firehose",
 				ReleaseName: "foo-bar",
@@ -143,12 +254,34 @@ func TestFirehoseDriver_Output(t *testing.T) {
 					}, nil
 				}
 			},
+			kubeGetDeployment: func(t *testing.T) kubeGetDeploymentFn {
+				t.Helper()
+				return func(ctx context.Context, conf kube.Config, ns string, name string) (kube.Deployment, error) {
+					assert.Equal(t, ns, "bigquery-firehose")
+					return kube.Deployment{
+						Name:                "foo-bar",
+						Paused:              false,
+						ReadyReplicas:       1,
+						AvailableReplicas:   1,
+						UnavailableReplicas: 2,
+						Conditions:          []map[string]string{},
+					}, nil
+				}
+			},
 			want: modules.MustJSON(Output{
 				Pods: []kube.Pod{
 					{
 						Name:       "foo-1",
 						Containers: []string{"firehose"},
 					},
+				},
+				Deployment: &kube.Deployment{
+					Name:                "foo-bar",
+					Paused:              false,
+					ReadyReplicas:       1,
+					AvailableReplicas:   1,
+					UnavailableReplicas: 2,
+					Conditions:          []map[string]string{},
 				},
 				Namespace:   "bigquery-firehose",
 				ReleaseName: "foo-bar",
@@ -170,6 +303,10 @@ func TestFirehoseDriver_Output(t *testing.T) {
 
 			if tt.kubeGetPod != nil {
 				fd.kubeGetPod = tt.kubeGetPod(t)
+			}
+
+			if tt.kubeGetDeployment != nil {
+				fd.kubeGetDeployment = tt.kubeGetDeployment(t)
 			}
 
 			got, err := fd.Output(context.Background(), tt.exr)

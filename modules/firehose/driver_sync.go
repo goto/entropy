@@ -49,6 +49,10 @@ func (fd *firehoseDriver) Sync(ctx context.Context, exr module.ExpandedResource)
 			// config changes during Sync() are not saved.
 			if pendingStep == stepReleaseStop || conf.Stopped {
 				conf.Replicas = 0
+
+				if conf.Autoscaler != nil {
+					conf.Autoscaler.Spec.Pause(0)
+				}
 			}
 
 			isCreate := pendingStep == stepReleaseCreate
