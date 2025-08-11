@@ -17,6 +17,10 @@ const (
 const (
 	KedaPausedAnnotationKey        = "autoscaling.keda.sh/paused"
 	KedaPausedReplicaAnnotationKey = "autoscaling.keda.sh/paused-replicas"
+
+	KedaKafkaMetadataBootstrapServersKey = "bootstrapServers"
+	KedaKafkaMetadataTopicKey            = "topic"
+	KedaKafkaMetadataConsumerGroupKey    = "consumerGroup"
 )
 
 type Keda struct {
@@ -34,9 +38,9 @@ type Keda struct {
 }
 
 type Trigger struct {
-	Type              Scaler             `json:"type,omitempty"`
-	Metadata          map[string]string  `json:"metadata,omitempty"`
-	AuthenticationRef *AuthenticationRef `json:"authentication_ref,omitempty"`
+	Type              Scaler            `json:"type,omitempty"`
+	Metadata          map[string]string `json:"metadata,omitempty"`
+	AuthenticationRef AuthenticationRef `json:"authentication_ref,omitempty"`
 }
 
 type AuthenticationRef struct {
@@ -74,7 +78,7 @@ func (keda *Keda) ReadConfig(cfg Config, driverCfg driverConf) error {
 	for key, trigger := range keda.Triggers {
 		if existingTrigger, exists := mergedTriggers[key]; exists {
 			maps.Copy(existingTrigger.Metadata, trigger.Metadata)
-			if trigger.AuthenticationRef != nil && trigger.AuthenticationRef.Name != "" {
+			if trigger.AuthenticationRef.Name != "" {
 				existingTrigger.AuthenticationRef = trigger.AuthenticationRef
 			}
 			existingTrigger.Type = trigger.Type
@@ -153,9 +157,12 @@ func (keda *Keda) GetHelmValues(cfg Config) (map[string]any, error) {
 		}
 		trigger.Metadata = renderedMetadata
 		triggers = append(triggers, map[string]any{
-			"type":              trigger.Type,
-			"metadata":          trigger.Metadata,
-			"authenticationRef": trigger.AuthenticationRef,
+			"type":     trigger.Type,
+			"metadata": trigger.Metadata,
+			"authenticationRef": map[string]any{
+				"name": trigger.AuthenticationRef.Name,
+				"kind": trigger.AuthenticationRef.Kind,
+			},
 		})
 	}
 
@@ -220,13 +227,13 @@ func (keda *Keda) updateTriggersMetadata(cfg map[string]string) error {
 		switch trigger.Type {
 		case KAFKA:
 			if _, ok := cfg[confKeyConsumerID]; ok {
-				trigger.Metadata["consumerGroup"] = cfg[confKeyConsumerID]
+				trigger.Metadata[KedaKafkaMetadataConsumerGroupKey] = cfg[confKeyConsumerID]
 			}
 			if _, ok := cfg[confKeyKafkaTopic]; ok {
-				trigger.Metadata["topic"] = cfg[confKeyKafkaTopic]
+				trigger.Metadata[KedaKafkaMetadataTopicKey] = cfg[confKeyKafkaTopic]
 			}
 			if _, ok := cfg[confKeyKafkaBrokers]; ok {
-				trigger.Metadata["brokers"] = cfg[confKeyKafkaBrokers]
+				trigger.Metadata[KedaKafkaMetadataBootstrapServersKey] = cfg[confKeyKafkaBrokers]
 			}
 		}
 		keda.Triggers[key] = trigger
@@ -241,13 +248,12 @@ func deepCopyTriggers(src map[string]Trigger) map[string]Trigger {
 		for mk, mv := range v.Metadata {
 			newMetadata[mk] = mv
 		}
-		var newAuthRef *AuthenticationRef
-		if v.AuthenticationRef != nil {
-			newAuthRef = &AuthenticationRef{
-				Name: v.AuthenticationRef.Name,
-				Kind: v.AuthenticationRef.Kind,
-			}
+
+		newAuthRef := AuthenticationRef{
+			Name: v.AuthenticationRef.Name,
+			Kind: v.AuthenticationRef.Kind,
 		}
+
 		dst[k] = Trigger{
 			Type:              v.Type,
 			Metadata:          newMetadata,
