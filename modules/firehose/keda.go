@@ -178,7 +178,7 @@ func (keda *Keda) GetHelmValues(cfg Config) (map[string]any, error) {
 		}
 
 		var scaleDownPolicy []map[string]any
-		for _, policy := range keda.HPA.ScaleUp.Policies {
+		for _, policy := range keda.HPA.ScaleDown.Policies {
 			scaleDownPolicy = append(scaleDownPolicy, map[string]any{
 				"type":          policy.Type,
 				"value":         policy.Value,
