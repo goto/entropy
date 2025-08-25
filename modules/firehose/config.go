@@ -16,6 +16,7 @@ const (
 	confSinkType        = "SINK_TYPE"
 	confKeyConsumerID   = "SOURCE_KAFKA_CONSUMER_GROUP_ID"
 	confKeyKafkaBrokers = "SOURCE_KAFKA_BROKERS"
+	confKeyKafkaTopic   = "SOURCE_KAFKA_TOPIC"
 )
 
 const helmReleaseNameMaxLength = 53
@@ -65,6 +66,7 @@ type Config struct {
 	Telegraf      *Telegraf     `json:"telegraf,omitempty"`
 	ChartValues   *ChartValues  `json:"chart_values,omitempty"`
 	InitContainer InitContainer `json:"init_container,omitempty"`
+	Autoscaler    *Autoscaler   `json:"autoscaler,omitempty"`
 }
 
 type Telegraf struct {
@@ -129,6 +131,12 @@ func readConfig(r resource.Resource, confJSON json.RawMessage, dc driverConf) (*
 			ns = override
 		}
 		cfg.Namespace = ns
+	}
+
+	if cfg.Autoscaler != nil && cfg.Autoscaler.Enabled {
+		if err := cfg.Autoscaler.Spec.ReadConfig(cfg, dc); err != nil {
+			return nil, err
+		}
 	}
 
 	return &cfg, nil

@@ -106,8 +106,16 @@ func (fd *firehoseDriver) planChange(exr module.ExpandedResource, act module.Act
 			curConf.StopTime = startParams.StopTime
 		}
 
+		if curConf.Autoscaler != nil {
+			curConf.Autoscaler.Spec.Resume()
+		}
+
 	case StopAction:
 		curConf.Stopped = true
+
+		if curConf.Autoscaler != nil {
+			curConf.Autoscaler.Spec.Pause(0)
+		}
 
 	case UpgradeAction:
 		// upgrade the chart values to the latest project-level config.
@@ -235,6 +243,20 @@ func (fd *firehoseDriver) planReset(exr module.ExpandedResource, act module.Acti
 	curConf.EnvVariables[confKeyConsumerID], err = getNewConsumerGroupID(curConf.EnvVariables[confKeyConsumerID])
 	if err != nil {
 		return nil, err
+	}
+
+	// if keda autoscaler enabled, update scaler metadata value
+	if curConf.Autoscaler != nil && curConf.Autoscaler.Type == KEDA {
+		kedaSpec, ok := curConf.Autoscaler.Spec.(*Keda)
+		if !ok {
+			return nil, err
+		}
+
+		err = kedaSpec.updateTriggersMetadata(curConf.EnvVariables)
+		if err != nil {
+			return nil, err
+		}
+		curConf.Autoscaler.Spec = kedaSpec
 	}
 
 	exr.Resource.Spec.Configs = modules.MustJSON(curConf)

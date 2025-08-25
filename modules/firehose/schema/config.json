@@ -65,6 +65,24 @@
           "type": "string"
         }
       }
+    },
+    "autoscaler": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "keda"
+          ]
+        },
+        "spec": {
+          "type": "object"
+        }
+      }
     }
   }
 }

@@ -71,17 +71,19 @@ var defaultDriverConf = driverConf{
 }
 
 type firehoseDriver struct {
-	timeNow       func() time.Time
-	conf          driverConf
-	kubeDeploy    kubeDeployFn
-	kubeGetPod    kubeGetPodFn
-	consumerReset consumerResetFn
+	timeNow           func() time.Time
+	conf              driverConf
+	kubeDeploy        kubeDeployFn
+	kubeGetPod        kubeGetPodFn
+	kubeGetDeployment kubeGetDeploymentFn
+	consumerReset     consumerResetFn
 }
 
 type (
-	kubeDeployFn    func(ctx context.Context, isCreate bool, conf kube.Config, hc helm.ReleaseConfig) error
-	kubeGetPodFn    func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error)
-	consumerResetFn func(ctx context.Context, conf Config, out kubernetes.Output, resetTo string, offsetResetDelaySeconds int) error
+	kubeDeployFn        func(ctx context.Context, isCreate bool, conf kube.Config, hc helm.ReleaseConfig) error
+	kubeGetPodFn        func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error)
+	kubeGetDeploymentFn func(ctx context.Context, conf kube.Config, ns string, name string) (kube.Deployment, error)
+	consumerResetFn     func(ctx context.Context, conf Config, out kubernetes.Output, resetTo string, offsetResetDelaySeconds int) error
 )
 
 type driverConf struct {
@@ -130,6 +132,8 @@ type driverConf struct {
 
 	// timeout value for a kube deployment run
 	KubeDeployTimeout int `json:"kube_deploy_timeout_seconds"`
+
+	Autoscaler FirehoseAutoscaler `json:"autoscaler,omitempty"`
 }
 
 type RequestsAndLimits struct {
@@ -170,9 +174,10 @@ type UsageSpec struct {
 }
 
 type Output struct {
-	Pods        []kube.Pod `json:"pods,omitempty"`
-	Namespace   string     `json:"namespace,omitempty"`
-	ReleaseName string     `json:"release_name,omitempty"`
+	Pods        []kube.Pod       `json:"pods,omitempty"`
+	Namespace   string           `json:"namespace,omitempty"`
+	ReleaseName string           `json:"release_name,omitempty"`
+	Deployment  *kube.Deployment `json:"deployment,omitempty"`
 }
 
 type transientData struct {
@@ -359,6 +364,13 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 			},
 		},
 		"mountSecrets": mountSecrets,
+	}
+
+	if conf.Autoscaler != nil {
+		rc.Values["autoscaler"], err = conf.Autoscaler.GetHelmValues(conf)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return rc, nil

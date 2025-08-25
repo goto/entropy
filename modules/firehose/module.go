@@ -117,6 +117,13 @@ var Module = module.Descriptor{
 					return pod.Status.Phase == v1.PodRunning && pod.DeletionTimestamp == nil
 				})
 			},
+			kubeGetDeployment: func(ctx context.Context, conf kube.Config, ns, name string) (kube.Deployment, error) {
+				kubeCl, err := kube.NewClient(ctx, conf)
+				if err != nil {
+					return kube.Deployment{}, errors.ErrInternal.WithMsgf("failed to create new kube client on firehose driver kube get deployment").WithCausef(err.Error())
+				}
+				return kubeCl.GetDeploymentDetails(ctx, ns, name)
+			},
 			consumerReset: consumerReset,
 		}, nil
 	},

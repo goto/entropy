@@ -14,6 +14,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/fields"
@@ -74,6 +75,15 @@ type LogOptions struct {
 	SinceSeconds string `mapstructure:"since_seconds"`
 	Timestamps   string `mapstructure:"timestamps"`
 	TailLines    string `mapstructure:"tail_lines"`
+}
+
+type Deployment struct {
+	Name                string              `json:"name"`
+	Paused              bool                `json:"paused"`
+	ReadyReplicas       int                 `json:"ready_replicas"`
+	AvailableReplicas   int                 `json:"available_replicas"`
+	UnavailableReplicas int                 `json:"unavailable_replicas"`
+	Conditions          []map[string]string `json:"conditions"`
 }
 
 func (l LogOptions) getPodListOptions() (metav1.ListOptions, error) {
@@ -389,4 +399,47 @@ func streamContainerLogs(ctx context.Context, ns, podName string, logCh chan<- L
 		case logCh <- logChunk:
 		}
 	}
+}
+
+func (c Client) GetDeploymentDetails(ctx context.Context, namespace string, name string) (Deployment, error) {
+	clientSet, err := kubernetes.NewForConfig(&c.restConfig)
+	if err != nil {
+		return Deployment{}, err
+	}
+
+	deployment, err := clientSet.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
+	if k8s_errors.IsNotFound(err) {
+		return Deployment{}, nil
+	}
+
+	if err != nil {
+		return Deployment{}, err
+	}
+
+	d := Deployment{
+		Name:                deployment.Name,
+		Paused:              deployment.Spec.Paused,
+		ReadyReplicas:       int(deployment.Status.ReadyReplicas),
+		AvailableReplicas:   int(deployment.Status.AvailableReplicas),
+		UnavailableReplicas: int(deployment.Status.UnavailableReplicas),
+	}
+
+	if deployment.Status.Conditions != nil {
+		d.Conditions = make([]map[string]string, 0, len(deployment.Status.Conditions))
+		for _, condition := range deployment.Status.Conditions {
+			if condition.Status == corev1.ConditionUnknown || condition.Status == corev1.ConditionFalse {
+				continue
+			}
+
+			condMap := map[string]string{
+				"type":    string(condition.Type),
+				"status":  string(condition.Status),
+				"reason":  condition.Reason,
+				"message": condition.Message,
+			}
+			d.Conditions = append(d.Conditions, condMap)
+		}
+	}
+
+	return d, nil
 }
