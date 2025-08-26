@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 
+	"github.com/goto/entropy/modules"
 	"github.com/goto/entropy/pkg/errors"
 )
 
@@ -149,9 +150,13 @@ func (keda *Keda) GetHelmValues(cfg Config) (map[string]any, error) {
 		annotations[KedaPausedReplicaAnnotationKey] = fmt.Sprint(keda.PausedReplica)
 	}
 
+	var firehoseConfigs = map[string]string{
+		"namespace": cfg.Namespace,
+		"replicas":  fmt.Sprint(cfg.Replicas),
+	}
 	var triggers []map[string]any
 	for _, trigger := range keda.Triggers {
-		renderedMetadata, err := renderTpl(trigger.Metadata, cfg.EnvVariables)
+		renderedMetadata, err := renderTpl(trigger.Metadata, modules.CloneAndMergeMaps(firehoseConfigs, cfg.EnvVariables))
 		if err != nil {
 			return nil, err
 		}
