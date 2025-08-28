@@ -166,17 +166,29 @@ func (p *Client) getActionConfiguration(namespace string) (*action.Configuration
 		return nil, err
 	}
 
+	kubeAPIAuthInfo := api.AuthInfo{
+		Token: p.config.Kubernetes.Token,
+	}
+
+	if p.config.Kubernetes.ClientKey != "" {
+		kubeAPIAuthInfo.ClientKeyData = []byte(p.config.Kubernetes.ClientKey)
+	}
+	if p.config.Kubernetes.ClientCertificate != "" {
+		kubeAPIAuthInfo.ClientCertificateData = []byte(p.config.Kubernetes.ClientCertificate)
+	}
+
+	kubeAPICluster := api.Cluster{
+		Server:                host.String(),
+		InsecureSkipTLSVerify: p.config.Kubernetes.Insecure,
+	}
+
+	if p.config.Kubernetes.ClusterCACertificate != "" {
+		kubeAPICluster.CertificateAuthorityData = []byte(p.config.Kubernetes.ClusterCACertificate)
+	}
+
 	clientConfig := clientcmd.NewDefaultClientConfig(*api.NewConfig(), &clientcmd.ConfigOverrides{
-		AuthInfo: api.AuthInfo{
-			Token:                 p.config.Kubernetes.Token,
-			ClientKeyData:         []byte(p.config.Kubernetes.ClientKey),
-			ClientCertificateData: []byte(p.config.Kubernetes.ClientCertificate),
-		},
-		ClusterInfo: api.Cluster{
-			Server:                   host.String(),
-			InsecureSkipTLSVerify:    p.config.Kubernetes.Insecure,
-			CertificateAuthorityData: []byte(p.config.Kubernetes.ClusterCACertificate),
-		},
+		AuthInfo:    kubeAPIAuthInfo,
+		ClusterInfo: kubeAPICluster,
 	})
 	kubeConf := &kubeClientGetter{ClientConfig: clientConfig}
 

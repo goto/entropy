@@ -1,5 +1,3 @@
-version: "3"
-
 services:
   pg14:
     image: "postgres:14-alpine"
@@ -9,11 +7,15 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-    environment:
-      - PUID=1000
-      - PGID=1000
     restart: unless-stopped
     container_name: pg14
-
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.123.0
+    command: [ "--config=/etc/otel/otel-collector-config.yaml" ]
+    volumes:
+      - ./docker:/etc/otel
+    ports:
+      - "4317:4317" # Otel grpc port`
+      - "4318:4318" # Otel http port`
 volumes:
   pgdata:

@@ -1,0 +1,43 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: :4317
+      http:
+        endpoint: :4318
+
+exporters:
+  debug:
+    verbosity: detailed
+
+extensions:
+  health_check: {}
+processors:
+  batch: {}
+  # If set to null, will be overridden with values based on k8s resource limits
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 50
+service:
+  telemetry:
+    metrics:
+      address: 0.0.0.0:8888
+  extensions:
+    - health_check
+  pipelines:
+    logs:
+      exporters:
+        - debug
+      processors:
+        - memory_limiter
+        - batch
+      receivers:
+        - otlp
+    metrics:
+      exporters:
+        - debug
+      processors:
+        - memory_limiter
+        - batch
+      receivers:
+        - otlp
