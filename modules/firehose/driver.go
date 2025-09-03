@@ -125,7 +125,7 @@ type driverConf struct {
 	RequestsAndLimits map[string]RequestsAndLimits `json:"requests_and_limits" validate:"required"`
 
 	// NodeAffinityMatchExpressions can be used to set node-affinity for the deployment.
-	NodeAffinityMatchExpressions NodeAffinityMatchExpressions `json:"node_affinity_match_expressions"`
+	NodeAffinityMatchExpressions kubernetes.NodeAffinityMatchExpressions `json:"node_affinity_match_expressions"`
 
 	// delay between stopping a firehose and making an offset reset request
 	OffsetResetDelaySeconds int `json:"offset_reset_delay_seconds"`
@@ -139,22 +139,6 @@ type driverConf struct {
 type RequestsAndLimits struct {
 	Limits   UsageSpec `json:"limits,omitempty"`
 	Requests UsageSpec `json:"requests,omitempty"`
-}
-
-type NodeAffinityMatchExpressions struct {
-	RequiredDuringSchedulingIgnoredDuringExecution  []Preference         `json:"requiredDuringSchedulingIgnoredDuringExecution,omitempty"`
-	PreferredDuringSchedulingIgnoredDuringExecution []WeightedPreference `json:"preferredDuringSchedulingIgnoredDuringExecution,omitempty"`
-}
-
-type WeightedPreference struct {
-	Weight     int          `json:"weight" validate:"required"`
-	Preference []Preference `json:"preference" validate:"required"`
-}
-
-type Preference struct {
-	Key      string   `json:"key" validate:"required"`
-	Operator string   `json:"operator" validate:"required"`
-	Values   []string `json:"values"`
 }
 
 type InitContainer struct {
@@ -255,8 +239,16 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 	}
 
 	mountSecrets := []map[string]any{}
-	requiredDuringSchedulingIgnoredDuringExecution := []Preference{}
-	preferredDuringSchedulingIgnoredDuringExecution := []WeightedPreference{}
+
+	requiredDuringSchedulingIgnoredDuringExecution := []kubernetes.Preference{}
+	preferredDuringSchedulingIgnoredDuringExecution := []kubernetes.WeightedPreference{}
+
+	affinityKey := fmt.Sprintf("firehose_%s", conf.EnvVariables["SINK_TYPE"])
+
+	if affinity, ok := kubeOut.Affinities[affinityKey]; ok {
+		requiredDuringSchedulingIgnoredDuringExecution = affinity.RequiredDuringSchedulingIgnoredDuringExecution
+		preferredDuringSchedulingIgnoredDuringExecution = affinity.PreferredDuringSchedulingIgnoredDuringExecution
+	}
 
 	if fd.conf.NodeAffinityMatchExpressions.RequiredDuringSchedulingIgnoredDuringExecution != nil {
 		requiredDuringSchedulingIgnoredDuringExecution = fd.conf.NodeAffinityMatchExpressions.RequiredDuringSchedulingIgnoredDuringExecution
@@ -484,7 +476,7 @@ func renderTplOfMapStringAny(labelsTpl map[string]any, labelsValues map[string]s
 	return labelsTpl, nil
 }
 
-func preferenceSliceToInterfaceSlice(prefs []Preference) []map[string]interface{} {
+func preferenceSliceToInterfaceSlice(prefs []kubernetes.Preference) []map[string]interface{} {
 	result := make([]map[string]interface{}, len(prefs))
 
 	for i, pref := range prefs {
@@ -503,7 +495,7 @@ func preferenceSliceToInterfaceSlice(prefs []Preference) []map[string]interface{
 	return result
 }
 
-func weightedPreferencesToInterfaceSlice(weightedPrefs []WeightedPreference) []map[string]interface{} {
+func weightedPreferencesToInterfaceSlice(weightedPrefs []kubernetes.WeightedPreference) []map[string]interface{} {
 	result := make([]map[string]interface{}, len(weightedPrefs))
 
 	for i, wp := range weightedPrefs {

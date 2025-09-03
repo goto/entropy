@@ -149,10 +149,10 @@ func TestFirehoseDriver(t *testing.T) {
 						},
 					},
 					"nodeAffinityMatchExpressions": map[string]any{
-						"preferredDuringSchedulingIgnoredDuringExecution": []WeightedPreference{
+						"preferredDuringSchedulingIgnoredDuringExecution": []kubernetes.WeightedPreference{
 							{
 								Weight: 1,
-								Preference: []Preference{
+								Preference: []kubernetes.Preference{
 									{
 										Key:      "another-node-label-key",
 										Operator: "In",
@@ -161,7 +161,7 @@ func TestFirehoseDriver(t *testing.T) {
 								},
 							},
 						},
-						"requiredDuringSchedulingIgnoredDuringExecution": []Preference{
+						"requiredDuringSchedulingIgnoredDuringExecution": []kubernetes.Preference{
 							{
 								Key:      "topology.kubernetes.io/zone",
 								Operator: "In",
@@ -326,10 +326,10 @@ func TestFirehoseDriver(t *testing.T) {
 						},
 					},
 					"nodeAffinityMatchExpressions": map[string]any{
-						"preferredDuringSchedulingIgnoredDuringExecution": []WeightedPreference{
+						"preferredDuringSchedulingIgnoredDuringExecution": []kubernetes.WeightedPreference{
 							{
 								Weight: 1,
-								Preference: []Preference{
+								Preference: []kubernetes.Preference{
 									{
 										Key:      "another-node-label-key",
 										Operator: "In",
@@ -338,7 +338,7 @@ func TestFirehoseDriver(t *testing.T) {
 								},
 							},
 						},
-						"requiredDuringSchedulingIgnoredDuringExecution": []Preference{
+						"requiredDuringSchedulingIgnoredDuringExecution": []kubernetes.Preference{
 							{
 								Key:      "topology.kubernetes.io/zone",
 								Operator: "In",
@@ -511,10 +511,10 @@ func TestFirehoseDriver(t *testing.T) {
 						},
 					},
 					"nodeAffinityMatchExpressions": map[string]any{
-						"preferredDuringSchedulingIgnoredDuringExecution": []WeightedPreference{
+						"preferredDuringSchedulingIgnoredDuringExecution": []kubernetes.WeightedPreference{
 							{
 								Weight: 1,
-								Preference: []Preference{
+								Preference: []kubernetes.Preference{
 									{
 										Key:      "another-node-label-key",
 										Operator: "In",
@@ -523,7 +523,7 @@ func TestFirehoseDriver(t *testing.T) {
 								},
 							},
 						},
-						"requiredDuringSchedulingIgnoredDuringExecution": []Preference{
+						"requiredDuringSchedulingIgnoredDuringExecution": []kubernetes.Preference{
 							{
 								Key:      "topology.kubernetes.io/zone",
 								Operator: "In",
@@ -597,18 +597,18 @@ func TestFirehoseDriver(t *testing.T) {
 func firehoseDriverConf() driverConf {
 	return driverConf{
 		KubeDeployTimeout: 60,
-		NodeAffinityMatchExpressions: NodeAffinityMatchExpressions{
-			RequiredDuringSchedulingIgnoredDuringExecution: []Preference{
+		NodeAffinityMatchExpressions: kubernetes.NodeAffinityMatchExpressions{
+			RequiredDuringSchedulingIgnoredDuringExecution: []kubernetes.Preference{
 				{
 					Key:      "topology.kubernetes.io/zone",
 					Operator: "In",
 					Values:   []string{"antarctica-east1", "antarctica-west1"},
 				},
 			},
-			PreferredDuringSchedulingIgnoredDuringExecution: []WeightedPreference{
+			PreferredDuringSchedulingIgnoredDuringExecution: []kubernetes.WeightedPreference{
 				{
 					Weight: 1,
-					Preference: []Preference{
+					Preference: []kubernetes.Preference{
 						{
 							Key:      "another-node-label-key",
 							Operator: "In",

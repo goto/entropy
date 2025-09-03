@@ -9,9 +9,10 @@ import (
 )
 
 type Output struct {
-	Configs     kube.Config             `json:"configs"`
-	ServerInfo  version.Info            `json:"server_info"`
-	Tolerations map[string][]Toleration `json:"tolerations"`
+	Configs     kube.Config                             `json:"configs"`
+	ServerInfo  version.Info                            `json:"server_info"`
+	Tolerations map[string][]Toleration                 `json:"tolerations"`
+	Affinities  map[string]NodeAffinityMatchExpressions `json:"affinities"`
 }
 
 type Toleration struct {
@@ -19,6 +20,22 @@ type Toleration struct {
 	Value    string `json:"value"`
 	Effect   string `json:"effect"`
 	Operator string `json:"operator"`
+}
+
+type NodeAffinityMatchExpressions struct {
+	RequiredDuringSchedulingIgnoredDuringExecution  []Preference         `json:"requiredDuringSchedulingIgnoredDuringExecution,omitempty"`
+	PreferredDuringSchedulingIgnoredDuringExecution []WeightedPreference `json:"preferredDuringSchedulingIgnoredDuringExecution,omitempty"`
+}
+
+type WeightedPreference struct {
+	Weight     int          `json:"weight" validate:"required"`
+	Preference []Preference `json:"preference" validate:"required"`
+}
+
+type Preference struct {
+	Key      string   `json:"key" validate:"required"`
+	Operator string   `json:"operator" validate:"required"`
+	Values   []string `json:"values"`
 }
 
 func (out Output) JSON() []byte {
