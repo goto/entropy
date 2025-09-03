@@ -80,6 +80,7 @@ type LogOptions struct {
 type Deployment struct {
 	Name                string              `json:"name"`
 	Paused              bool                `json:"paused"`
+	Replicas            int                 `json:"replicas"`
 	ReadyReplicas       int                 `json:"ready_replicas"`
 	AvailableReplicas   int                 `json:"available_replicas"`
 	UnavailableReplicas int                 `json:"unavailable_replicas"`
@@ -419,6 +420,7 @@ func (c Client) GetDeploymentDetails(ctx context.Context, namespace string, name
 	d := Deployment{
 		Name:                deployment.Name,
 		Paused:              deployment.Spec.Paused,
+		Replicas:            int(deployment.Status.Replicas),
 		ReadyReplicas:       int(deployment.Status.ReadyReplicas),
 		AvailableReplicas:   int(deployment.Status.AvailableReplicas),
 		UnavailableReplicas: int(deployment.Status.UnavailableReplicas),

@@ -92,9 +92,10 @@ func TestFirehoseDriver_Output(t *testing.T) {
 			exr: sampleResourceWithState(resource.State{
 				Status: resource.StatusCompleted,
 				Output: modules.MustJSON(Output{
-					Pods:        nil,
-					Namespace:   "firehose",
-					ReleaseName: "foo-bar",
+					Pods:          nil,
+					Namespace:     "firehose",
+					ReleaseName:   "foo-bar",
+					DesiredStatus: "RUNNING",
 				}),
 			}, "LOG", "firehose"),
 			kubeGetPod: func(t *testing.T) kubeGetPodFn {
@@ -139,8 +140,9 @@ func TestFirehoseDriver_Output(t *testing.T) {
 					UnavailableReplicas: 2,
 					Conditions:          []map[string]string{},
 				},
-				Namespace:   "firehose",
-				ReleaseName: "foo-bar",
+				Namespace:     "firehose",
+				ReleaseName:   "foo-bar",
+				DesiredStatus: "RUNNING",
 			}),
 		},
 		{
@@ -148,9 +150,10 @@ func TestFirehoseDriver_Output(t *testing.T) {
 			exr: sampleResourceWithState(resource.State{
 				Status: resource.StatusCompleted,
 				Output: modules.MustJSON(Output{
-					Pods:        nil,
-					Namespace:   "firehose",
-					ReleaseName: "foo-bar",
+					Pods:          nil,
+					Namespace:     "firehose",
+					ReleaseName:   "foo-bar",
+					DesiredStatus: "RUNNING",
 				}),
 			}, "LOG", "firehose"),
 			kubeGetPod: func(t *testing.T) kubeGetPodFn {
@@ -180,9 +183,10 @@ func TestFirehoseDriver_Output(t *testing.T) {
 			exr: sampleResourceWithState(resource.State{
 				Status: resource.StatusCompleted,
 				Output: modules.MustJSON(Output{
-					Pods:        nil,
-					Namespace:   "firehose",
-					ReleaseName: "foo-bar",
+					Pods:          nil,
+					Namespace:     "firehose",
+					ReleaseName:   "foo-bar",
+					DesiredStatus: "RUNNING",
 				}),
 			}, "LOG", "firehose"),
 			kubeGetPod: func(t *testing.T) kubeGetPodFn {
@@ -227,8 +231,9 @@ func TestFirehoseDriver_Output(t *testing.T) {
 					UnavailableReplicas: 2,
 					Conditions:          []map[string]string{},
 				},
-				Namespace:   "firehose",
-				ReleaseName: "foo-bar",
+				Namespace:     "firehose",
+				ReleaseName:   "foo-bar",
+				DesiredStatus: "RUNNING",
 			}),
 		},
 		{
@@ -236,9 +241,10 @@ func TestFirehoseDriver_Output(t *testing.T) {
 			exr: sampleResourceWithState(resource.State{
 				Status: resource.StatusCompleted,
 				Output: modules.MustJSON(Output{
-					Pods:        nil,
-					Namespace:   "firehose",
-					ReleaseName: "foo-bar",
+					Pods:          nil,
+					Namespace:     "firehose",
+					ReleaseName:   "foo-bar",
+					DesiredStatus: "RUNNING",
 				}),
 			}, "BIGQUERY", "bigquery-firehose"),
 			kubeGetPod: func(t *testing.T) kubeGetPodFn {
@@ -283,8 +289,9 @@ func TestFirehoseDriver_Output(t *testing.T) {
 					UnavailableReplicas: 2,
 					Conditions:          []map[string]string{},
 				},
-				Namespace:   "bigquery-firehose",
-				ReleaseName: "foo-bar",
+				Namespace:     "bigquery-firehose",
+				ReleaseName:   "foo-bar",
+				DesiredStatus: "RUNNING",
 			}),
 		},
 	}
