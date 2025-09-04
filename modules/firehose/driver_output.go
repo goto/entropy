@@ -50,6 +50,15 @@ func (fd *firehoseDriver) refreshOutput(ctx context.Context, r resource.Resource
 		return nil, errors.ErrInternal.WithCausef(err.Error())
 	}
 	output.Deployment = &deployment
+	output.DesiredStatus = fd.desiredStatus(conf)
+	output.AutoscalerEnabled = conf.Autoscaler != nil && conf.Autoscaler.Enabled
 
 	return modules.MustJSON(output), nil
+}
+
+func (fd *firehoseDriver) desiredStatus(conf Config) string {
+	if conf.Stopped {
+		return desiredStatusStopped
+	}
+	return desiredStatusRunning
 }

@@ -20,6 +20,11 @@ import (
 )
 
 const (
+	desiredStatusRunning = "RUNNING"
+	desiredStatusStopped = "STOPPED"
+)
+
+const (
 	stepReleaseCreate = "release_create"
 	stepReleaseUpdate = "release_update"
 	stepReleaseStop   = "release_stop"
@@ -158,10 +163,12 @@ type UsageSpec struct {
 }
 
 type Output struct {
-	Pods        []kube.Pod       `json:"pods,omitempty"`
-	Namespace   string           `json:"namespace,omitempty"`
-	ReleaseName string           `json:"release_name,omitempty"`
-	Deployment  *kube.Deployment `json:"deployment,omitempty"`
+	Pods              []kube.Pod       `json:"pods,omitempty"`
+	Namespace         string           `json:"namespace,omitempty"`
+	ReleaseName       string           `json:"release_name,omitempty"`
+	Deployment        *kube.Deployment `json:"deployment,omitempty"`
+	DesiredStatus     string           `json:"desired_status,omitempty"`
+	AutoscalerEnabled bool             `json:"autoscaler_enabled,omitempty"`
 }
 
 type transientData struct {

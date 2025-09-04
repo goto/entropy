@@ -128,6 +128,7 @@ func TestFirehoseDriver_Sync(t *testing.T) {
 						UnavailableReplicas: 2,
 						Conditions:          []map[string]string{},
 					},
+					DesiredStatus: "RUNNING",
 				}),
 				ModuleData: nil,
 			},
