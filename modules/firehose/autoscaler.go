@@ -26,7 +26,7 @@ type Autoscaler struct {
 }
 
 type FirehoseAutoscaler struct {
-	Keda Keda `json:"keda,omitempty"`
+	Keda map[string]Keda `json:"keda,omitempty"`
 }
 
 func (autoscaler *Autoscaler) GetHelmValues(cfg Config) (map[string]any, error) {
