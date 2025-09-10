@@ -3,7 +3,6 @@ package firehose
 import (
 	"fmt"
 	"maps"
-	"reflect"
 
 	"github.com/goto/entropy/modules"
 	"github.com/goto/entropy/pkg/errors"
@@ -76,41 +75,6 @@ type Policy struct {
 	PeriodSeconds int     `json:"period_seconds,omitempty"`
 }
 
-type triggerMapTransformer struct{}
-
-func (triggerMapTransformer) Transformer(typ reflect.Type) func(dst, src reflect.Value) error {
-	if typ == reflect.TypeOf(map[string]Trigger{}) {
-		return func(dst, src reflect.Value) error {
-			for _, key := range src.MapKeys() {
-				srcVal := src.MapIndex(key).Interface().(Trigger)
-				if dstVal := dst.MapIndex(key); dstVal.IsValid() {
-					merged := dstVal.Interface().(Trigger)
-
-					if merged.Metadata == nil {
-						merged.Metadata = map[string]string{}
-					}
-					for k, v := range srcVal.Metadata {
-						merged.Metadata[k] = v
-					}
-
-					if srcVal.AuthenticationRef.Name != "" {
-						merged.AuthenticationRef = srcVal.AuthenticationRef
-					}
-					if srcVal.Type != "" {
-						merged.Type = srcVal.Type
-					}
-
-					dst.SetMapIndex(key, reflect.ValueOf(merged))
-				} else {
-					dst.SetMapIndex(key, reflect.ValueOf(srcVal))
-				}
-			}
-			return nil
-		}
-	}
-	return nil
-}
-
 func (keda *Keda) ReadConfig(cfg Config, driverCfg driverConf) error {
 	kedaConfig, ok := driverCfg.Autoscaler.Keda[DefaultKedaConfigKey]
 	if !ok {
@@ -119,7 +83,7 @@ func (keda *Keda) ReadConfig(cfg Config, driverCfg driverConf) error {
 
 	sinkBasedKedaConfig, ok := driverCfg.Autoscaler.Keda[cfg.EnvVariables[confSinkType]]
 	if ok {
-		err := mergo.Merge(&kedaConfig, sinkBasedKedaConfig, mergo.WithOverride, mergo.WithoutDereference, mergo.WithTransformers(triggerMapTransformer{}))
+		err := mergo.Merge(&kedaConfig, sinkBasedKedaConfig, mergo.WithOverride, mergo.WithoutDereference, mergo.WithTransformers(kedaConfigMergeTransformers{}))
 		if err != nil {
 			return errors.ErrInvalid.WithMsgf("invalid keda autoscaler driver configuration").WithCausef(err.Error())
 		}
