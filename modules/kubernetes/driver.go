@@ -13,8 +13,10 @@ import (
 )
 
 type kubeDriver struct {
-	Tolerations map[string][]Toleration                 `json:"tolerations"`
-	Affinities  map[string]NodeAffinityMatchExpressions `json:"affinities"`
+	TolerationMode string                                  `json:"toleration_mode"`
+	Tolerations    map[string][]Toleration                 `json:"tolerations"`
+	AffinityMode   string                                  `json:"affinity_mode"`
+	Affinities     map[string]NodeAffinityMatchExpressions `json:"affinities"`
 }
 
 func (m *kubeDriver) Plan(ctx context.Context, res module.ExpandedResource,
@@ -70,9 +72,11 @@ func (m *kubeDriver) Output(ctx context.Context, res module.ExpandedResource) (j
 	}
 
 	return Output{
-		Configs:     conf,
-		ServerInfo:  *info,
-		Tolerations: m.Tolerations,
-		Affinities:  m.Affinities,
+		Configs:        conf,
+		ServerInfo:     *info,
+		TolerationMode: m.TolerationMode,
+		Tolerations:    m.Tolerations,
+		AffinityMode:   m.AffinityMode,
+		Affinities:     m.Affinities,
 	}.JSON(), nil
 }
