@@ -9,10 +9,12 @@ import (
 )
 
 type Output struct {
-	Configs     kube.Config                             `json:"configs"`
-	ServerInfo  version.Info                            `json:"server_info"`
-	Tolerations map[string][]Toleration                 `json:"tolerations"`
-	Affinities  map[string]NodeAffinityMatchExpressions `json:"affinities"`
+	Configs        kube.Config                             `json:"configs"`
+	ServerInfo     version.Info                            `json:"server_info"`
+	TolerationMode string                                  `json:"toleration_mode"`
+	Tolerations    map[string][]Toleration                 `json:"tolerations"`
+	AffinityMode   string                                  `json:"affinity_mode"`
+	Affinities     map[string]NodeAffinityMatchExpressions `json:"affinities"`
 }
 
 type Toleration struct {

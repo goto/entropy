@@ -25,6 +25,10 @@ const (
 )
 
 const (
+	kubeConfigModeAutoscaler = "firehose_AUTOSCALER"
+)
+
+const (
 	stepReleaseCreate = "release_create"
 	stepReleaseUpdate = "release_update"
 	stepReleaseStop   = "release_stop"
@@ -234,8 +238,21 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		}
 	}
 
-	tolerationKey := fmt.Sprintf("firehose_%s", conf.EnvVariables["SINK_TYPE"])
+	var tolerationKey = ""
 	tolerations := []map[string]any{}
+
+	if kubeOut.TolerationMode == kubeConfigModeAutoscaler {
+		if conf.Autoscaler == nil || !conf.Autoscaler.Enabled {
+			tolerationKey = "firehose_non_autoscaler"
+		} else {
+			tolerationKey = "firehose_autoscaler"
+		}
+	} else {
+		// undefined or sink_type
+		tolerationKey = fmt.Sprintf("firehose_%s", conf.EnvVariables["SINK_TYPE"])
+
+	}
+
 	for _, t := range kubeOut.Tolerations[tolerationKey] {
 		tolerations = append(tolerations, map[string]any{
 			"key":      t.Key,
@@ -250,7 +267,16 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 	requiredDuringSchedulingIgnoredDuringExecution := []kubernetes.Preference{}
 	preferredDuringSchedulingIgnoredDuringExecution := []kubernetes.WeightedPreference{}
 
-	affinityKey := fmt.Sprintf("firehose_%s", conf.EnvVariables["SINK_TYPE"])
+	var affinityKey = ""
+	if kubeOut.AffinityMode == kubeConfigModeAutoscaler {
+		if conf.Autoscaler == nil || !conf.Autoscaler.Enabled {
+			affinityKey = "firehose_non_autoscaler"
+		} else {
+			affinityKey = "firehose_autoscaler"
+		}
+	} else {
+		affinityKey = fmt.Sprintf("firehose_%s", conf.EnvVariables["SINK_TYPE"])
+	}
 
 	if affinity, ok := kubeOut.Affinities[affinityKey]; ok {
 		requiredDuringSchedulingIgnoredDuringExecution = affinity.RequiredDuringSchedulingIgnoredDuringExecution
