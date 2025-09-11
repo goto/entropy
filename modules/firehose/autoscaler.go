@@ -25,10 +25,6 @@ type Autoscaler struct {
 	Spec    AutoscalerSpec `json:"spec,omitempty"`
 }
 
-type FirehoseAutoscaler struct {
-	Keda Keda `json:"keda,omitempty"`
-}
-
 func (autoscaler *Autoscaler) GetHelmValues(cfg Config) (map[string]any, error) {
 	values := map[string]any{
 		"enabled": autoscaler.Enabled,

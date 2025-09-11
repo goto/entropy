@@ -73,16 +73,36 @@ type Policy struct {
 }
 
 func (keda *Keda) ReadConfig(cfg Config, driverCfg driverConf) error {
-	kedaConfig := driverCfg.Autoscaler.Keda
+	kedaConfig := Keda{
+		Paused:                   driverCfg.Autoscaler.Keda.Paused,
+		PausedWithReplica:        driverCfg.Autoscaler.Keda.PausedWithReplica,
+		PausedReplica:            driverCfg.Autoscaler.Keda.PausedReplica,
+		MinReplicas:              driverCfg.Autoscaler.Keda.MinReplicas,
+		MaxReplicas:              driverCfg.Autoscaler.Keda.MinReplicas,
+		PollingInterval:          driverCfg.Autoscaler.Keda.PollingInterval,
+		CooldownPeriod:           driverCfg.Autoscaler.Keda.CooldownPeriod,
+		RestoreToOriginalReplica: driverCfg.Autoscaler.Keda.RestoreToOriginalReplica,
+		Fallback:                 driverCfg.Autoscaler.Keda.Fallback,
+		HPA:                      driverCfg.Autoscaler.Keda.HPA,
+	}
+	defaultTriggers := driverCfg.Autoscaler.Keda.Triggers[defaultKey]
+	kedaConfig.Triggers = defaultTriggers
+	sinkType := cfg.EnvVariables[confSinkType]
+	sinkTriggers, ok := driverCfg.Autoscaler.Keda.Triggers[sinkType]
+	if ok {
+		kedaConfig.Triggers = sinkTriggers
+	}
 
-	mergedTriggers := deepCopyTriggers(driverCfg.Autoscaler.Keda.Triggers)
+	mergedTriggers := deepCopyTriggers(kedaConfig.Triggers)
 	for key, trigger := range keda.Triggers {
 		if existingTrigger, exists := mergedTriggers[key]; exists {
 			maps.Copy(existingTrigger.Metadata, trigger.Metadata)
 			if trigger.AuthenticationRef.Name != "" {
 				existingTrigger.AuthenticationRef = trigger.AuthenticationRef
 			}
-			existingTrigger.Type = trigger.Type
+			if trigger.Type != "" {
+				existingTrigger.Type = trigger.Type
+			}
 			mergedTriggers[key] = existingTrigger
 		}
 
