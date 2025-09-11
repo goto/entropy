@@ -6,7 +6,6 @@ import (
 
 	"github.com/goto/entropy/modules"
 	"github.com/goto/entropy/pkg/errors"
-	"github.com/imdario/mergo"
 )
 
 type Scaler string
@@ -76,17 +75,35 @@ type Policy struct {
 }
 
 func (keda *Keda) ReadConfig(cfg Config, driverCfg driverConf) error {
-	kedaConfig, ok := driverCfg.Autoscaler.Keda[DefaultKedaConfigKey]
-	if !ok {
-		return errors.ErrInvalid.WithMsgf("invalid keda autoscaler driver configuration: default configuration not available")
+	kedaConfig := Keda{
+		Paused:                   driverCfg.Autoscaler.Keda.Paused,
+		PausedWithReplica:        driverCfg.Autoscaler.Keda.PausedWithReplica,
+		PausedReplica:            driverCfg.Autoscaler.Keda.PausedReplica,
+		MinReplicas:              driverCfg.Autoscaler.Keda.MinReplicas,
+		MaxReplicas:              driverCfg.Autoscaler.Keda.MinReplicas,
+		PollingInterval:          driverCfg.Autoscaler.Keda.PollingInterval,
+		CooldownPeriod:           driverCfg.Autoscaler.Keda.CooldownPeriod,
+		RestoreToOriginalReplica: driverCfg.Autoscaler.Keda.RestoreToOriginalReplica,
+		Fallback:                 driverCfg.Autoscaler.Keda.Fallback,
+		HPA:                      driverCfg.Autoscaler.Keda.HPA,
 	}
 
-	sinkBasedKedaConfig, ok := driverCfg.Autoscaler.Keda[cfg.EnvVariables[confSinkType]]
+	sinkType := cfg.EnvVariables[confSinkType]
+	defaultTrigger, ok := driverCfg.Autoscaler.Keda.Triggers[defaultKey]
+	if !ok {
+		return errors.ErrInvalid.WithMsgf("invalid keda autoscaler driver config")
+	}
+	sinkTrigger, ok := driverCfg.Autoscaler.Keda.Triggers[sinkType]
 	if ok {
-		err := mergo.Merge(&kedaConfig, sinkBasedKedaConfig, mergo.WithOverride, mergo.WithoutDereference, mergo.WithTransformers(kedaConfigMergeTransformers{}))
-		if err != nil {
-			return errors.ErrInvalid.WithMsgf("invalid keda autoscaler driver configuration").WithCausef(err.Error())
+		for key, trigger := range defaultTrigger {
+			if sinkTrigger, exists := sinkTrigger[key]; exists {
+				mergedMetadata := modules.CloneAndMergeMaps(trigger.Metadata, sinkTrigger.Metadata)
+				updatedTrigger := trigger
+				updatedTrigger.Metadata = mergedMetadata
+				defaultTrigger[key] = updatedTrigger
+			}
 		}
+		kedaConfig.Triggers = defaultTrigger
 	}
 
 	mergedTriggers := deepCopyTriggers(kedaConfig.Triggers)
@@ -96,7 +113,9 @@ func (keda *Keda) ReadConfig(cfg Config, driverCfg driverConf) error {
 			if trigger.AuthenticationRef.Name != "" {
 				existingTrigger.AuthenticationRef = trigger.AuthenticationRef
 			}
-			existingTrigger.Type = trigger.Type
+			if trigger.Type != "" {
+				existingTrigger.Type = trigger.Type
+			}
 			mergedTriggers[key] = existingTrigger
 		}
 
