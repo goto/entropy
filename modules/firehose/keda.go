@@ -85,33 +85,14 @@ func (keda *Keda) ReadConfig(cfg Config, driverCfg driverConf) error {
 		Fallback:                 driverCfg.Autoscaler.Keda.Fallback,
 		HPA:                      driverCfg.Autoscaler.Keda.HPA,
 	}
-
-	// merge driver triggers based on sink
+	defaultTriggers := driverCfg.Autoscaler.Keda.Triggers[defaultKey]
+	kedaConfig.Triggers = defaultTriggers
 	sinkType := cfg.EnvVariables[confSinkType]
-	defaultTriggers, ok := driverCfg.Autoscaler.Keda.Triggers[defaultKey]
-	if !ok {
-		return errors.ErrInvalid.WithMsgf("invalid keda autoscaler driver config")
-	}
 	sinkTriggers, ok := driverCfg.Autoscaler.Keda.Triggers[sinkType]
 	if ok {
-		for key, trigger := range defaultTriggers {
-			if sinkTrigger, exists := sinkTriggers[key]; exists {
-				mergedMetadata := modules.CloneAndMergeMaps(trigger.Metadata, sinkTrigger.Metadata)
-				updatedTrigger := trigger
-				updatedTrigger.Metadata = mergedMetadata
-				if sinkTrigger.AuthenticationRef.Name != "" {
-					updatedTrigger.AuthenticationRef = sinkTrigger.AuthenticationRef
-				}
-				if sinkTrigger.Type != "" {
-					updatedTrigger.Type = sinkTrigger.Type
-				}
-				defaultTriggers[key] = updatedTrigger
-			}
-		}
-		kedaConfig.Triggers = defaultTriggers
+		kedaConfig.Triggers = sinkTriggers
 	}
 
-	// merge driver triggers config with resource triggers config
 	mergedTriggers := deepCopyTriggers(kedaConfig.Triggers)
 	for key, trigger := range keda.Triggers {
 		if existingTrigger, exists := mergedTriggers[key]; exists {
