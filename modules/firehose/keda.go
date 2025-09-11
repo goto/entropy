@@ -22,8 +22,6 @@ const (
 	KedaKafkaMetadataBootstrapServersKey = "bootstrapServers"
 	KedaKafkaMetadataTopicKey            = "topic"
 	KedaKafkaMetadataConsumerGroupKey    = "consumerGroup"
-
-	DefaultKedaConfigKey = "default"
 )
 
 type Keda struct {
