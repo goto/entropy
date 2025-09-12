@@ -266,6 +266,29 @@ func (keda *Keda) updateTriggersMetadata(cfg map[string]string) error {
 	return nil
 }
 
+func (keda *Keda) Validate() error {
+	if keda.MinReplicas == 0 && keda.MaxReplicas == 0 {
+		return errors.ErrInvalid.WithMsgf("min_replicas and max_replicas must be set when autoscaler is enabled")
+	}
+
+	if keda.MinReplicas < 0 {
+		return errors.ErrInvalid.WithMsgf("min_replicas must be greater than or equal to 0")
+	}
+
+	if keda.MaxReplicas < 1 {
+		return errors.ErrInvalid.WithMsgf("max_replicas must be greater than or equal to 1")
+	}
+
+	if keda.MinReplicas > keda.MaxReplicas {
+		return errors.ErrInvalid.WithMsgf("min_replicas must be less than or equal to max_replicas")
+	}
+
+	if len(keda.Triggers) == 0 {
+		return errors.ErrInvalid.WithMsgf("at least one trigger must be defined when autoscaler is enabled")
+	}
+	return nil
+}
+
 func deepCopyTriggers(src map[string]Trigger) map[string]Trigger {
 	dst := make(map[string]Trigger, len(src))
 	for k, v := range src {
