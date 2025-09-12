@@ -13,6 +13,7 @@ const (
 )
 
 type AutoscalerSpec interface {
+	Validate() error
 	ReadConfig(cfg Config, driverConf driverConf) error
 	Pause(replica ...int)
 	Resume()
@@ -62,6 +63,19 @@ func (autoscaler *Autoscaler) UnmarshalJSON(data []byte) error {
 		autoscaler.Spec = kedaSpec
 	default:
 		return errors.ErrInvalid.WithMsgf("unsupported autoscaler type: %s", autoscaler.Type)
+	}
+	return nil
+}
+
+func (autoscaler *Autoscaler) Validate() error {
+	if !autoscaler.Enabled {
+		return nil
+	}
+	if autoscaler.Spec == nil {
+		return errors.ErrInvalid.WithMsgf("autoscaler spec must be provided when autoscaler is enabled")
+	}
+	if err := autoscaler.Spec.Validate(); err != nil {
+		return err
 	}
 	return nil
 }

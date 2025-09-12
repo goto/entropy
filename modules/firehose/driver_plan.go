@@ -84,6 +84,10 @@ func (fd *firehoseDriver) planChange(exr module.ExpandedResource, act module.Act
 			}
 		}
 
+		if newConf.Autoscaler != nil && newConf.Autoscaler.Enabled {
+
+		}
+
 		curConf = newConf
 
 	case ScaleAction:
