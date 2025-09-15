@@ -137,6 +137,10 @@ func readConfig(r resource.Resource, confJSON json.RawMessage, dc driverConf) (*
 		if err := cfg.Autoscaler.Spec.ReadConfig(cfg, dc); err != nil {
 			return nil, err
 		}
+
+		if err := cfg.Autoscaler.Validate(); err != nil {
+			return nil, err
+		}
 	}
 
 	return &cfg, nil
