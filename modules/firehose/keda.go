@@ -3,6 +3,7 @@ package firehose
 import (
 	"fmt"
 	"maps"
+	"strings"
 
 	"github.com/goto/entropy/modules"
 	"github.com/goto/entropy/pkg/errors"
@@ -22,6 +23,8 @@ const (
 	KedaKafkaMetadataBootstrapServersKey = "bootstrapServers"
 	KedaKafkaMetadataTopicKey            = "topic"
 	KedaKafkaMetadataConsumerGroupKey    = "consumerGroup"
+
+	KafkaTopicDelimiter = "|"
 )
 
 type Keda struct {
@@ -167,6 +170,27 @@ func (keda *Keda) GetHelmValues(cfg Config) (map[string]any, error) {
 			return nil, err
 		}
 		trigger.Metadata = renderedMetadata
+
+		topicMetadata, topicMetadataExists := trigger.Metadata[KedaKafkaMetadataTopicKey]
+		if trigger.Type == KAFKA &&
+			topicMetadataExists &&
+			strings.Contains(topicMetadata, KafkaTopicDelimiter) {
+			topics := strings.Split(topicMetadata, KafkaTopicDelimiter)
+			for _, topic := range topics {
+				metadata := maps.Clone(trigger.Metadata)
+				metadata[KedaKafkaMetadataTopicKey] = topic
+				triggers = append(triggers, map[string]any{
+					"type":     trigger.Type,
+					"metadata": metadata,
+					"authenticationRef": map[string]any{
+						"name": trigger.AuthenticationRef.Name,
+						"kind": trigger.AuthenticationRef.Kind,
+					},
+				})
+			}
+			continue
+		}
+
 		triggers = append(triggers, map[string]any{
 			"type":     trigger.Type,
 			"metadata": trigger.Metadata,
