@@ -171,8 +171,11 @@ func (keda *Keda) GetHelmValues(cfg Config) (map[string]any, error) {
 		}
 		trigger.Metadata = renderedMetadata
 
-		if trigger.Type == KAFKA && strings.Contains(trigger.Metadata[KedaKafkaMetadataTopicKey], KafkaTopicDelimiter) {
-			topics := strings.Split(trigger.Metadata[KedaKafkaMetadataTopicKey], KafkaTopicDelimiter)
+		topicMetadata, topicMetadataExists := trigger.Metadata[KedaKafkaMetadataTopicKey]
+		if trigger.Type == KAFKA &&
+			topicMetadataExists &&
+			strings.Contains(topicMetadata, KafkaTopicDelimiter) {
+			topics := strings.Split(topicMetadata, KafkaTopicDelimiter)
 			for _, topic := range topics {
 				metadata := maps.Clone(trigger.Metadata)
 				metadata[KedaKafkaMetadataTopicKey] = topic
