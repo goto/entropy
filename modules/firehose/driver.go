@@ -150,15 +150,10 @@ type driverConf struct {
 }
 
 type FirehoseAutoscaler struct {
-	Keda KedaDriverConfig `json:"keda,omitempty"`
+	Keda map[string]Keda `json:"keda,omitempty"`
 }
 
 type Triggers map[string]Trigger
-
-type KedaDriverConfig struct {
-	Keda
-	Triggers map[string]Triggers `json:"triggers,omitempty"`
-}
 
 type RequestsAndLimits struct {
 	Limits   UsageSpec `json:"limits,omitempty"`
