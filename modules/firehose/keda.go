@@ -271,25 +271,3 @@ func (keda *Keda) Validate() error {
 	}
 	return nil
 }
-
-func deepCopyTriggers(src map[string]Trigger) map[string]Trigger {
-	dst := make(map[string]Trigger, len(src))
-	for k, v := range src {
-		newMetadata := make(map[string]string, len(v.Metadata))
-		for mk, mv := range v.Metadata {
-			newMetadata[mk] = mv
-		}
-
-		newAuthRef := AuthenticationRef{
-			Name: v.AuthenticationRef.Name,
-			Kind: v.AuthenticationRef.Kind,
-		}
-
-		dst[k] = Trigger{
-			Type:              v.Type,
-			Metadata:          newMetadata,
-			AuthenticationRef: newAuthRef,
-		}
-	}
-	return dst
-}
