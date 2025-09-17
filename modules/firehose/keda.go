@@ -78,8 +78,10 @@ type Policy struct {
 func (keda *Keda) ReadConfig(cfg Config, driverCfg driverConf) error {
 	kedaConfig := Keda{}
 
-	defaultConfig := driverCfg.Autoscaler.Keda[defaultKey]
-	kedaConfig = defaultConfig
+	defaultConfig, ok := driverCfg.Autoscaler.Keda[defaultKey]
+	if ok {
+		kedaConfig = defaultConfig
+	}
 
 	sinkType := cfg.EnvVariables[confSinkType]
 	SinkConfig, ok := driverCfg.Autoscaler.Keda[sinkType]
