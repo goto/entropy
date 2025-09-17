@@ -76,44 +76,19 @@ type Policy struct {
 }
 
 func (keda *Keda) ReadConfig(cfg Config, driverCfg driverConf) error {
-	kedaConfig := Keda{
-		Paused:                   driverCfg.Autoscaler.Keda.Paused,
-		PausedWithReplica:        driverCfg.Autoscaler.Keda.PausedWithReplica,
-		PausedReplica:            driverCfg.Autoscaler.Keda.PausedReplica,
-		MinReplicas:              driverCfg.Autoscaler.Keda.MinReplicas,
-		MaxReplicas:              driverCfg.Autoscaler.Keda.MinReplicas,
-		PollingInterval:          driverCfg.Autoscaler.Keda.PollingInterval,
-		CooldownPeriod:           driverCfg.Autoscaler.Keda.CooldownPeriod,
-		RestoreToOriginalReplica: driverCfg.Autoscaler.Keda.RestoreToOriginalReplica,
-		Fallback:                 driverCfg.Autoscaler.Keda.Fallback,
-		HPA:                      driverCfg.Autoscaler.Keda.HPA,
-	}
-	defaultTriggers := driverCfg.Autoscaler.Keda.Triggers[defaultKey]
-	kedaConfig.Triggers = defaultTriggers
-	sinkType := cfg.EnvVariables[confSinkType]
-	sinkTriggers, ok := driverCfg.Autoscaler.Keda.Triggers[sinkType]
+	kedaConfig := Keda{}
+
+	defaultConfig, ok := driverCfg.Autoscaler.Keda[defaultKey]
 	if ok {
-		kedaConfig.Triggers = sinkTriggers
+		kedaConfig = defaultConfig
 	}
 
-	mergedTriggers := deepCopyTriggers(kedaConfig.Triggers)
-	for key, trigger := range keda.Triggers {
-		if existingTrigger, exists := mergedTriggers[key]; exists {
-			maps.Copy(existingTrigger.Metadata, trigger.Metadata)
-			if trigger.AuthenticationRef.Name != "" {
-				existingTrigger.AuthenticationRef = trigger.AuthenticationRef
-			}
-			if trigger.Type != "" {
-				existingTrigger.Type = trigger.Type
-			}
-			mergedTriggers[key] = existingTrigger
-		}
-
-		if _, exists := mergedTriggers[key]; !exists {
-			mergedTriggers[key] = trigger
-		}
+	sinkType := cfg.EnvVariables[confSinkType]
+	SinkConfig, ok := driverCfg.Autoscaler.Keda[sinkType]
+	if ok {
+		kedaConfig = SinkConfig
 	}
-	kedaConfig.Triggers = mergedTriggers
+
 	kedaConfig.updateTriggersMetadata(cfg.EnvVariables)
 
 	kedaConfig.MinReplicas = keda.MinReplicas
@@ -297,26 +272,4 @@ func (keda *Keda) Validate() error {
 		return errors.ErrInvalid.WithMsgf("at least one trigger must be defined when autoscaler is enabled")
 	}
 	return nil
-}
-
-func deepCopyTriggers(src map[string]Trigger) map[string]Trigger {
-	dst := make(map[string]Trigger, len(src))
-	for k, v := range src {
-		newMetadata := make(map[string]string, len(v.Metadata))
-		for mk, mv := range v.Metadata {
-			newMetadata[mk] = mv
-		}
-
-		newAuthRef := AuthenticationRef{
-			Name: v.AuthenticationRef.Name,
-			Kind: v.AuthenticationRef.Kind,
-		}
-
-		dst[k] = Trigger{
-			Type:              v.Type,
-			Metadata:          newMetadata,
-			AuthenticationRef: newAuthRef,
-		}
-	}
-	return dst
 }
