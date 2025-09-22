@@ -1,6 +1,9 @@
 package helm
 
 import (
+	"net/http"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/client-go/discovery"
 	memcached "k8s.io/client-go/discovery/cached/memory"
@@ -8,6 +11,7 @@ import (
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
 
+	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/kube"
 )
 
@@ -25,6 +29,21 @@ type kubeClientGetter struct {
 
 func (k *kubeClientGetter) ToRESTConfig() (*rest.Config, error) {
 	config, err := k.ToRawKubeConfigLoader().ClientConfig()
+
+	// Override with req's Transport.
+	tlsConfig, err := rest.TLSConfigFor(config)
+	if err != nil {
+		return nil, errors.ErrInternal.WithMsgf("helm: failed to create TLS config").WithCausef(err.Error())
+	}
+
+	defaultTransport := http.DefaultTransport.(*http.Transport).Clone()
+	defaultTransport.TLSClientConfig = tlsConfig
+	transport := otelhttp.NewTransport(defaultTransport)
+	config.Transport = transport
+	// rest.Config.TLSClientConfig should be empty if
+	// custom Transport been set.
+	config.TLSClientConfig = rest.TLSClientConfig{}
+
 	return config, err
 }
 
