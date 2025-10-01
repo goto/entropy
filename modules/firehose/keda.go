@@ -89,6 +89,24 @@ func (keda *Keda) ReadConfig(cfg Config, driverCfg driverConf) error {
 		kedaConfig = SinkConfig
 	}
 
+	mergedTriggers := deepCopyTriggers(kedaConfig.Triggers)
+	for key, trigger := range keda.Triggers {
+		if existingTrigger, exists := mergedTriggers[key]; exists {
+			maps.Copy(existingTrigger.Metadata, trigger.Metadata)
+			if trigger.AuthenticationRef.Name != "" {
+				existingTrigger.AuthenticationRef = trigger.AuthenticationRef
+			}
+			if trigger.Type != "" {
+				existingTrigger.Type = trigger.Type
+			}
+			mergedTriggers[key] = existingTrigger
+		}
+
+		if _, exists := mergedTriggers[key]; !exists {
+			mergedTriggers[key] = trigger
+		}
+	}
+	kedaConfig.Triggers = mergedTriggers
 	kedaConfig.updateTriggersMetadata(cfg.EnvVariables)
 
 	kedaConfig.MinReplicas = keda.MinReplicas
@@ -272,4 +290,26 @@ func (keda *Keda) Validate() error {
 		return errors.ErrInvalid.WithMsgf("at least one trigger must be defined when autoscaler is enabled")
 	}
 	return nil
+}
+
+func deepCopyTriggers(src map[string]Trigger) map[string]Trigger {
+	dst := make(map[string]Trigger, len(src))
+	for k, v := range src {
+		newMetadata := make(map[string]string, len(v.Metadata))
+		for mk, mv := range v.Metadata {
+			newMetadata[mk] = mv
+		}
+
+		newAuthRef := AuthenticationRef{
+			Name: v.AuthenticationRef.Name,
+			Kind: v.AuthenticationRef.Kind,
+		}
+
+		dst[k] = Trigger{
+			Type:              v.Type,
+			Metadata:          newMetadata,
+			AuthenticationRef: newAuthRef,
+		}
+	}
+	return dst
 }
