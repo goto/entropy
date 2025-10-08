@@ -43,7 +43,7 @@ func (st *Store) GetByURN(ctx context.Context, urn string) (*resource.Resource, 
 		if err := json.Unmarshal(rec.StateSyncResult, &syncResult); err != nil {
 			return nil, errors.ErrInternal.
 				WithMsgf("failed to json unmarshal state_sync_result").
-				WithCausef(err.Error())
+				WithCausef("%s", err.Error())
 		}
 	}
 

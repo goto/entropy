@@ -27,7 +27,7 @@ const (
 func (driver *Driver) create(ctx context.Context, r resource.Resource, config *config.Config, out kubernetes.Output) error {
 	j := getJob(r, config)
 	if err := driver.CreateJob(ctx, out.Configs, j); err != nil {
-		return errors.ErrInternal.WithCausef(err.Error())
+		return errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 	return nil
 }
@@ -35,7 +35,7 @@ func (driver *Driver) create(ctx context.Context, r resource.Resource, config *c
 func (driver *Driver) suspend(ctx context.Context, config *config.Config, out kubernetes.Output) error {
 	j := &job.Job{Name: config.Name, Namespace: config.Namespace}
 	if err := driver.SuspendJob(ctx, out.Configs, j); err != nil {
-		return errors.ErrInternal.WithCausef(err.Error())
+		return errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 	return nil
 }
@@ -43,7 +43,7 @@ func (driver *Driver) suspend(ctx context.Context, config *config.Config, out ku
 func (driver *Driver) delete(ctx context.Context, config *config.Config, out kubernetes.Output) error {
 	j := &job.Job{Name: config.Name, Namespace: config.Namespace}
 	if err := driver.DeleteJob(ctx, out.Configs, j); err != nil {
-		return errors.ErrInternal.WithCausef(err.Error())
+		return errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 	return nil
 }
@@ -51,7 +51,7 @@ func (driver *Driver) delete(ctx context.Context, config *config.Config, out kub
 func (driver *Driver) start(ctx context.Context, config *config.Config, out kubernetes.Output) error {
 	j := &job.Job{Name: config.Name, Namespace: config.Namespace}
 	if err := driver.StartJob(ctx, out.Configs, j); err != nil {
-		return errors.ErrInternal.WithCausef(err.Error())
+		return errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 	return nil
 }
@@ -131,7 +131,7 @@ func ReadTransientData(exr module.ExpandedResource) (*TransientData, error) {
 
 	var modData TransientData
 	if err := json.Unmarshal(exr.Resource.State.ModuleData, &modData); err != nil {
-		return nil, errors.ErrInternal.WithMsgf("corrupted transient data").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("corrupted transient data").WithCausef("%s", err.Error())
 	}
 	return &modData, nil
 }

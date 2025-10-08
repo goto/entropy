@@ -20,17 +20,17 @@ func (dd *daggerDriver) Sync(ctx context.Context, exr module.ExpandedResource) (
 
 	out, err := readOutputData(exr)
 	if err != nil {
-		return nil, errors.ErrInternal.WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 
 	conf, err := readConfig(exr, exr.Spec.Configs, dd.conf)
 	if err != nil {
-		return nil, errors.ErrInternal.WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 
 	var flinkOut flink.Output
 	if err := json.Unmarshal(exr.Dependencies[keyFlinkDependency].Output, &flinkOut); err != nil {
-		return nil, errors.ErrInternal.WithMsgf("invalid flink state").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("invalid flink state").WithCausef("%s", err.Error())
 	}
 
 	finalState := resource.State{
@@ -92,7 +92,7 @@ func (dd *daggerDriver) releaseSync(ctx context.Context, r resource.Resource,
 	}
 
 	if err := dd.kubeDeploy(ctx, isCreate, kubeOut.Configs, *rc); err != nil {
-		return errors.ErrInternal.WithCausef(err.Error())
+		return errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 	return nil
 }

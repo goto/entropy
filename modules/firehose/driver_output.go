@@ -19,12 +19,12 @@ func (fd *firehoseDriver) Output(ctx context.Context, exr module.ExpandedResourc
 
 	conf, err := readConfig(exr.Resource, exr.Spec.Configs, fd.conf)
 	if err != nil {
-		return nil, errors.ErrInternal.WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 
 	var kubeOut kubernetes.Output
 	if err := json.Unmarshal(exr.Dependencies[keyKubeDependency].Output, &kubeOut); err != nil {
-		return nil, errors.ErrInternal.WithMsgf("invalid kube state").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("invalid kube state").WithCausef("%s", err.Error())
 	}
 
 	return fd.refreshOutput(ctx, exr.Resource, *conf, *output, kubeOut)
@@ -40,14 +40,14 @@ func (fd *firehoseDriver) refreshOutput(ctx context.Context, r resource.Resource
 
 	pods, err := fd.kubeGetPod(ctx, kubeOut.Configs, rc.Namespace, map[string]string{"app": rc.Name})
 	if err != nil {
-		return nil, errors.ErrInternal.WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 	output.Pods = pods
 	output.Namespace = conf.Namespace
 
 	deployment, err := fd.kubeGetDeployment(ctx, kubeOut.Configs, rc.Namespace, conf.DeploymentID)
 	if err != nil {
-		return nil, errors.ErrInternal.WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 	output.Deployment = &deployment
 	output.DesiredStatus = fd.desiredStatus(conf)

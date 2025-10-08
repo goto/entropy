@@ -21,12 +21,12 @@ func (dd *daggerDriver) Output(ctx context.Context, exr module.ExpandedResource)
 
 	conf, err := readConfig(exr, exr.Spec.Configs, dd.conf)
 	if err != nil {
-		return nil, errors.ErrInternal.WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 
 	var flinkOut flink.Output
 	if err := json.Unmarshal(exr.Dependencies[keyFlinkDependency].Output, &flinkOut); err != nil {
-		return nil, errors.ErrInternal.WithMsgf("invalid kube state").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("invalid kube state").WithCausef("%s", err.Error())
 	}
 
 	return dd.refreshOutput(ctx, exr.Resource, *conf, *output, flinkOut.KubeCluster)

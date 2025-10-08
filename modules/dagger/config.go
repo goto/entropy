@@ -222,7 +222,7 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 	var cfg Config
 	err := json.Unmarshal(confJSON, &cfg)
 	if err != nil {
-		return nil, errors.ErrInvalid.WithMsgf("invalid config json").WithCausef(err.Error())
+		return nil, errors.ErrInvalid.WithMsgf("invalid config json").WithCausef("%s", err.Error())
 	}
 
 	//transformation #6
@@ -270,7 +270,7 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 	//transformation #3
 	var flinkOut flink.Output
 	if err := json.Unmarshal(r.Dependencies[keyFlinkDependency].Output, &flinkOut); err != nil {
-		return nil, errors.ErrInternal.WithMsgf("invalid flink state").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("invalid flink state").WithCausef("%s", err.Error())
 	}
 
 	//transformation #13

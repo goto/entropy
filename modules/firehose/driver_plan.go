@@ -69,7 +69,7 @@ func (fd *firehoseDriver) planChange(exr module.ExpandedResource, act module.Act
 		// override namespace during update
 		var kubeOut kubernetes.Output
 		if err := json.Unmarshal(exr.Dependencies[keyKubeDependency].Output, &kubeOut); err != nil {
-			return nil, errors.ErrInternal.WithMsgf("invalid kube state").WithCausef(err.Error())
+			return nil, errors.ErrInternal.WithMsgf("invalid kube state").WithCausef("%s", err.Error())
 		}
 
 		if kubeOut.Configs.Namespace != "" {
@@ -80,7 +80,7 @@ func (fd *firehoseDriver) planChange(exr module.ExpandedResource, act module.Act
 
 		if curConf.Namespace != newConf.Namespace {
 			if !curConf.Stopped {
-				return nil, errors.ErrInvalid.WithCausef(errCauseInvalidNamespaceUpdate)
+				return nil, errors.ErrInvalid.WithCausef("%s", errCauseInvalidNamespaceUpdate)
 			}
 		}
 
@@ -89,7 +89,7 @@ func (fd *firehoseDriver) planChange(exr module.ExpandedResource, act module.Act
 	case ScaleAction:
 		var scaleParams ScaleParams
 		if err := json.Unmarshal(act.Params, &scaleParams); err != nil {
-			return nil, errors.ErrInvalid.WithMsgf("invalid params for scale action").WithCausef(err.Error())
+			return nil, errors.ErrInvalid.WithMsgf("invalid params for scale action").WithCausef("%s", err.Error())
 		} else if scaleParams.Replicas < 1 {
 			return nil, errors.ErrInvalid.WithMsgf("replicas must be >= 1")
 		}
@@ -99,7 +99,7 @@ func (fd *firehoseDriver) planChange(exr module.ExpandedResource, act module.Act
 	case StartAction:
 		var startParams StartParams
 		if err := json.Unmarshal(act.Params, &startParams); err != nil {
-			return nil, errors.ErrInvalid.WithMsgf("invalid params for start action").WithCausef(err.Error())
+			return nil, errors.ErrInvalid.WithMsgf("invalid params for start action").WithCausef("%s", err.Error())
 		}
 		curConf.Stopped = false
 		if startParams.StopTime != nil {
@@ -162,7 +162,7 @@ func (fd *firehoseDriver) planCreate(exr module.ExpandedResource, act module.Act
 	// override namespace during creation
 	var kubeOut kubernetes.Output
 	if err := json.Unmarshal(exr.Dependencies[keyKubeDependency].Output, &kubeOut); err != nil {
-		return nil, errors.ErrInternal.WithMsgf("invalid kube state").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("invalid kube state").WithCausef("%s", err.Error())
 	}
 
 	if kubeOut.Configs.Namespace != "" {
@@ -294,7 +294,7 @@ func getNewConsumerGroupID(curGroup string) (string, error) {
 func (fd *firehoseDriver) validateHelmReleaseConfigs(expandedResource module.ExpandedResource, config Config) error {
 	var kubeOut kubernetes.Output
 	if err := json.Unmarshal(expandedResource.Dependencies[keyKubeDependency].Output, &kubeOut); err != nil {
-		return errors.ErrInternal.WithMsgf("invalid kube state").WithCausef(err.Error())
+		return errors.ErrInternal.WithMsgf("invalid kube state").WithCausef("%s", err.Error())
 	}
 
 	_, err := fd.getHelmRelease(expandedResource.Resource, config, kubeOut)

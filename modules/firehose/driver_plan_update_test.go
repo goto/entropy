@@ -510,7 +510,7 @@ func TestFirehoseDriver_Plan_Update(t *testing.T) {
 				}),
 			},
 			want:    nil,
-			wantErr: errors.ErrInvalid.WithCausef(errCauseInvalidNamespaceUpdate),
+			wantErr: errors.ErrInvalid.WithCausef("%s", errCauseInvalidNamespaceUpdate),
 		},
 		{
 			title: "Update_Stopped_Firehose_Namespace",

@@ -91,7 +91,7 @@ var Module = module.Descriptor{
 			kubeGetPod: func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error) {
 				kubeCl, err := kube.NewClient(ctx, conf)
 				if err != nil {
-					return nil, errors.ErrInternal.WithMsgf("failed to create new kube client on firehose driver kube get pod").WithCausef(err.Error())
+					return nil, errors.ErrInternal.WithMsgf("failed to create new kube client on firehose driver kube get pod").WithCausef("%s", err.Error())
 				}
 				return kubeCl.GetPodDetails(ctx, ns, labels, func(pod v1.Pod) bool {
 					// allow pods that are in running state and are not marked for deletion
@@ -101,7 +101,7 @@ var Module = module.Descriptor{
 			kubeGetCRD: func(ctx context.Context, conf kube.Config, ns string, name string) (kube.FlinkDeploymentStatus, error) {
 				kubeCl, err := kube.NewClient(ctx, conf)
 				if err != nil {
-					return kube.FlinkDeploymentStatus{}, errors.ErrInternal.WithMsgf("failed to create new kube client on firehose driver kube get pod").WithCausef(err.Error())
+					return kube.FlinkDeploymentStatus{}, errors.ErrInternal.WithMsgf("failed to create new kube client on firehose driver kube get pod").WithCausef("%s", err.Error())
 				}
 				crd, err := kubeCl.GetCRDDetails(ctx, ns, name)
 				if err != nil {

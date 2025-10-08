@@ -90,7 +90,7 @@ type ChartValues struct {
 func readConfig(r resource.Resource, confJSON json.RawMessage, dc driverConf) (*Config, error) {
 	var cfg Config
 	if err := json.Unmarshal(confJSON, &cfg); err != nil {
-		return nil, errors.ErrInvalid.WithMsgf("invalid config json").WithCausef(err.Error())
+		return nil, errors.ErrInvalid.WithMsgf("invalid config json").WithCausef("%s", err.Error())
 	}
 
 	cfg.EnvVariables = modules.CloneAndMergeMaps(dc.EnvVariables, cfg.EnvVariables)

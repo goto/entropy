@@ -15,7 +15,7 @@ const container = "flink-main-container"
 func (dd *daggerDriver) Log(ctx context.Context, res module.ExpandedResource, filter map[string]string) (<-chan module.LogChunk, error) {
 	conf, err := readConfig(res, res.Spec.Configs, dd.conf)
 	if err != nil {
-		return nil, errors.ErrInternal.WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 
 	if filter == nil {
@@ -26,11 +26,11 @@ func (dd *daggerDriver) Log(ctx context.Context, res module.ExpandedResource, fi
 
 	var flinkOut flink.Output
 	if err := json.Unmarshal(res.Dependencies[keyFlinkDependency].Output, &flinkOut); err != nil {
-		return nil, errors.ErrInternal.WithMsgf("invalid flink state").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("invalid flink state").WithCausef("%s", err.Error())
 	}
 	kubeCl, err := kube.NewClient(ctx, flinkOut.KubeCluster.Configs)
 	if err != nil {
-		return nil, errors.ErrInternal.WithMsgf("failed to create new kube client on firehose driver Log").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("failed to create new kube client on firehose driver Log").WithCausef("%s", err.Error())
 	}
 
 	logs, err := kubeCl.StreamLogs(ctx, conf.Namespace, filter)

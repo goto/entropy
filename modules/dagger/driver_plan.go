@@ -208,7 +208,7 @@ func (dd *daggerDriver) planReset(exr module.ExpandedResource, act module.Action
 func (dd *daggerDriver) validateHelmReleaseConfigs(expandedResource module.ExpandedResource, config Config) error {
 	var flinkOut flink.Output
 	if err := json.Unmarshal(expandedResource.Dependencies[keyFlinkDependency].Output, &flinkOut); err != nil {
-		return errors.ErrInternal.WithMsgf("invalid kube state").WithCausef(err.Error())
+		return errors.ErrInternal.WithMsgf("invalid kube state").WithCausef("%s", err.Error())
 	}
 
 	_, err := dd.getHelmRelease(expandedResource.Resource, config, flinkOut.KubeCluster)

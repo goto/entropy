@@ -33,7 +33,7 @@ func withinTx(ctx context.Context, db *sqlx.DB, readOnly bool, fns ...TxFunc) er
 
 func translateErr(err error) error {
 	if errors.Is(err, sql.ErrNoRows) {
-		return errors.ErrNotFound.WithCausef(err.Error())
+		return errors.ErrNotFound.WithCausef("%s", err.Error())
 	}
 
 	var pgErr *pq.Error
@@ -41,10 +41,10 @@ func translateErr(err error) error {
 		// Refer http://www.postgresql.org/docs/9.3/static/errcodes-appendix.html
 		switch pgErr.Code.Name() {
 		case "unique_violation":
-			return errors.ErrConflict.WithCausef(err.Error())
+			return errors.ErrConflict.WithCausef("%s", err.Error())
 
 		default:
-			return errors.ErrInternal.WithCausef(err.Error())
+			return errors.ErrInternal.WithCausef("%s", err.Error())
 		}
 	}
 

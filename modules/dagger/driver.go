@@ -147,7 +147,7 @@ func readOutputData(exr module.ExpandedResource) (*Output, error) {
 		return &curOut, nil
 	}
 	if err := json.Unmarshal(exr.Resource.State.Output, &curOut); err != nil {
-		return nil, errors.ErrInternal.WithMsgf("corrupted output").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("corrupted output").WithCausef("%s", err.Error())
 	}
 	return &curOut, nil
 }
@@ -159,7 +159,7 @@ func readTransientData(exr module.ExpandedResource) (*transientData, error) {
 
 	var modData transientData
 	if err := json.Unmarshal(exr.Resource.State.ModuleData, &modData); err != nil {
-		return nil, errors.ErrInternal.WithMsgf("corrupted transient data").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("corrupted transient data").WithCausef("%s", err.Error())
 	}
 	return &modData, nil
 }
@@ -254,10 +254,10 @@ func renderTpl(labelsTpl map[string]string, labelsValues map[string]string) (map
 		t, err := template.New("").Option(useZeroValueForMissingKey).Parse(v)
 		if err != nil {
 			return nil, errors.ErrInvalid.
-				WithMsgf("label template for '%s' is invalid", k).WithCausef(err.Error())
+				WithMsgf("label template for '%s' is invalid", k).WithCausef("%s", err.Error())
 		} else if err := t.Execute(&buf, labelsValues); err != nil {
 			return nil, errors.ErrInvalid.
-				WithMsgf("failed to render label template").WithCausef(err.Error())
+				WithMsgf("failed to render label template").WithCausef("%s", err.Error())
 		}
 
 		// allow empty values

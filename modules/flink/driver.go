@@ -36,7 +36,7 @@ func readOutputData(exr module.ExpandedResource) (*Output, error) {
 		return &curOut, nil
 	}
 	if err := json.Unmarshal(exr.Resource.State.Output, &curOut); err != nil {
-		return nil, errors.ErrInternal.WithMsgf("corrupted output").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("corrupted output").WithCausef("%s", err.Error())
 	}
 	return &curOut, nil
 }
