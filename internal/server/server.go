@@ -89,7 +89,10 @@ func Serve(ctx context.Context, httpAddr, grpcAddr string, nrApp *newrelic.Appli
 	}
 
 	httpRouter := gorillamux.NewRouter()
-	httpRouter.Use(nrgorilla.Middleware(nrApp))
+	httpRouter.Use(
+		withOpenTelemetry(),
+		nrgorilla.Middleware(nrApp),
+	)
 	httpRouter.PathPrefix("/api/").Handler(http.StripPrefix("/api", rpcHTTPGateway))
 	httpRouter.Handle("/ping", http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
 		_, _ = fmt.Fprintf(wr, "pong")
@@ -97,7 +100,6 @@ func Serve(ctx context.Context, httpAddr, grpcAddr string, nrApp *newrelic.Appli
 
 	httpRouter.Use(
 		requestID(),
-		withOpenCensus(),
 		requestLogger(),
 	)
 
