@@ -16,19 +16,19 @@ func FromJSONSchema(schemaVal []byte) func(jsonVal []byte) error {
 
 	return func(jsonVal []byte) error {
 		if schemaErr != nil {
-			return errors.ErrInternal.WithCausef(schemaErr.Error())
+			return errors.ErrInternal.WithCausef("%s", schemaErr.Error())
 		}
 
 		result, err := schema.Validate(gojsonschema.NewBytesLoader(jsonVal))
 		if err != nil {
-			return errors.ErrInternal.WithCausef(err.Error())
+			return errors.ErrInternal.WithCausef("%s", err.Error())
 		} else if !result.Valid() {
 			var errorStrings []string
 			for _, resultErr := range result.Errors() {
 				errorStrings = append(errorStrings, resultErr.String())
 			}
 			errorString := strings.Join(errorStrings, "\n")
-			return errors.ErrInvalid.WithMsgf(errorString)
+			return errors.ErrInvalid.WithMsgf("%s", errorString)
 		}
 
 		return nil
@@ -47,9 +47,9 @@ func TaggedStruct(structVal any) error {
 			for _, fieldError := range *valErr {
 				fields = append(fields, fmt.Sprintf("%s: %s", fieldError.Field(), fieldError.Tag()))
 			}
-			return errors.ErrInvalid.WithMsgf("invalid values for fields").WithCausef(strings.Join(fields, ", "))
+			return errors.ErrInvalid.WithMsgf("invalid values for fields").WithCausef("%s", strings.Join(fields, ", "))
 		} else {
-			return errors.ErrInvalid.WithCausef(err.Error())
+			return errors.ErrInvalid.WithCausef("%s", err.Error())
 		}
 	}
 	return nil

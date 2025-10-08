@@ -32,7 +32,7 @@ func (p *Client) Upsert(config *ReleaseConfig, canUpdateCheck func(rel *release.
 
 	rel, err := fetchRelease(actionConfig, config.Name)
 	if err != nil && !errors.Is(err, errors.ErrNotFound) {
-		return nil, errors.ErrInternal.WithMsgf("failed to find release").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("failed to find release").WithCausef("%s", err.Error())
 	}
 
 	isCreate := rel == nil                        // release doesn't exist already.
@@ -66,7 +66,7 @@ func (p *Client) Delete(config *ReleaseConfig) error {
 func (p *Client) doCreate(actionConfig *action.Configuration, config *ReleaseConfig) (*Result, error) {
 	fetchedChart, chartPathOpts, err := p.getChart(config)
 	if err != nil {
-		return nil, errors.ErrInternal.WithMsgf("error while getting chart").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("error while getting chart").WithCausef("%s", err.Error())
 	}
 
 	act := action.NewInstall(actionConfig)
@@ -89,7 +89,7 @@ func (p *Client) doCreate(actionConfig *action.Configuration, config *ReleaseCon
 
 	rel, err := act.Run(fetchedChart, config.Values)
 	if err != nil {
-		return nil, errors.ErrInternal.WithMsgf("create-release failed").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("create-release failed").WithCausef("%s", err.Error())
 	}
 
 	return &Result{
@@ -101,7 +101,7 @@ func (p *Client) doCreate(actionConfig *action.Configuration, config *ReleaseCon
 func (p *Client) doUpdate(actionConfig *action.Configuration, config *ReleaseConfig) (*Result, error) {
 	fetchedChart, chartPathOpts, err := p.getChart(config)
 	if err != nil {
-		return nil, errors.ErrInternal.WithMsgf("error while getting chart").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("error while getting chart").WithCausef("%s", err.Error())
 	}
 
 	act := action.NewUpgrade(actionConfig)
@@ -121,7 +121,7 @@ func (p *Client) doUpdate(actionConfig *action.Configuration, config *ReleaseCon
 				WithMsgf("update-release failed").
 				WithCausef("release with given name not found")
 		}
-		return nil, errors.ErrInternal.WithMsgf("update-release failed").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("update-release failed").WithCausef("%s", err.Error())
 	}
 
 	return &Result{
@@ -196,7 +196,7 @@ func fetchRelease(cfg *action.Configuration, name string) (*release.Release, err
 	res, err := get.Run(name)
 	if err != nil {
 		if isReleaseNotFoundErr(err) {
-			return nil, errors.ErrNotFound.WithCausef(err.Error())
+			return nil, errors.ErrNotFound.WithCausef("%s", err.Error())
 		}
 		return nil, err
 	}
