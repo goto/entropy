@@ -16,6 +16,7 @@ import (
 	"github.com/newrelic/go-agent/v3/integrations/nrgrpc"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"go.opencensus.io/plugin/ocgrpc"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -97,7 +98,12 @@ func Serve(ctx context.Context, httpAddr, grpcAddr string, nrApp *newrelic.Appli
 
 	httpRouter.Use(
 		requestID(),
-		withOpenCensus(),
+		otelmux.Middleware(
+			"entropy",
+			otelmux.WithSpanNameFormatter(func(routeName string, r *http.Request) string {
+				return fmt.Sprintf("%s %s", r.Method, routeName)
+			}),
+		),
 		requestLogger(),
 	)
 
