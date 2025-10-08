@@ -137,7 +137,7 @@ func (svc *Service) planChange(ctx context.Context, res resource.Resource, act m
 		if errors.Is(err, errors.ErrInvalid) {
 			return nil, err
 		}
-		return nil, errors.ErrInternal.WithMsgf("plan() failed").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("plan() failed").WithCausef("%s", err.Error())
 	}
 
 	planned.Labels = mergeLabels(res.Labels, act.Labels)
@@ -161,7 +161,7 @@ func (svc *Service) upsert(ctx context.Context, res resource.Resource, isCreate 
 		} else if !isCreate && errors.Is(err, errors.ErrNotFound) {
 			return errors.ErrNotFound.WithMsgf("resource with urn '%s' does not exist", res.URN)
 		}
-		return errors.ErrInternal.WithCausef(err.Error())
+		return errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 
 	return nil

@@ -168,7 +168,7 @@ func (c Client) StreamLogs(ctx context.Context, namespace string, filter map[str
 
 	err := mapstructure.Decode(filter, &logOptions)
 	if err != nil {
-		return nil, errors.ErrInvalid.WithMsgf(err.Error())
+		return nil, errors.ErrInvalid.WithMsgf("%s", err.Error())
 	}
 
 	return c.streamFromPods(ctx, namespace, logOptions)
@@ -177,7 +177,7 @@ func (c Client) StreamLogs(ctx context.Context, namespace string, filter map[str
 func (c Client) RunJob(ctx context.Context, namespace, name string, image string, cmd []string, retries int32, wait bool) (*batchv1.Job, error) {
 	clientSet, err := kubernetes.NewForConfig(&c.restConfig)
 	if err != nil {
-		return nil, ErrJobCreationFailed.WithCausef(err.Error())
+		return nil, ErrJobCreationFailed.WithCausef("%s", err.Error())
 	}
 
 	jobs := clientSet.BatchV1().Jobs(namespace)
@@ -209,7 +209,7 @@ func (c Client) RunJob(ctx context.Context, namespace, name string, image string
 
 	job, err := jobs.Create(ctx, jobSpec, metav1.CreateOptions{})
 	if err != nil {
-		return nil, ErrJobCreationFailed.WithCausef(err.Error())
+		return nil, ErrJobCreationFailed.WithCausef("%s", err.Error())
 	}
 	if !wait {
 		return job, nil
@@ -221,7 +221,7 @@ func waitForJob(ctx context.Context, jobName string, jobs typedbatchv1.JobInterf
 	for {
 		job, err := jobs.Get(ctx, jobName, metav1.GetOptions{})
 		if err != nil {
-			return ErrJobNotFound.WithCausef(err.Error())
+			return ErrJobNotFound.WithCausef("%s", err.Error())
 		}
 
 		// job hasn't started yet
@@ -239,7 +239,7 @@ func waitForJob(ctx context.Context, jobName string, jobs typedbatchv1.JobInterf
 			return nil
 		}
 
-		return ErrJobExecutionFailed.WithCausef(job.Status.String())
+		return ErrJobExecutionFailed.WithCausef("%s", job.Status.String())
 	}
 }
 

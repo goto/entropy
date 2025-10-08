@@ -14,7 +14,7 @@ import (
 func (driver *Driver) Log(ctx context.Context, res module.ExpandedResource, filter map[string]string) (<-chan module.LogChunk, error) {
 	conf, err := config.ReadConfig(res.Resource, res.Spec.Configs, driver.Conf)
 	if err != nil {
-		return nil, errors.ErrInternal.WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 
 	if filter == nil {
@@ -24,7 +24,7 @@ func (driver *Driver) Log(ctx context.Context, res module.ExpandedResource, filt
 
 	var kubeOut kubernetes.Output
 	if err := json.Unmarshal(res.Dependencies[KeyKubeDependency].Output, &kubeOut); err != nil {
-		return nil, errors.ErrInternal.WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 	j := &job.Job{Name: conf.Name, Namespace: conf.Namespace}
 	return driver.StreamLogs(ctx, kubeOut.Configs, j, filter)

@@ -56,7 +56,7 @@ func getConfigsAsRawJSON(v interface{ GetConfigs() *structpb.Value }) ([]byte, e
 
 	confJSON, err := confVal.MarshalJSON()
 	if err != nil {
-		return nil, errInvalidJSON.WithCausef(err.Error())
+		return nil, errInvalidJSON.WithCausef("%s", err.Error())
 	}
 	return confJSON, nil
 }

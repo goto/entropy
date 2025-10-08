@@ -107,7 +107,7 @@ func (mr *Service) CreateModule(ctx context.Context, mod Module) (*Module, error
 		} else if errors.Is(err, errors.ErrInvalid) {
 			return nil, errors.ErrInvalid.
 				WithMsgf("failed to init driver with given configs").
-				WithCausef(err.Error())
+				WithCausef("%s", err.Error())
 		}
 		return nil, err
 	}
@@ -116,7 +116,7 @@ func (mr *Service) CreateModule(ctx context.Context, mod Module) (*Module, error
 		if errors.Is(err, errors.ErrConflict) {
 			return nil, errors.ErrConflict.
 				WithMsgf("module with given name and project already exists").
-				WithCausef(err.Error())
+				WithCausef("%s", err.Error())
 		}
 		return nil, err
 	}
@@ -167,7 +167,7 @@ func (mr *Service) initDriver(ctx context.Context, mod Module) (Driver, Descript
 		} else if errors.Is(err, errors.ErrInvalid) {
 			return nil, Descriptor{}, errors.ErrInvalid.
 				WithMsgf("failed to init driver with given configs").
-				WithCausef(err.Error())
+				WithCausef("%s", err.Error())
 		}
 		return nil, Descriptor{}, err
 	}

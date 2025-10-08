@@ -34,7 +34,7 @@ type Config struct {
 func readConfig(confJSON json.RawMessage, dc driverConf) (*Config, error) {
 	var cfg Config
 	if err := json.Unmarshal(confJSON, &cfg); err != nil {
-		return nil, errors.ErrInvalid.WithMsgf("invalid config json").WithCausef(err.Error())
+		return nil, errors.ErrInvalid.WithMsgf("invalid config json").WithCausef("%s", err.Error())
 	}
 
 	if cfg.Influx.URL == "" {

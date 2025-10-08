@@ -15,7 +15,7 @@ func (svc *Service) GetResource(ctx context.Context, urn string) (*resource.Reso
 		if errors.Is(err, errors.ErrNotFound) {
 			return nil, errors.ErrNotFound.WithMsgf("resource with urn '%s' not found", urn)
 		}
-		return nil, errors.ErrInternal.WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 
 	modSpec, err := svc.generateModuleSpec(ctx, *res)
@@ -42,7 +42,7 @@ func (svc *Service) GetResource(ctx context.Context, urn string) (*resource.Reso
 func (svc *Service) ListResources(ctx context.Context, filter resource.Filter, withSpecConfigs bool) (resource.PagedResource, error) {
 	resources, err := svc.store.List(ctx, filter, withSpecConfigs)
 	if err != nil {
-		return resource.PagedResource{}, errors.ErrInternal.WithCausef(err.Error())
+		return resource.PagedResource{}, errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 
 	resources = filter.Apply(resources)
@@ -76,7 +76,7 @@ func (svc *Service) GetLog(ctx context.Context, urn string, filter map[string]st
 func (svc *Service) GetRevisions(ctx context.Context, selector resource.RevisionsSelector) ([]resource.Revision, error) {
 	revs, err := svc.store.Revisions(ctx, selector)
 	if err != nil {
-		return nil, errors.ErrInternal.WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 	return revs, nil
 }

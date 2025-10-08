@@ -48,17 +48,17 @@ func (driver *Driver) Sync(ctx context.Context, exr module.ExpandedResource) (*r
 
 	out, err := ReadOutputData(exr)
 	if err != nil {
-		return nil, errors.ErrInternal.WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 
 	conf, err := config.ReadConfig(exr.Resource, exr.Spec.Configs, driver.Conf)
 	if err != nil {
-		return nil, errors.ErrInternal.WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 
 	var kubeOut kubernetes.Output
 	if err := json.Unmarshal(exr.Dependencies[KeyKubeDependency].Output, &kubeOut); err != nil {
-		return nil, errors.ErrInternal.WithMsgf("invalid kube state").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("invalid kube state").WithCausef("%s", err.Error())
 	}
 
 	finalState := resource.State{
@@ -116,12 +116,12 @@ func (driver *Driver) Output(ctx context.Context, exr module.ExpandedResource) (
 
 	conf, err := config.ReadConfig(exr.Resource, exr.Spec.Configs, driver.Conf)
 	if err != nil {
-		return nil, errors.ErrInternal.WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 
 	var kubeOut kubernetes.Output
 	if err := json.Unmarshal(exr.Dependencies[KeyKubeDependency].Output, &kubeOut); err != nil {
-		return nil, errors.ErrInternal.WithMsgf("invalid kube state").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("invalid kube state").WithCausef("%s", err.Error())
 	}
 
 	return driver.refreshOutput(ctx, *conf, *output, kubeOut)

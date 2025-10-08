@@ -23,7 +23,7 @@ func (driver *Driver) refreshOutput(ctx context.Context, conf config.Config, out
 	j := &job.Job{Name: conf.Name, Namespace: conf.Namespace}
 	pods, err := driver.GetJobPods(ctx, kubeOut.Configs, j, map[string]string{"job-name": conf.Name})
 	if err != nil {
-		return nil, errors.ErrInternal.WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 	output.Pods = pods
 
@@ -36,7 +36,7 @@ func ReadOutputData(exr module.ExpandedResource) (*Output, error) {
 		return &curOut, nil
 	}
 	if err := json.Unmarshal(exr.Resource.State.Output, &curOut); err != nil {
-		return nil, errors.ErrInternal.WithMsgf("corrupted output").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("corrupted output").WithCausef("%s", err.Error())
 	}
 	return &curOut, nil
 }

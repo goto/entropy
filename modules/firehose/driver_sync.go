@@ -19,17 +19,17 @@ func (fd *firehoseDriver) Sync(ctx context.Context, exr module.ExpandedResource)
 
 	out, err := readOutputData(exr)
 	if err != nil {
-		return nil, errors.ErrInternal.WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 
 	conf, err := readConfig(exr.Resource, exr.Spec.Configs, fd.conf)
 	if err != nil {
-		return nil, errors.ErrInternal.WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 
 	var kubeOut kubernetes.Output
 	if err := json.Unmarshal(exr.Dependencies[keyKubeDependency].Output, &kubeOut); err != nil {
-		return nil, errors.ErrInternal.WithMsgf("invalid kube state").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("invalid kube state").WithCausef("%s", err.Error())
 	}
 
 	finalState := resource.State{
@@ -110,7 +110,7 @@ func (fd *firehoseDriver) releaseSync(ctx context.Context, r resource.Resource,
 	}
 
 	if err := fd.kubeDeploy(ctx, isCreate, kubeOut.Configs, *rc); err != nil {
-		return errors.ErrInternal.WithCausef(err.Error())
+		return errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 	return nil
 }

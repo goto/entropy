@@ -13,7 +13,7 @@ import (
 func (fd *firehoseDriver) Log(ctx context.Context, res module.ExpandedResource, filter map[string]string) (<-chan module.LogChunk, error) {
 	conf, err := readConfig(res.Resource, res.Spec.Configs, fd.conf)
 	if err != nil {
-		return nil, errors.ErrInternal.WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 
 	if filter == nil {
@@ -23,11 +23,11 @@ func (fd *firehoseDriver) Log(ctx context.Context, res module.ExpandedResource, 
 
 	var kubeOut kubernetes.Output
 	if err := json.Unmarshal(res.Dependencies[keyKubeDependency].Output, &kubeOut); err != nil {
-		return nil, errors.ErrInternal.WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 	kubeCl, err := kube.NewClient(ctx, kubeOut.Configs)
 	if err != nil {
-		return nil, errors.ErrInternal.WithMsgf("failed to create new kube client on firehose driver Log").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("failed to create new kube client on firehose driver Log").WithCausef("%s", err.Error())
 	}
 
 	logs, err := kubeCl.StreamLogs(ctx, conf.Namespace, filter)
