@@ -1,8 +1,8 @@
 module github.com/goto/entropy
 
-go 1.22.0
+go 1.24.0
 
-toolchain go1.22.3
+toolchain go1.24.4
 
 require (
 	github.com/MakeNowJust/heredoc v1.0.0
