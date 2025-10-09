@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	maxJobNameLength = 53
-	Default          = "default"
+	maxJobNameLength               = 53
+	Default                        = "default"
+	defaultTTLSecondsAfterFinished = 60
 )
 
 var (
@@ -120,5 +121,9 @@ func ReadConfig(r resource.Resource, confJSON json.RawMessage, dc DriverConf) (*
 	if cfg.Replicas < 1 {
 		cfg.Replicas = 1
 	}
+
+	defaultTTLSecondsAfterFinished := int32(defaultTTLSecondsAfterFinished)
+	cfg.TTLSeconds = &defaultTTLSecondsAfterFinished
+
 	return &cfg, nil
 }
