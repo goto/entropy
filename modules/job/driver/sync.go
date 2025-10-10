@@ -3,6 +3,7 @@ package driver
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
@@ -26,6 +27,7 @@ const (
 
 func (driver *Driver) create(ctx context.Context, r resource.Resource, config *config.Config, out kubernetes.Output) error {
 	j := getJob(r, config)
+	fmt.Println("Creating job:", j.Name, "in namespace:", j.Namespace)
 	if err := driver.CreateJob(ctx, out.Configs, j); err != nil {
 		return errors.ErrInternal.WithCausef(err.Error())
 	}
@@ -57,6 +59,8 @@ func (driver *Driver) start(ctx context.Context, config *config.Config, out kube
 }
 
 func getJob(res resource.Resource, conf *config.Config) *job.Job {
+	fmt.Println("Generating job spec for job:", conf.Name, "in namespace:", conf.Namespace)
+
 	constantLabels := map[string]string{
 		labelOrchestrator: orchestratorLabelValue,
 		labelName:         res.Name,

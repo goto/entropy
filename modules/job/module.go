@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	v1 "k8s.io/api/core/v1"
 
@@ -65,6 +66,7 @@ var Module = module.Descriptor{
 		return &driver.Driver{
 			Conf: conf,
 			CreateJob: func(ctx context.Context, conf kube.Config, j *job.Job) error {
+				fmt.Println("Inside driver")
 				kubeCl, err := kube.NewClient(ctx, conf)
 				if err != nil {
 					return errors.ErrInternal.WithMsgf("failed to create new kube client on job driver").WithCausef(err.Error())

@@ -1,6 +1,7 @@
 package job
 
 import (
+	"fmt"
 	"strings"
 
 	v1 "k8s.io/api/batch/v1"
@@ -22,7 +23,7 @@ type Job struct {
 }
 
 func (j *Job) Template() *v1.Job {
-	return &v1.Job{
+	job := &v1.Job{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      j.Name,
@@ -37,6 +38,9 @@ func (j *Job) Template() *v1.Job {
 		},
 		Status: v1.JobStatus{},
 	}
+
+	fmt.Println("job spec:", job.Spec)
+	return job
 }
 
 func (j *Job) WatchOptions() metav1.ListOptions {
