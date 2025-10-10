@@ -14,7 +14,7 @@ import (
 const (
 	maxJobNameLength               = 53
 	Default                        = "default"
-	defaultTTLSecondsAfterFinished = 60
+	defaultTTLSecondsAfterFinished = 172800
 )
 
 var (
