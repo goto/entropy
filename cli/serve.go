@@ -57,10 +57,17 @@ func StartServer(ctx context.Context, cfg Config, migrate, spawnWorker bool) err
 	}
 
 	telemetry.Init(ctx, cfg.Telemetry)
-	nrApp, err := newrelic.NewApplication(
-		newrelic.ConfigAppName(cfg.Telemetry.ServiceName),
-		newrelic.ConfigLicense(cfg.Telemetry.NewRelicAPIKey),
-	)
+
+	var nrApp *newrelic.Application
+	if cfg.Telemetry.EnableNewRelic {
+		nrApp, err = newrelic.NewApplication(
+			newrelic.ConfigAppName(cfg.Telemetry.ServiceName),
+			newrelic.ConfigLicense(cfg.Telemetry.NewRelicAPIKey),
+		)
+		if err != nil {
+			zap.L().Error("failed to init newrelic app", zap.Error(err))
+		}
+	}
 
 	store := setupStorage(cfg.PGConnStr, cfg.Syncer, cfg.Service)
 	moduleService := module.NewService(setupRegistry(), store)
