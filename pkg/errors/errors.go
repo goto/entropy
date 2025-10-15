@@ -96,5 +96,5 @@ func E(err error) Error {
 	if errors.As(err, &e) {
 		return e
 	}
-	return ErrInternal.WithCausef(err.Error())
+	return ErrInternal.WithCausef("%s", err.Error())
 }

@@ -15,7 +15,7 @@ import (
 	"github.com/newrelic/go-agent/v3/integrations/nrgorilla"
 	"github.com/newrelic/go-agent/v3/integrations/nrgrpc"
 	"github.com/newrelic/go-agent/v3/newrelic"
-	"go.opencensus.io/plugin/ocgrpc"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -50,7 +50,7 @@ func Serve(ctx context.Context, httpAddr, grpcAddr string, nrApp *newrelic.Appli
 			grpczap.UnaryServerInterceptor(zap.L()),
 			nrgrpc.UnaryServerInterceptor(nrApp),
 		)),
-		grpc.StatsHandler(&ocgrpc.ServerHandler{}),
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
 	}
 	grpcServer := grpc.NewServer(grpcOpts...)
 	rpcHTTPGateway := runtime.NewServeMux(
@@ -89,7 +89,10 @@ func Serve(ctx context.Context, httpAddr, grpcAddr string, nrApp *newrelic.Appli
 	}
 
 	httpRouter := gorillamux.NewRouter()
-	httpRouter.Use(nrgorilla.Middleware(nrApp))
+	httpRouter.Use(
+		withOpenTelemetry(),
+		nrgorilla.Middleware(nrApp),
+	)
 	httpRouter.PathPrefix("/api/").Handler(http.StripPrefix("/api", rpcHTTPGateway))
 	httpRouter.Handle("/ping", http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
 		_, _ = fmt.Fprintf(wr, "pong")
@@ -97,7 +100,6 @@ func Serve(ctx context.Context, httpAddr, grpcAddr string, nrApp *newrelic.Appli
 
 	httpRouter.Use(
 		requestID(),
-		withOpenCensus(),
 		requestLogger(),
 	)
 

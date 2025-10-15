@@ -28,7 +28,7 @@ func (mr *Registry) GetDriver(_ context.Context, mod module.Module) (module.Driv
 	if err != nil {
 		return nil, module.Descriptor{}, errors.ErrInvalid.
 			WithMsgf("failed to initialise module").
-			WithCausef(err.Error())
+			WithCausef("%s", err.Error())
 	}
 
 	return driver, desc, nil

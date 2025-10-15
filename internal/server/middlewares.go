@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -11,9 +10,9 @@ import (
 
 	gorillamux "github.com/gorilla/mux"
 	"github.com/rs/xid"
-	"go.opencensus.io/plugin/ochttp"
-	"go.opencensus.io/tag"
-	"go.opencensus.io/trace"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
 
@@ -43,33 +42,19 @@ func (wr *wrappedWriter) Write(data []byte) (int, error) {
 	return wr.ResponseWriter.Write(data)
 }
 
-func withOpenCensus() gorillamux.MiddlewareFunc {
+func withOpenTelemetry() gorillamux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
-		oc := &ochttp.Handler{
-			Handler:          next,
-			FormatSpanName:   formatSpanName,
-			IsPublicEndpoint: false,
-		}
-		return http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
-			route := gorillamux.CurrentRoute(req)
+		return otelhttp.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			attr := semconv.HTTPRouteKey.String(r.URL.Path)
 
-			pathTpl := req.URL.Path
-			if route != nil {
-				pathTpl, _ = route.GetPathTemplate()
-			}
+			span := trace.SpanFromContext(r.Context())
+			span.SetAttributes(attr)
 
-			if strings.HasPrefix(pathTpl, grpcGatewayPrefix) {
-				// FIX: figure out a way to extract path-pattern from gateway requests.
-				pathTpl = "/api/"
-			}
+			labeler, _ := otelhttp.LabelerFromContext(r.Context())
+			labeler.Add(attr)
 
-			ctx, _ := tag.New(req.Context(),
-				tag.Insert(ochttp.KeyServerRoute, pathTpl),
-				tag.Insert(ochttp.Method, req.Method),
-			)
-
-			oc.ServeHTTP(wr, req.WithContext(ctx))
-		})
+			next.ServeHTTP(w, r)
+		}), "")
 	}
 }
 
@@ -95,7 +80,7 @@ func requestLogger() gorillamux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
 			t := time.Now()
-			span := trace.FromContext(req.Context())
+			span := trace.SpanFromContext(req.Context())
 
 			clientID, _, _ := req.BasicAuth()
 
@@ -127,7 +112,7 @@ func requestLogger() gorillamux.MiddlewareFunc {
 				zap.Duration("response_time", time.Since(t)),
 				zap.String("request_id", req.Header.Get(headerRequestID)),
 				zap.String("client_id", clientID),
-				zap.String("trace_id", span.SpanContext().TraceID.String()),
+				zap.String("trace_id", span.SpanContext().TraceID().String()),
 			}
 
 			if len(bodyBytes) > 0 {
@@ -148,17 +133,6 @@ func requestLogger() gorillamux.MiddlewareFunc {
 			}
 		})
 	}
-}
-
-func formatSpanName(req *http.Request) string {
-	route := gorillamux.CurrentRoute(req)
-
-	pathTpl := req.URL.Path
-	if route != nil {
-		pathTpl, _ = route.GetPathTemplate()
-	}
-
-	return fmt.Sprintf("%s %s", req.Method, pathTpl)
 }
 
 func is2xx(status int) bool {

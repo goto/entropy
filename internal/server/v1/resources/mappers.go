@@ -17,12 +17,12 @@ const decimalBase = 10
 func resourceToProto(res resource.Resource) (*entropyv1beta1.Resource, error) {
 	protoState, err := resourceStateToProto(res.State)
 	if err != nil {
-		return nil, errors.ErrInternal.WithMsgf("state to protobuf failed").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("state to protobuf failed").WithCausef("%s", err.Error())
 	}
 
 	spec, err := resourceSpecToProto(res.Spec)
 	if err != nil {
-		return nil, errors.ErrInternal.WithMsgf("spec to protobuf failed").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("spec to protobuf failed").WithCausef("%s", err.Error())
 	}
 
 	return &entropyv1beta1.Resource{
@@ -45,7 +45,7 @@ func resourceStateToProto(state resource.State) (*entropyv1beta1.ResourceState, 
 	if len(state.Output) > 0 {
 		outputVal = &structpb.Value{}
 		if err := json.Unmarshal(state.Output, outputVal); err != nil {
-			return nil, errors.ErrInternal.WithMsgf("failed to unmarshal output").WithCausef(err.Error())
+			return nil, errors.ErrInternal.WithMsgf("failed to unmarshal output").WithCausef("%s", err.Error())
 		}
 	}
 
@@ -74,7 +74,7 @@ func resourceSpecToProto(spec resource.Spec) (*entropyv1beta1.ResourceSpec, erro
 	conf := structpb.NewNullValue()
 	if spec.Configs != nil {
 		if err := json.Unmarshal(spec.Configs, &conf); err != nil {
-			return nil, errors.ErrInternal.WithMsgf("json.Unmarshal failed for spec.configs").WithCausef(err.Error())
+			return nil, errors.ErrInternal.WithMsgf("json.Unmarshal failed for spec.configs").WithCausef("%s", err.Error())
 		}
 	}
 
@@ -112,7 +112,7 @@ func resourceFromProto(res *entropyv1beta1.Resource, includeState bool) (*resour
 	if includeState {
 		jsonData, err := res.State.GetOutput().GetStructValue().MarshalJSON()
 		if err != nil {
-			return nil, errors.ErrInvalid.WithMsgf("state.output is not valid json").WithCausef(err.Error())
+			return nil, errors.ErrInvalid.WithMsgf("state.output is not valid json").WithCausef("%s", err.Error())
 		}
 
 		mappedRes.State = resource.State{
@@ -138,7 +138,7 @@ func resourceSpecFromProto(spec *entropyv1beta1.ResourceSpec) (*resource.Spec, e
 
 	confJSON, err := spec.GetConfigs().MarshalJSON()
 	if err != nil {
-		return nil, errors.ErrInvalid.WithMsgf("configs is not valid JSON").WithCausef(err.Error())
+		return nil, errors.ErrInvalid.WithMsgf("configs is not valid JSON").WithCausef("%s", err.Error())
 	}
 
 	return &resource.Spec{

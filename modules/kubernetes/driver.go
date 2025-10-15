@@ -51,14 +51,14 @@ func (*kubeDriver) Sync(_ context.Context, res module.ExpandedResource) (*resour
 func (m *kubeDriver) Output(ctx context.Context, res module.ExpandedResource) (json.RawMessage, error) {
 	conf := kube.DefaultClientConfig()
 	if err := json.Unmarshal(res.Spec.Configs, &conf); err != nil {
-		return nil, errors.ErrInvalid.WithMsgf("invalid json config value").WithCausef(err.Error())
+		return nil, errors.ErrInvalid.WithMsgf("invalid json config value").WithCausef("%s", err.Error())
 	} else if err := conf.Sanitise(); err != nil {
 		return nil, err
 	}
 
 	restConfig, err := conf.RESTConfig(ctx)
 	if err != nil {
-		return nil, errors.ErrInternal.WithMsgf("failed to create new kube client on kube driver output").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("failed to create new kube client on kube driver output").WithCausef("%s", err.Error())
 	}
 
 	clientSet, err := kubernetes.NewForConfig(restConfig)

@@ -21,12 +21,12 @@ func (fd *flinkDriver) Output(ctx context.Context, exr module.ExpandedResource) 
 		if errors.Is(err, errors.ErrInvalid) {
 			return nil, err
 		}
-		return nil, errors.ErrInternal.WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 
 	var kubeOut kubernetes.Output
 	if err := json.Unmarshal(exr.Dependencies[keyKubeDependency].Output, &kubeOut); err != nil {
-		return nil, errors.ErrInternal.WithMsgf("invalid kube state").WithCausef(err.Error())
+		return nil, errors.ErrInternal.WithMsgf("invalid kube state").WithCausef("%s", err.Error())
 	}
 
 	output.KubeCluster = kubeOut

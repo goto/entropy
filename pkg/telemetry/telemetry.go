@@ -21,6 +21,9 @@ type Config struct {
 	// NewRelic configs.
 	NewRelicAPIKey string `mapstructure:"newrelic_api_key"`
 
+	// Eneble NewRelic exporter.
+	EnableNewRelic bool `mapstructure:"enable_newrelic"`
+
 	// OpenTelemetry Agent exporter.
 	EnableOtelAgent  bool   `mapstructure:"enable_otel_agent"`
 	OpenTelAgentAddr string `mapstructure:"otel_agent_addr"`

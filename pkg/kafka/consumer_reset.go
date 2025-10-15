@@ -53,7 +53,7 @@ func ParseResetV2Params(bytes json.RawMessage) (string, error) {
 	if err := json.Unmarshal(bytes, &params); err != nil {
 		return "", errors.ErrInvalid.
 			WithMsgf("invalid reset params").
-			WithCausef(err.Error())
+			WithCausef("%s", err.Error())
 	}
 
 	resetValue := strings.ToLower(params.To)
@@ -74,7 +74,7 @@ func ParseResetParams(bytes json.RawMessage) (string, error) {
 	if err := json.Unmarshal(bytes, &params); err != nil {
 		return "", errors.ErrInvalid.
 			WithMsgf("invalid reset params").
-			WithCausef(err.Error())
+			WithCausef("%s", err.Error())
 	}
 
 	resetValue := strings.ToLower(params.To)

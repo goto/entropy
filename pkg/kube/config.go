@@ -76,11 +76,11 @@ func (conf *Config) RESTConfig(ctx context.Context) (*rest.Config, error) {
 		case providerTypeGKE:
 			ts, err := google.DefaultTokenSource(ctx, container.CloudPlatformScope)
 			if err != nil {
-				return nil, errors.ErrInvalid.WithMsgf("%s: can't fetch credentials from service account json", conf.ProviderType).WithCausef(err.Error())
+				return nil, errors.ErrInvalid.WithMsgf("%s: can't fetch credentials from service account json", conf.ProviderType).WithCausef("%s", err.Error())
 			}
 			oauth2Token, err := ts.Token()
 			if err != nil {
-				return nil, errors.ErrInternal.WithMsgf("%s: can't get token from token source", conf.ProviderType).WithCausef(err.Error())
+				return nil, errors.ErrInternal.WithMsgf("%s: can't get token from token source", conf.ProviderType).WithCausef("%s", err.Error())
 			}
 			rc.BearerToken = oauth2Token.AccessToken
 			conf.Token = oauth2Token.AccessToken

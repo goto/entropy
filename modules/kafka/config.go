@@ -47,17 +47,17 @@ func readConfig(res resource.Resource, confJSON json.RawMessage, dc driverConf) 
 
 	if res.Spec.Configs != nil {
 		if err := json.Unmarshal(res.Spec.Configs, &cfg); err != nil {
-			return nil, errors.ErrInvalid.WithMsgf("failed to unmarshal").WithCausef(err.Error())
+			return nil, errors.ErrInvalid.WithMsgf("failed to unmarshal").WithCausef("%s", err.Error())
 		}
 	}
 
 	if err := json.Unmarshal(confJSON, &cfg); err != nil {
-		return nil, errors.ErrInvalid.WithMsgf("failed to unmarshal").WithCausef(err.Error())
+		return nil, errors.ErrInvalid.WithMsgf("failed to unmarshal").WithCausef("%s", err.Error())
 	}
 
 	newConfJSON, err := json.Marshal(cfg)
 	if err != nil {
-		return nil, errors.ErrInvalid.WithMsgf("failed to marshal").WithCausef(err.Error())
+		return nil, errors.ErrInvalid.WithMsgf("failed to marshal").WithCausef("%s", err.Error())
 	}
 
 	if err := validateConfig(newConfJSON); err != nil {

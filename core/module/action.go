@@ -44,7 +44,7 @@ func (ad *ActionDesc) Sanitise() error {
 	if err != nil {
 		return errors.ErrInvalid.
 			WithMsgf("parameter schema for action '%s' is not valid", ad.Name).
-			WithCausef(err.Error())
+			WithCausef("%s", err.Error())
 	}
 	return nil
 }
@@ -56,14 +56,14 @@ func (ad ActionDesc) validateReq(req ActionRequest) error {
 
 	result, err := ad.schema.Validate(gojsonschema.NewBytesLoader(req.Params))
 	if err != nil {
-		return errors.ErrInternal.WithCausef(err.Error())
+		return errors.ErrInternal.WithCausef("%s", err.Error())
 	} else if !result.Valid() {
 		var errorStrings []string
 		for _, resultErr := range result.Errors() {
 			errorStrings = append(errorStrings, resultErr.String())
 		}
 		errorString := strings.Join(errorStrings, "\n")
-		return errors.ErrInvalid.WithMsgf(errorString)
+		return errors.ErrInvalid.WithMsgf("%s", errorString)
 	}
 
 	return nil

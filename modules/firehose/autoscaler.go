@@ -51,14 +51,14 @@ func (autoscaler *Autoscaler) UnmarshalJSON(data []byte) error {
 	}
 
 	if err := json.Unmarshal(data, &autoscalerTemp); err != nil {
-		return errors.ErrInvalid.WithMsgf("invalid autoscaler config").WithCausef(err.Error())
+		return errors.ErrInvalid.WithMsgf("invalid autoscaler config").WithCausef("%s", err.Error())
 	}
 
 	switch autoscalerTemp.Type {
 	case KEDA:
 		var kedaSpec *Keda
 		if err := json.Unmarshal(autoscalerTemp.Spec, &kedaSpec); err != nil {
-			return errors.ErrInvalid.WithMsgf("invalid keda config").WithCausef(err.Error())
+			return errors.ErrInvalid.WithMsgf("invalid keda config").WithCausef("%s", err.Error())
 		}
 		autoscaler.Spec = kedaSpec
 	default:
