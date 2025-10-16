@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"go.nhat.io/otelsql"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 
 	"github.com/goto/entropy/pkg/errors"
 )
@@ -48,13 +50,30 @@ func (st *Store) Close() error { return st.db.Close() }
 
 // Open returns store instance backed by PostgresQL.
 func Open(conStr string, refreshInterval, extendInterval time.Duration, paginationSizeDefault, paginationPageDefault int32) (*Store, error) {
-	db, err := sqlx.Open("postgres", conStr)
+	driverName, err := otelsql.Register("postgres",
+		otelsql.TraceQueryWithoutArgs(),
+		otelsql.TraceRowsClose(),
+		otelsql.TraceRowsAffected(),
+		otelsql.WithSystem(semconv.DBSystemPostgreSQL),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	db, err := sqlx.Open(driverName, conStr)
 	if err != nil {
 		return nil, err
 	}
 
 	if refreshInterval >= extendInterval {
 		return nil, errors.New("refreshInterval must be lower than extendInterval")
+	}
+
+	if err := otelsql.RecordStats(
+		db.DB,
+		otelsql.WithSystem(semconv.DBSystemPostgreSQL),
+	); err != nil {
+		return nil, err
 	}
 
 	return &Store{
