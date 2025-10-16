@@ -132,6 +132,7 @@ type Config struct {
 	DaggerSavepointURL  string            `json:"dagger_savepoint_url,omitempty"`
 	DaggerK8sHAURL      string            `json:"dagger_k8s_ha_url,omitempty"`
 	CloudProvider       string            `json:"cloud_provider,omitempty"`
+	FSOSSEndpoint       string            `json:"fs_oss_endpoint,omitempty"`
 }
 
 type ChartValues struct {
@@ -410,6 +411,7 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 	cfg.DaggerCheckpointURL = dc.DaggerCheckpointURL
 	cfg.DaggerK8sHAURL = dc.DaggerK8sHAURL
 	cfg.DaggerSavepointURL = dc.DaggerSavepointURL
+	cfg.FSOSSEndpoint = dc.FSOSSEndpoint
 
 	cfg.CloudProvider = dc.CloudProvider
 	if cfg.CloudProvider == "" {
