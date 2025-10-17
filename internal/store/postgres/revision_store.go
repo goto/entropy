@@ -92,14 +92,6 @@ func (st *Store) Revisions(ctx context.Context, selector resource.RevisionsSelec
 }
 
 func insertRevision(ctx context.Context, tx *sqlx.Tx, resID int64, rev resource.Revision) error {
-	ctx = otelsql.WithCustomAttributes(
-		ctx,
-		[]attribute.KeyValue{
-			attribute.String("db.repository.method", "Create"),
-			attribute.String(string(semconv.DBSQLTableKey), tableRevisions),
-		}...,
-	)
-
 	q := sq.Insert(tableRevisions).
 		Columns("resource_id", "reason", "spec_configs", "created_by").
 		Values(resID, rev.Reason, rev.Spec.Configs, rev.CreatedBy).
