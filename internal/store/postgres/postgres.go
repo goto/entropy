@@ -55,6 +55,7 @@ func Open(conStr string, refreshInterval, extendInterval time.Duration, paginati
 		otelsql.TraceRowsClose(),
 		otelsql.TraceRowsAffected(),
 		otelsql.WithSystem(semconv.DBSystemPostgreSQL),
+		otelsql.WithInstanceName("entropy"),
 	)
 	if err != nil {
 		return nil, err
