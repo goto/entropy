@@ -5,12 +5,23 @@ import (
 	"database/sql"
 
 	sq "github.com/Masterminds/squirrel"
+	"go.nhat.io/otelsql"
+	"go.opentelemetry.io/otel/attribute"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/pkg/errors"
 )
 
 func (st *Store) GetModule(ctx context.Context, urn string) (*module.Module, error) {
+	ctx = otelsql.WithCustomAttributes(
+		ctx,
+		[]attribute.KeyValue{
+			attribute.String("db.repository.method", "GetByURN"),
+			attribute.String(string(semconv.DBSQLTableKey), tableModules),
+		}...,
+	)
+
 	var rec moduleModel
 	if err := readModuleRecord(ctx, st.db, urn, &rec); err != nil {
 		return nil, err
@@ -26,6 +37,14 @@ func (st *Store) GetModule(ctx context.Context, urn string) (*module.Module, err
 }
 
 func (st *Store) ListModules(ctx context.Context, project string) ([]module.Module, error) {
+	ctx = otelsql.WithCustomAttributes(
+		ctx,
+		[]attribute.KeyValue{
+			attribute.String("db.repository.method", "List"),
+			attribute.String(string(semconv.DBSQLTableKey), tableModules),
+		}...,
+	)
+
 	q := sq.Select("urn").From(tableModules)
 	if project != "" {
 		q = q.Where(sq.Eq{"project": project})
@@ -58,6 +77,14 @@ func (st *Store) ListModules(ctx context.Context, project string) ([]module.Modu
 }
 
 func (st *Store) CreateModule(ctx context.Context, m module.Module) error {
+	ctx = otelsql.WithCustomAttributes(
+		ctx,
+		[]attribute.KeyValue{
+			attribute.String("db.repository.method", "Create"),
+			attribute.String(string(semconv.DBSQLTableKey), tableModules),
+		}...,
+	)
+
 	err := insertModuleRecord(ctx, st.db, m)
 	if err != nil {
 		return translateErr(err)
@@ -74,11 +101,27 @@ func (st *Store) UpdateModule(ctx context.Context, m module.Module) error {
 		}).
 		PlaceholderFormat(sq.Dollar)
 
+	ctx = otelsql.WithCustomAttributes(
+		ctx,
+		[]attribute.KeyValue{
+			attribute.String("db.repository.method", "Update"),
+			attribute.String(string(semconv.DBSQLTableKey), tableModules),
+		}...,
+	)
+
 	_, err := updateSpec.RunWith(st.db).ExecContext(ctx)
 	return translateErr(err)
 }
 
 func (st *Store) DeleteModule(ctx context.Context, urn string) error {
+	ctx = otelsql.WithCustomAttributes(
+		ctx,
+		[]attribute.KeyValue{
+			attribute.String("db.repository.method", "Delete"),
+			attribute.String(string(semconv.DBSQLTableKey), tableModules),
+		}...,
+	)
+
 	_, err := sq.Delete(tableModules).
 		Where(sq.Eq{"urn": urn}).
 		PlaceholderFormat(sq.Dollar).

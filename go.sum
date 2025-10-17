@@ -356,6 +356,8 @@ github.com/gorilla/websocket v1.5.0 h1:PPwGk2jz7EePpoHN/+ClbZu8SPxiqlu12wZP/3sWm
 github.com/gorilla/websocket v1.5.0/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 github.com/gosuri/uitable v0.0.4 h1:IG2xLKRvErL3uhY6e1BylFzG+aJiwQviDDTfOKeKTpY=
 github.com/gosuri/uitable v0.0.4/go.mod h1:tKR86bXuXPZazfOTG1FIzvjIdXzd0mo4Vtn16vt0PJo=
+github.com/goto/otelsql v0.0.2 h1:DzRiKIHvxYW4KnwzJCz38KoD1K6IH5joANal/DHPyW4=
+github.com/goto/otelsql v0.0.2/go.mod h1:HyYpqd7G9BK+9cPLydV+2JN/4J5D3wlX6+jDLTk52GE=
 github.com/goto/salt v0.3.7 h1:XwnKDEMXkYhStcyLtw7SjHg4TRseRt5OSqOV8DUqfBI=
 github.com/goto/salt v0.3.7/go.mod h1:KR7LfsHQY3ae1iBEZDOlDrDZQZVRtDNdwpBttrcT5sE=
 github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 h1:+ngKgrYPPJrOjhax5N+uePQ0Fh1Z7PheYoUI/0nzkPA=
@@ -676,8 +678,6 @@ github.com/yvasiyarov/gorelic v0.0.0-20141212073537-a9bba5b9ab50 h1:hlE8//ciYMzt
 github.com/yvasiyarov/gorelic v0.0.0-20141212073537-a9bba5b9ab50/go.mod h1:NUSPSUX/bi6SeDMUh6brw0nXpxHnc96TguQh0+r/ssA=
 github.com/yvasiyarov/newrelic_platform_go v0.0.0-20140908184405-b21fdbd4370f h1:ERexzlUfuTvpE74urLSbIQW0Z/6hF9t8U4NsJLaioAY=
 github.com/yvasiyarov/newrelic_platform_go v0.0.0-20140908184405-b21fdbd4370f/go.mod h1:GlGEuHIJweS1mbCqG+7vt2nvWLzLLnRHbXz5JKd/Qbg=
-go.nhat.io/otelsql v0.16.0 h1:MUKhNSl7Vk1FGyopy04FBDimyYogpRFs0DBB9frQal0=
-go.nhat.io/otelsql v0.16.0/go.mod h1:YB2ocf0Q8+kK4kxzXYUOHj7P2Km8tNmE2QlRS0frUtc=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
 go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=
 go.opencensus.io v0.22.2/go.mod h1:yxeiOL68Rb0Xd1ddK5vPZ/oVn4vY4Ynel7k9FzqtOIw=

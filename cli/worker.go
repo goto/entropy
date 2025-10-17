@@ -41,12 +41,14 @@ func cmdWorker() *cobra.Command {
 		ctx := cmd.Context()
 
 		telemetry.Init(ctx, cfg.Telemetry)
-		_, err = newrelic.NewApplication(
-			newrelic.ConfigAppName(cfg.Telemetry.ServiceName),
-			newrelic.ConfigLicense(cfg.Telemetry.NewRelicAPIKey),
-		)
-		if err != nil {
-			zap.L().Error("error initializing opentelemetry", zap.Error(err))
+		if cfg.Telemetry.EnableNewRelic {
+			_, err = newrelic.NewApplication(
+				newrelic.ConfigAppName(cfg.Telemetry.ServiceName),
+				newrelic.ConfigLicense(cfg.Telemetry.NewRelicAPIKey),
+			)
+			if err != nil {
+				zap.L().Error("error initializing opentelemetry", zap.Error(err))
+			}
 		}
 
 		return StartWorkers(ctx, cfg)

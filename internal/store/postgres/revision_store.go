@@ -6,12 +6,23 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
+	"go.nhat.io/otelsql"
+	"go.opentelemetry.io/otel/attribute"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/pkg/errors"
 )
 
 func (st *Store) Revisions(ctx context.Context, selector resource.RevisionsSelector) ([]resource.Revision, error) {
+	ctx = otelsql.WithCustomAttributes(
+		ctx,
+		[]attribute.KeyValue{
+			attribute.String("db.repository.method", "GetByResourceID"),
+			attribute.String(string(semconv.DBSQLTableKey), tableRevisions),
+		}...,
+	)
+
 	var revs []resource.Revision
 	txFn := func(ctx context.Context, tx *sqlx.Tx) error {
 		resourceID, err := translateURNToID(ctx, tx, selector.URN)
@@ -81,6 +92,14 @@ func (st *Store) Revisions(ctx context.Context, selector resource.RevisionsSelec
 }
 
 func insertRevision(ctx context.Context, tx *sqlx.Tx, resID int64, rev resource.Revision) error {
+	ctx = otelsql.WithCustomAttributes(
+		ctx,
+		[]attribute.KeyValue{
+			attribute.String("db.repository.method", "Create"),
+			attribute.String(string(semconv.DBSQLTableKey), tableRevisions),
+		}...,
+	)
+
 	q := sq.Insert(tableRevisions).
 		Columns("resource_id", "reason", "spec_configs", "created_by").
 		Values(resID, rev.Reason, rev.Spec.Configs, rev.CreatedBy).
