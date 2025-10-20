@@ -6,12 +6,23 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
+	"go.nhat.io/otelsql"
+	"go.opentelemetry.io/otel/attribute"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/pkg/errors"
 )
 
 func (st *Store) Revisions(ctx context.Context, selector resource.RevisionsSelector) ([]resource.Revision, error) {
+	ctx = otelsql.WithCustomAttributes(
+		ctx,
+		[]attribute.KeyValue{
+			attribute.String("db.repository.method", "GetByResourceID"),
+			attribute.String(string(semconv.DBSQLTableKey), tableRevisions),
+		}...,
+	)
+
 	var revs []resource.Revision
 	txFn := func(ctx context.Context, tx *sqlx.Tx) error {
 		resourceID, err := translateURNToID(ctx, tx, selector.URN)

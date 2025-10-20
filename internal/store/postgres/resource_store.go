@@ -8,6 +8,9 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
+	"go.nhat.io/otelsql"
+	"go.opentelemetry.io/otel/attribute"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/pkg/errors"
@@ -33,6 +36,14 @@ func (st *Store) GetByURN(ctx context.Context, urn string) (*resource.Resource, 
 
 		return nil
 	}
+
+	ctx = otelsql.WithCustomAttributes(
+		ctx,
+		[]attribute.KeyValue{
+			attribute.String("db.repository.method", "GetByURN"),
+			attribute.String(string(semconv.DBSQLTableKey), tableResources),
+		}...,
+	)
 
 	if txErr := withinTx(ctx, st.db, true, readResourceParts); txErr != nil {
 		return nil, txErr
@@ -82,6 +93,14 @@ func (st *Store) List(ctx context.Context, filter resource.Filter, withSpecConfi
 	}
 
 	offset := (filter.PageNum - 1) * filter.PageSize
+
+	ctx = otelsql.WithCustomAttributes(
+		ctx,
+		[]attribute.KeyValue{
+			attribute.String("db.repository.method", "List"),
+			attribute.String(string(semconv.DBSQLTableKey), tableResources),
+		}...,
+	)
 
 	var err error
 	if withSpecConfigs {
@@ -169,6 +188,14 @@ func (st *Store) Create(ctx context.Context, r resource.Resource, hooks ...resou
 		return runAllHooks(ctx, hooks)
 	}
 
+	ctx = otelsql.WithCustomAttributes(
+		ctx,
+		[]attribute.KeyValue{
+			attribute.String("db.repository.method", "Create"),
+			attribute.String(string(semconv.DBSQLTableKey), tableResources),
+		}...,
+	)
+
 	txErr := withinTx(ctx, st.db, false, insertResource)
 	if txErr != nil {
 		return txErr
@@ -226,6 +253,14 @@ func (st *Store) Update(ctx context.Context, r resource.Resource, saveRevision b
 		return runAllHooks(ctx, hooks)
 	}
 
+	ctx = otelsql.WithCustomAttributes(
+		ctx,
+		[]attribute.KeyValue{
+			attribute.String("db.repository.method", "Update"),
+			attribute.String(string(semconv.DBSQLTableKey), tableResources),
+		}...,
+	)
+
 	txErr := withinTx(ctx, st.db, false, updateResource)
 	if txErr != nil {
 		return txErr
@@ -261,10 +296,26 @@ func (st *Store) Delete(ctx context.Context, urn string, hooks ...resource.Mutat
 		return runAllHooks(ctx, hooks)
 	}
 
+	ctx = otelsql.WithCustomAttributes(
+		ctx,
+		[]attribute.KeyValue{
+			attribute.String("db.repository.method", "Delete"),
+			attribute.String(string(semconv.DBSQLTableKey), tableResources),
+		}...,
+	)
+
 	return withinTx(ctx, st.db, false, deleteFn)
 }
 
 func (st *Store) SyncOne(ctx context.Context, scope map[string][]string, syncFn resource.SyncFn) error {
+	ctx = otelsql.WithCustomAttributes(
+		ctx,
+		[]attribute.KeyValue{
+			attribute.String("db.repository.method", "SyncOne"),
+			attribute.String(string(semconv.DBSQLTableKey), tableResources),
+		}...,
+	)
+
 	urn, err := st.fetchResourceForSync(ctx, scope)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

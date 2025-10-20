@@ -2,6 +2,7 @@ package telemetry
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"time"
 
@@ -41,6 +42,13 @@ func setupOpenTelemetry(ctx context.Context, mux *http.ServeMux, cfg Config) err
 	)
 
 	otel.SetMeterProvider(meterProvider)
+
+	if cfg.EnableRuntimeMetrics {
+		err = runtime.Start(runtime.WithMinimumReadMemStatsInterval(time.Second))
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	go func() {
 		<-ctx.Done()
