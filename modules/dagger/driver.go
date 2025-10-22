@@ -59,19 +59,21 @@ var defaultDriverConf = driverConf{
 }
 
 type daggerDriver struct {
-	timeNow       func() time.Time
-	conf          driverConf
-	kubeDeploy    kubeDeployFn
-	kubeGetPod    kubeGetPodFn
-	kubeGetCRD    kubeGetCRDFn
-	consumerReset consumerResetFn
+	timeNow          func() time.Time
+	conf             driverConf
+	kubeDeploy       kubeDeployFn
+	kubeGetPod       kubeGetPodFn
+	kubeGetCRD       kubeGetCRDFn
+	consumerReset    consumerResetFn
+	kubeProxyService kubeProxyServiceFn
 }
 
 type (
-	kubeDeployFn    func(ctx context.Context, isCreate bool, conf kube.Config, hc helm.ReleaseConfig) error
-	kubeGetPodFn    func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error)
-	kubeGetCRDFn    func(ctx context.Context, conf kube.Config, ns string, name string) (kube.FlinkDeploymentStatus, error)
-	consumerResetFn func(ctx context.Context, conf Config, resetTo string) []Source
+	kubeDeployFn       func(ctx context.Context, isCreate bool, conf kube.Config, hc helm.ReleaseConfig) error
+	kubeGetPodFn       func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error)
+	kubeGetCRDFn       func(ctx context.Context, conf kube.Config, ns string, name string) (kube.FlinkDeploymentStatus, error)
+	consumerResetFn    func(ctx context.Context, conf Config, resetTo string) []Source
+	kubeProxyServiceFn func(ctx context.Context, conf kube.Config, namespace, scheme, serviceName, port, path string) (json.RawMessage, error)
 )
 
 type driverConf struct {
@@ -105,14 +107,20 @@ type driverConf struct {
 }
 
 type Output struct {
-	JMDeployStatus string     `json:"jm_deploy_status,omitempty"`
-	JobStatus      string     `json:"job_status,omitempty"`
-	State          string     `json:"state,omitempty"`
-	Reconcilation  string     `json:"reconcilation,omitempty"`
-	Pods           []kube.Pod `json:"pods,omitempty"`
-	Namespace      string     `json:"namespace,omitempty"`
-	JobID          string     `json:"job_id,omitempty"`
-	Error          string     `json:"error,omitempty"`
+	JMDeployStatus string       `json:"jm_deploy_status,omitempty"`
+	JobStatus      string       `json:"job_status,omitempty"`
+	State          string       `json:"state,omitempty"`
+	Reconcilation  string       `json:"reconcilation,omitempty"`
+	Pods           []kube.Pod   `json:"pods,omitempty"`
+	Namespace      string       `json:"namespace,omitempty"`
+	JobID          string       `json:"job_id,omitempty"`
+	Error          string       `json:"error,omitempty"`
+	Exceptions     []Exceptions `json:"exception,omitempty"`
+}
+
+type Exceptions struct {
+	JobID         string `json:"job_id,omitempty"`
+	RootException string `json:"root_exception,omitempty"`
 }
 
 type transientData struct {
