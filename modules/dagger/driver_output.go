@@ -130,7 +130,7 @@ func (dd *daggerDriver) getFlinkExceptions(ctx context.Context, configs kube.Con
 
 		var jobException JobsExceptionResponse
 		if err := json.Unmarshal(exceptionResponseRaw, &jobException); err != nil {
-			return nil, errors.ErrInternal.WithMsgf("failed to unmarshal jobs exception response").WithCausef("%s", err.Error())
+			return nil, errors.ErrInternal.WithMsgf("failed to unmarshal jobs exception response for job %s", job.JobID).WithCausef("%s", err.Error())
 		}
 		jobsExceptions = append(jobsExceptions, Exceptions{
 			JobID:         job.JobID,
