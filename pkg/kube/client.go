@@ -88,10 +88,6 @@ type Deployment struct {
 	Conditions          []map[string]string `json:"conditions"`
 }
 
-type ServiceResponse struct {
-	response json.RawMessage
-}
-
 func (l LogOptions) getPodListOptions() (metav1.ListOptions, error) {
 	labelSelector := labels.NewSelector()
 	fieldSelector := fields.Everything()
