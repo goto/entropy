@@ -88,14 +88,17 @@ func (dd *daggerDriver) refreshOutput(ctx context.Context, r resource.Resource,
 	output.State = state
 	output.Error = ""
 
-	exc, err := dd.getFlinkExceptions(ctx, kubeOut.Configs, rc.Namespace, rc.Name)
-	if err != nil {
-		output.Exceptions = Exception{
-			RootException: "Failed to fetch exceptions: " + err.Error(),
+	output.Exceptions = Exception{}
+	if conf.State == StateDeployed && conf.JobState != JobStateSuspended {
+		exc, err := dd.getFlinkExceptions(ctx, kubeOut.Configs, rc.Namespace, rc.Name)
+		if err != nil {
+			output.Exceptions = Exception{
+				RootException: "Failed to fetch exceptions: " + err.Error(),
+			}
 		}
-	}
-	if exc.RootException != "" {
-		output.Exceptions = exc
+		if exc.RootException != "" {
+			output.Exceptions = exc
+		}
 	}
 
 	return modules.MustJSON(output), nil
