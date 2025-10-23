@@ -107,20 +107,20 @@ type driverConf struct {
 }
 
 type Output struct {
-	JMDeployStatus string       `json:"jm_deploy_status,omitempty"`
-	JobStatus      string       `json:"job_status,omitempty"`
-	State          string       `json:"state,omitempty"`
-	Reconcilation  string       `json:"reconcilation,omitempty"`
-	Pods           []kube.Pod   `json:"pods,omitempty"`
-	Namespace      string       `json:"namespace,omitempty"`
-	JobID          string       `json:"job_id,omitempty"`
-	Error          string       `json:"error,omitempty"`
-	Exceptions     []Exceptions `json:"exception,omitempty"`
+	JMDeployStatus string     `json:"jm_deploy_status,omitempty"`
+	JobStatus      string     `json:"job_status,omitempty"`
+	State          string     `json:"state,omitempty"`
+	Reconcilation  string     `json:"reconcilation,omitempty"`
+	Pods           []kube.Pod `json:"pods,omitempty"`
+	Namespace      string     `json:"namespace,omitempty"`
+	JobID          string     `json:"job_id,omitempty"`
+	Error          string     `json:"error,omitempty"`
+	Exceptions     Exception  `json:"exception,omitempty"`
 }
 
-type Exceptions struct {
-	JobID         string `json:"job_id,omitempty"`
-	RootException string `json:"root_exception,omitempty"`
+type Exception struct {
+	RootException string     `json:"root_exception,omitempty"`
+	Timestamp     *time.Time `json:"timestamp,omitzero"`
 }
 
 type transientData struct {
