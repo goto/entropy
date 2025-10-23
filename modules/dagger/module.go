@@ -109,6 +109,13 @@ var Module = module.Descriptor{
 				}
 				return parseFlinkCRDStatus(crd.Object)
 			},
+			kubeProxyService: func(ctx context.Context, conf kube.Config, namespace, scheme, serviceName, port, path string) (json.RawMessage, error) {
+				kubeCl, err := kube.NewClient(ctx, conf)
+				if err != nil {
+					return nil, errors.ErrInternal.WithMsgf("failed to create new kube client on dagger driver kube proxy service").WithCausef("%s", err.Error())
+				}
+				return kubeCl.ProxyService(ctx, namespace, scheme, serviceName, port, path, map[string]string{})
+			},
 			consumerReset: consumerReset,
 		}, nil
 	},

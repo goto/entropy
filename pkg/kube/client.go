@@ -2,6 +2,7 @@ package kube
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -444,4 +445,25 @@ func (c Client) GetDeploymentDetails(ctx context.Context, namespace string, name
 	}
 
 	return d, nil
+}
+
+func (c Client) ProxyService(ctx context.Context, namespace string, scheme string, serviceName string, servicePort string, path string, params map[string]string) (json.RawMessage, error) {
+	clientSet, err := kubernetes.NewForConfig(&c.restConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	response := clientSet.CoreV1().Services(namespace).ProxyGet(scheme, serviceName, servicePort, path, params)
+	res, err := response.DoRaw(ctx)
+	if k8s_errors.IsServiceUnavailable(err) {
+		return nil, errors.ErrInternal.WithMsgf("service unavailable").WithCausef("%s", err.Error())
+	}
+	if k8s_errors.IsNotFound(err) {
+		return nil, errors.ErrNotFound.WithMsgf("service not found").WithCausef("%s", err.Error())
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return json.RawMessage(res), nil
 }
