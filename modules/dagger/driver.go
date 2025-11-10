@@ -220,7 +220,7 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 	formatted := fmt.Sprintf("[%s]", strings.Join(programArgs, ","))
 	encodedProgramArgs := base64.StdEncoding.EncodeToString([]byte(formatted))
 
-	tolerationKey := fmt.Sprintf("dagger_%s", conf.EnvVariables["SINK_TYPE"])
+	tolerationKey := "firehose_autoscaler"
 	tolerations := []map[string]any{}
 
 	for _, t := range kubeOut.Tolerations[tolerationKey] {
@@ -235,7 +235,7 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 	requiredDuringSchedulingIgnoredDuringExecution := []kubernetes.Preference{}
 	preferredDuringSchedulingIgnoredDuringExecution := []kubernetes.WeightedPreference{}
 
-	affinityKey := fmt.Sprintf("dagger_%s", conf.EnvVariables["SINK_TYPE"])
+	affinityKey := "firehose_autoscaler"
 	if affinity, ok := kubeOut.Affinities[affinityKey]; ok {
 		requiredDuringSchedulingIgnoredDuringExecution = affinity.RequiredDuringSchedulingIgnoredDuringExecution
 		preferredDuringSchedulingIgnoredDuringExecution = affinity.PreferredDuringSchedulingIgnoredDuringExecution
