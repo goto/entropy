@@ -2,10 +2,12 @@ package kubernetes
 
 import (
 	"encoding/json"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/version"
 
 	"github.com/goto/entropy/pkg/kube"
+	"github.com/mitchellh/mapstructure"
 )
 
 type Output struct {
@@ -46,4 +48,48 @@ func (out Output) JSON() []byte {
 		panic(err)
 	}
 	return b
+}
+
+func PreferenceSliceToInterfaceSlice(prefs []Preference) []map[string]interface{} {
+	result := make([]map[string]interface{}, len(prefs))
+
+	for i, pref := range prefs {
+		var prefMap map[string]interface{}
+		if err := mapstructure.Decode(pref, &prefMap); err != nil {
+			continue
+		}
+
+		lowercaseMap := make(map[string]interface{})
+		for k, v := range prefMap {
+			lowercaseMap[strings.ToLower(k)] = v
+		}
+		result[i] = lowercaseMap
+	}
+
+	return result
+}
+
+func WeightedPreferencesToInterfaceSlice(weightedPrefs []WeightedPreference) []map[string]interface{} {
+	result := make([]map[string]interface{}, len(weightedPrefs))
+
+	for i, wp := range weightedPrefs {
+		var wpMap map[string]interface{}
+		if err := mapstructure.Decode(wp, &wpMap); err != nil {
+			continue
+		}
+
+		lowercaseMap := make(map[string]interface{})
+		for k, v := range wpMap {
+			// Special handling for the preference field
+			if k == "Preference" && v != nil {
+				// Convert the nested Preference slice
+				lowercaseMap["preference"] = PreferenceSliceToInterfaceSlice(wp.Preference)
+			} else {
+				lowercaseMap[strings.ToLower(k)] = v
+			}
+		}
+		result[i] = lowercaseMap
+	}
+
+	return result
 }

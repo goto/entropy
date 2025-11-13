@@ -49,6 +49,8 @@ const (
 
 const defaultKey = "default"
 
+const daggerTaintKey = "dagger"
+
 var defaultDriverConf = driverConf{
 	Namespace: map[string]string{
 		defaultKey: "dagger",
@@ -104,6 +106,8 @@ type driverConf struct {
 
 	// timeout value for a kube deployment run
 	KubeDeployTimeout int `json:"kube_deploy_timeout_seconds"`
+
+	NodeAffinityMatchExpressions kubernetes.NodeAffinityMatchExpressions `json:"node_affinity_match_expressions"`
 }
 
 type Output struct {
@@ -218,6 +222,38 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 	formatted := fmt.Sprintf("[%s]", strings.Join(programArgs, ","))
 	encodedProgramArgs := base64.StdEncoding.EncodeToString([]byte(formatted))
 
+	tolerationKey := daggerTaintKey
+	tolerations := []map[string]any{}
+
+	for _, t := range kubeOut.Tolerations[tolerationKey] {
+		tolerations = append(tolerations, map[string]any{
+			"key":      t.Key,
+			"value":    t.Value,
+			"effect":   t.Effect,
+			"operator": t.Operator,
+		})
+	}
+
+	requiredDuringSchedulingIgnoredDuringExecution := []kubernetes.Preference{}
+	preferredDuringSchedulingIgnoredDuringExecution := []kubernetes.WeightedPreference{}
+
+	affinityKey := daggerTaintKey
+	if affinity, ok := kubeOut.Affinities[affinityKey]; ok {
+		requiredDuringSchedulingIgnoredDuringExecution = affinity.RequiredDuringSchedulingIgnoredDuringExecution
+		preferredDuringSchedulingIgnoredDuringExecution = affinity.PreferredDuringSchedulingIgnoredDuringExecution
+	}
+
+	if dd.conf.NodeAffinityMatchExpressions.RequiredDuringSchedulingIgnoredDuringExecution != nil {
+		requiredDuringSchedulingIgnoredDuringExecution = dd.conf.NodeAffinityMatchExpressions.RequiredDuringSchedulingIgnoredDuringExecution
+	}
+
+	if dd.conf.NodeAffinityMatchExpressions.PreferredDuringSchedulingIgnoredDuringExecution != nil {
+		preferredDuringSchedulingIgnoredDuringExecution = dd.conf.NodeAffinityMatchExpressions.PreferredDuringSchedulingIgnoredDuringExecution
+	}
+
+	requiredDuringSchedulingIgnoredDuringExecutionInterface := kubernetes.PreferenceSliceToInterfaceSlice(requiredDuringSchedulingIgnoredDuringExecution)
+	preferredDuringSchedulingIgnoredDuringExecutionInterface := kubernetes.WeightedPreferencesToInterfaceSlice(preferredDuringSchedulingIgnoredDuringExecution)
+
 	rc.Values = map[string]any{
 		labelsConfKey:   modules.CloneAndMergeMaps(deploymentLabels, entropyLabels),
 		"image":         imageRepository,
@@ -250,6 +286,11 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 		"dagger_k8s_ha_url":     conf.DaggerK8sHAURL,
 		"cloud_provider":        conf.CloudProvider,
 		"fs_oss_endpoint":       conf.FSOSSEndpoint,
+		"tolerations":           tolerations,
+		"nodeAffinityMatchExpressions": map[string]any{
+			"requiredDuringSchedulingIgnoredDuringExecution":  requiredDuringSchedulingIgnoredDuringExecutionInterface,
+			"preferredDuringSchedulingIgnoredDuringExecution": preferredDuringSchedulingIgnoredDuringExecutionInterface,
+		},
 	}
 
 	return rc, nil
