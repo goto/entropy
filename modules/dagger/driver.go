@@ -288,6 +288,8 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 		},
 	}
 
+	fmt.Println("Helm Release Values:", rc.Values)
+
 	return rc, nil
 }
 
