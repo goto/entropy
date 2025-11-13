@@ -49,6 +49,8 @@ const (
 
 const defaultKey = "default"
 
+const daggerTaintKey = "dagger"
+
 var defaultDriverConf = driverConf{
 	Namespace: map[string]string{
 		defaultKey: "dagger",
@@ -220,7 +222,7 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 	formatted := fmt.Sprintf("[%s]", strings.Join(programArgs, ","))
 	encodedProgramArgs := base64.StdEncoding.EncodeToString([]byte(formatted))
 
-	tolerationKey := "firehose_autoscaler"
+	tolerationKey := daggerTaintKey
 	tolerations := []map[string]any{}
 
 	for _, t := range kubeOut.Tolerations[tolerationKey] {
@@ -235,7 +237,7 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 	requiredDuringSchedulingIgnoredDuringExecution := []kubernetes.Preference{}
 	preferredDuringSchedulingIgnoredDuringExecution := []kubernetes.WeightedPreference{}
 
-	affinityKey := "firehose_autoscaler"
+	affinityKey := daggerTaintKey
 	if affinity, ok := kubeOut.Affinities[affinityKey]; ok {
 		requiredDuringSchedulingIgnoredDuringExecution = affinity.RequiredDuringSchedulingIgnoredDuringExecution
 		preferredDuringSchedulingIgnoredDuringExecution = affinity.PreferredDuringSchedulingIgnoredDuringExecution
@@ -248,6 +250,9 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 	if dd.conf.NodeAffinityMatchExpressions.PreferredDuringSchedulingIgnoredDuringExecution != nil {
 		preferredDuringSchedulingIgnoredDuringExecution = dd.conf.NodeAffinityMatchExpressions.PreferredDuringSchedulingIgnoredDuringExecution
 	}
+
+	requiredDuringSchedulingIgnoredDuringExecutionInterface := kubernetes.PreferenceSliceToInterfaceSlice(requiredDuringSchedulingIgnoredDuringExecution)
+	preferredDuringSchedulingIgnoredDuringExecutionInterface := kubernetes.WeightedPreferencesToInterfaceSlice(preferredDuringSchedulingIgnoredDuringExecution)
 
 	rc.Values = map[string]any{
 		labelsConfKey:   modules.CloneAndMergeMaps(deploymentLabels, entropyLabels),
@@ -283,12 +288,10 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 		"fs_oss_endpoint":       conf.FSOSSEndpoint,
 		"tolerations":           tolerations,
 		"nodeAffinityMatchExpressions": map[string]any{
-			"requiredDuringSchedulingIgnoredDuringExecution":  requiredDuringSchedulingIgnoredDuringExecution,
-			"preferredDuringSchedulingIgnoredDuringExecution": preferredDuringSchedulingIgnoredDuringExecution,
+			"requiredDuringSchedulingIgnoredDuringExecution":  requiredDuringSchedulingIgnoredDuringExecutionInterface,
+			"preferredDuringSchedulingIgnoredDuringExecution": preferredDuringSchedulingIgnoredDuringExecutionInterface,
 		},
 	}
-
-	fmt.Println("Helm Release Values:", rc.Values)
 
 	return rc, nil
 }
