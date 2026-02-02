@@ -12,6 +12,7 @@ import (
 	"github.com/goto/entropy/modules/kubernetes"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/helm"
+	"github.com/goto/entropy/pkg/kube/pod"
 )
 
 func TestFirehoseDriver(t *testing.T) {
@@ -57,7 +58,7 @@ func TestFirehoseDriver(t *testing.T) {
 				},
 			},
 			kubeOutput: kubernetes.Output{
-				Tolerations: map[string][]kubernetes.Toleration{
+				Tolerations: map[string][]pod.Toleration{
 					"firehose_LOG": {
 						{
 							Key:      "key1",
@@ -149,10 +150,10 @@ func TestFirehoseDriver(t *testing.T) {
 						},
 					},
 					"nodeAffinityMatchExpressions": map[string]any{
-						"preferredDuringSchedulingIgnoredDuringExecution": []kubernetes.WeightedPreference{
+						"preferredDuringSchedulingIgnoredDuringExecution": []pod.WeightedPreference{
 							{
 								Weight: 1,
-								Preference: []kubernetes.Preference{
+								Preference: []pod.Preference{
 									{
 										Key:      "another-node-label-key",
 										Operator: "In",
@@ -161,7 +162,7 @@ func TestFirehoseDriver(t *testing.T) {
 								},
 							},
 						},
-						"requiredDuringSchedulingIgnoredDuringExecution": []kubernetes.Preference{
+						"requiredDuringSchedulingIgnoredDuringExecution": []pod.Preference{
 							{
 								Key:      "topology.kubernetes.io/zone",
 								Operator: "In",
@@ -234,7 +235,7 @@ func TestFirehoseDriver(t *testing.T) {
 				},
 			},
 			kubeOutput: kubernetes.Output{
-				Tolerations: map[string][]kubernetes.Toleration{
+				Tolerations: map[string][]pod.Toleration{
 					"firehose_LOG": {
 						{
 							Key:      "key1",
@@ -326,10 +327,10 @@ func TestFirehoseDriver(t *testing.T) {
 						},
 					},
 					"nodeAffinityMatchExpressions": map[string]any{
-						"preferredDuringSchedulingIgnoredDuringExecution": []kubernetes.WeightedPreference{
+						"preferredDuringSchedulingIgnoredDuringExecution": []pod.WeightedPreference{
 							{
 								Weight: 1,
-								Preference: []kubernetes.Preference{
+								Preference: []pod.Preference{
 									{
 										Key:      "another-node-label-key",
 										Operator: "In",
@@ -338,7 +339,7 @@ func TestFirehoseDriver(t *testing.T) {
 								},
 							},
 						},
-						"requiredDuringSchedulingIgnoredDuringExecution": []kubernetes.Preference{
+						"requiredDuringSchedulingIgnoredDuringExecution": []pod.Preference{
 							{
 								Key:      "topology.kubernetes.io/zone",
 								Operator: "In",
@@ -411,7 +412,7 @@ func TestFirehoseDriver(t *testing.T) {
 				},
 			},
 			kubeOutput: kubernetes.Output{
-				Tolerations: map[string][]kubernetes.Toleration{
+				Tolerations: map[string][]pod.Toleration{
 					"firehose_LOG": {
 						{
 							Key:      "key1",
@@ -511,10 +512,10 @@ func TestFirehoseDriver(t *testing.T) {
 						},
 					},
 					"nodeAffinityMatchExpressions": map[string]any{
-						"preferredDuringSchedulingIgnoredDuringExecution": []kubernetes.WeightedPreference{
+						"preferredDuringSchedulingIgnoredDuringExecution": []pod.WeightedPreference{
 							{
 								Weight: 1,
-								Preference: []kubernetes.Preference{
+								Preference: []pod.Preference{
 									{
 										Key:      "another-node-label-key",
 										Operator: "In",
@@ -523,7 +524,7 @@ func TestFirehoseDriver(t *testing.T) {
 								},
 							},
 						},
-						"requiredDuringSchedulingIgnoredDuringExecution": []kubernetes.Preference{
+						"requiredDuringSchedulingIgnoredDuringExecution": []pod.Preference{
 							{
 								Key:      "topology.kubernetes.io/zone",
 								Operator: "In",
@@ -597,18 +598,18 @@ func TestFirehoseDriver(t *testing.T) {
 func firehoseDriverConf() driverConf {
 	return driverConf{
 		KubeDeployTimeout: 60,
-		NodeAffinityMatchExpressions: kubernetes.NodeAffinityMatchExpressions{
-			RequiredDuringSchedulingIgnoredDuringExecution: []kubernetes.Preference{
+		NodeAffinityMatchExpressions: pod.NodeAffinityMatchExpressions{
+			RequiredDuringSchedulingIgnoredDuringExecution: []pod.Preference{
 				{
 					Key:      "topology.kubernetes.io/zone",
 					Operator: "In",
 					Values:   []string{"antarctica-east1", "antarctica-west1"},
 				},
 			},
-			PreferredDuringSchedulingIgnoredDuringExecution: []kubernetes.WeightedPreference{
+			PreferredDuringSchedulingIgnoredDuringExecution: []pod.WeightedPreference{
 				{
 					Weight: 1,
-					Preference: []kubernetes.Preference{
+					Preference: []pod.Preference{
 						{
 							Key:      "another-node-label-key",
 							Operator: "In",

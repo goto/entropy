@@ -20,12 +20,15 @@ const (
 	labelOrchestrator      = "orchestrator"
 	labelName              = "name"
 	orchestratorLabelValue = "entropy"
+
+	resourceName = "job"
+
 	// Num retries before failing.
 	backoffLimit int32 = 0
 )
 
 func (driver *Driver) create(ctx context.Context, r resource.Resource, config *config.Config, out kubernetes.Output) error {
-	j := getJob(r, config)
+	j := driver.getJob(r, config, out)
 	if err := driver.CreateJob(ctx, out.Configs, j); err != nil {
 		return errors.ErrInternal.WithCausef("%s", err.Error())
 	}
@@ -56,7 +59,7 @@ func (driver *Driver) start(ctx context.Context, config *config.Config, out kube
 	return nil
 }
 
-func getJob(res resource.Resource, conf *config.Config) *job.Job {
+func (driver *Driver) getJob(res resource.Resource, conf *config.Config, kubeOut kubernetes.Output) *job.Job {
 	constantLabels := map[string]string{
 		labelOrchestrator: orchestratorLabelValue,
 		labelName:         res.Name,
@@ -111,6 +114,28 @@ func getJob(res resource.Resource, conf *config.Config) *job.Job {
 		// This label is to support `app` filter on pod for getting the logs until we find better solution
 		Labels: map[string]string{"app": conf.Name},
 	}
+
+	var tolerations []pod.Toleration
+	for _, t := range kubeOut.Tolerations[resourceName] {
+		tolerations = append(tolerations, pod.Toleration{
+			Key:      t.Key,
+			Value:    t.Value,
+			Effect:   t.Effect,
+			Operator: t.Operator,
+		})
+	}
+
+	if len(tolerations) > 0 {
+		p.Tolerations = tolerations
+	}
+
+	if aff, ok := kubeOut.Affinities[resourceName]; ok {
+		p.NodeAffinityMatchExpressions = &pod.NodeAffinityMatchExpressions{
+			RequiredDuringSchedulingIgnoredDuringExecution:  aff.RequiredDuringSchedulingIgnoredDuringExecution,
+			PreferredDuringSchedulingIgnoredDuringExecution: aff.PreferredDuringSchedulingIgnoredDuringExecution,
+		}
+	}
+
 	limit := backoffLimit
 	j := &job.Job{
 		Pod:         p,

@@ -10,13 +10,14 @@ import (
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/kube"
+	"github.com/goto/entropy/pkg/kube/pod"
 )
 
 type kubeDriver struct {
-	TolerationMode map[string]string                       `json:"toleration_mode"`
-	Tolerations    map[string][]Toleration                 `json:"tolerations"`
-	AffinityMode   map[string]string                       `json:"affinity_mode"`
-	Affinities     map[string]NodeAffinityMatchExpressions `json:"affinities"`
+	TolerationMode map[string]string                           `json:"toleration_mode"`
+	Tolerations    map[string][]pod.Toleration                 `json:"tolerations"`
+	AffinityMode   map[string]string                           `json:"affinity_mode"`
+	Affinities     map[string]pod.NodeAffinityMatchExpressions `json:"affinities"`
 }
 
 func (m *kubeDriver) Plan(ctx context.Context, res module.ExpandedResource,
