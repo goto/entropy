@@ -14,6 +14,7 @@ import (
 	"github.com/goto/entropy/modules/kubernetes"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/kube"
+	"github.com/goto/entropy/pkg/kube/pod"
 )
 
 func TestFirehoseDriver_Plan_Update(t *testing.T) {
@@ -65,7 +66,7 @@ func TestFirehoseDriver_Plan_Update(t *testing.T) {
 					"kube_cluster": {
 						Kind: "kubernetes",
 						Output: modules.MustJSON(kubernetes.Output{
-							Tolerations: map[string][]kubernetes.Toleration{},
+							Tolerations: map[string][]pod.Toleration{},
 						}),
 					},
 				},
@@ -175,7 +176,7 @@ func TestFirehoseDriver_Plan_Update(t *testing.T) {
 							Configs: kube.Config{
 								Namespace: "overriden-namespace",
 							},
-							Tolerations: map[string][]kubernetes.Toleration{},
+							Tolerations: map[string][]pod.Toleration{},
 						}),
 					},
 				},
@@ -281,7 +282,7 @@ func TestFirehoseDriver_Plan_Update(t *testing.T) {
 					"kube_cluster": {
 						Kind: "kubernetes",
 						Output: modules.MustJSON(kubernetes.Output{
-							Tolerations: map[string][]kubernetes.Toleration{},
+							Tolerations: map[string][]pod.Toleration{},
 						}),
 					},
 				},

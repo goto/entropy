@@ -3,10 +3,9 @@ package job
 import (
 	"strings"
 
+	"github.com/goto/entropy/pkg/kube/pod"
 	v1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/goto/entropy/pkg/kube/pod"
 )
 
 const WatchTimeout int64 = 60

@@ -16,6 +16,7 @@ import (
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/helm"
 	"github.com/goto/entropy/pkg/kube"
+	"github.com/goto/entropy/pkg/kube/pod"
 )
 
 const (
@@ -113,7 +114,7 @@ type driverConf struct {
 
 	// Tolerations represents the tolerations to be set for the deployment.
 	// The key in the map is the sink-type in upper case.
-	Tolerations map[string]kubernetes.Toleration `json:"tolerations"`
+	Tolerations map[string]pod.Toleration `json:"tolerations"`
 
 	EnvVariables map[string]string `json:"env_variables,omitempty"`
 
@@ -137,7 +138,7 @@ type driverConf struct {
 	RequestsAndLimits map[string]RequestsAndLimits `json:"requests_and_limits" validate:"required"`
 
 	// NodeAffinityMatchExpressions can be used to set node-affinity for the deployment.
-	NodeAffinityMatchExpressions kubernetes.NodeAffinityMatchExpressions `json:"node_affinity_match_expressions"`
+	NodeAffinityMatchExpressions pod.NodeAffinityMatchExpressions `json:"node_affinity_match_expressions"`
 
 	// delay between stopping a firehose and making an offset reset request
 	OffsetResetDelaySeconds int `json:"offset_reset_delay_seconds"`
@@ -272,8 +273,8 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 
 	mountSecrets := []map[string]any{}
 
-	requiredDuringSchedulingIgnoredDuringExecution := []kubernetes.Preference{}
-	preferredDuringSchedulingIgnoredDuringExecution := []kubernetes.WeightedPreference{}
+	requiredDuringSchedulingIgnoredDuringExecution := []pod.Preference{}
+	preferredDuringSchedulingIgnoredDuringExecution := []pod.WeightedPreference{}
 
 	var affinityKey = ""
 	affinityMode := kubeOut.AffinityMode[resourceName]

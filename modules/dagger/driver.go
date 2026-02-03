@@ -18,6 +18,7 @@ import (
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/helm"
 	"github.com/goto/entropy/pkg/kube"
+	"github.com/goto/entropy/pkg/kube/pod"
 )
 
 const (
@@ -107,7 +108,7 @@ type driverConf struct {
 	// timeout value for a kube deployment run
 	KubeDeployTimeout int `json:"kube_deploy_timeout_seconds"`
 
-	NodeAffinityMatchExpressions kubernetes.NodeAffinityMatchExpressions `json:"node_affinity_match_expressions"`
+	NodeAffinityMatchExpressions pod.NodeAffinityMatchExpressions `json:"node_affinity_match_expressions"`
 }
 
 type Output struct {
@@ -234,8 +235,8 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 		})
 	}
 
-	requiredDuringSchedulingIgnoredDuringExecution := []kubernetes.Preference{}
-	preferredDuringSchedulingIgnoredDuringExecution := []kubernetes.WeightedPreference{}
+	requiredDuringSchedulingIgnoredDuringExecution := []pod.Preference{}
+	preferredDuringSchedulingIgnoredDuringExecution := []pod.WeightedPreference{}
 
 	affinityKey := daggerTaintKey
 	if affinity, ok := kubeOut.Affinities[affinityKey]; ok {
