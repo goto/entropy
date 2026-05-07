@@ -54,7 +54,8 @@
             "REDIS",
             "BIGQUERY",
             "BIGTABLE",
-            "MAXCOMPUTE"
+            "MAXCOMPUTE",
+            "KAFKA"
           ]
         },
         "KAFKA_RECORD_PARSER_MODE": {
