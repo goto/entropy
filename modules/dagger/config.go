@@ -32,6 +32,13 @@ const (
 	keyFlinkParallelism = "FLINK_PARALLELISM"
 )
 
+// Proto-related constants
+const (
+	keyDisableAutoUpdateStencilVersion       = "DISABLE_AUTO_UPDATE_STENCIL_VERSION"
+	KeySchemaRegistryStencilURLs             = "SCHEMA_REGISTRY_STENCIL_URLS"
+	KeySchemaRegistryStencilCacheAutoRefresh = "SCHEMA_REGISTRY_STENCIL_CACHE_AUTO_REFRESH"
+)
+
 // Influx-related constants
 const (
 	keySinkInfluxURL             = "SINK_INFLUX_URL"
@@ -49,12 +56,13 @@ const (
 	SourceKafkaConsumerConfigAutoCommitEnable = "SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_COMMIT_ENABLE"
 	SourceKafkaConsumerConfigAutoOffsetReset  = "SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_OFFSET_RESET"
 	SourceKafkaConsumerConfigBootstrapServers = "SOURCE_KAFKA_CONSUMER_CONFIG_BOOTSTRAP_SERVERS"
-	keySinkKafkaBrokers                       = "SINK_KAFKA_BROKERS"
-	keySinkKafkaStream                        = "SINK_KAFKA_STREAM"
-	keySinkKafkaProtoMsg                      = "SINK_KAFKA_PROTO_MESSAGE"
-	keySinkKafkaTopic                         = "SINK_KAFKA_TOPIC"
-	keySinkKafkaKey                           = "SINK_KAFKA_PROTO_KEY"
-	keySinkKafkaLingerMs                      = "SINK_KAFKA_LINGER_MS"
+
+	keySinkKafkaBrokers  = "SINK_KAFKA_BROKERS"
+	keySinkKafkaStream   = "SINK_KAFKA_STREAM"
+	keySinkKafkaProtoMsg = "SINK_KAFKA_PROTO_MESSAGE"
+	keySinkKafkaTopic    = "SINK_KAFKA_TOPIC"
+	keySinkKafkaKey      = "SINK_KAFKA_PROTO_KEY"
+	keySinkKafkaLingerMs = "SINK_KAFKA_LINGER_MS"
 )
 
 // Sink types

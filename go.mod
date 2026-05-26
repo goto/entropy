@@ -25,6 +25,7 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.11.1
 	github.com/xeipuuv/gojsonschema v1.2.0
+	go.nhat.io/otelsql v0.16.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.63.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0
 	go.opentelemetry.io/otel v1.38.0
@@ -49,7 +50,6 @@ require (
 
 require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	go.nhat.io/otelsql v0.16.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 )
 
