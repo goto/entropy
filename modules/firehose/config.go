@@ -19,6 +19,17 @@ const (
 	confKeyKafkaTopic   = "SOURCE_KAFKA_TOPIC"
 )
 
+// Kafka sink env variable keys
+const (
+	sinkTypeKafka              = "KAFKA"
+	confSinkKafkaBrokers       = "SINK_KAFKA_BROKERS"
+	confSinkKafkaStream        = "SINK_KAFKA_STREAM"
+	confSinkKafkaTopic         = "SINK_KAFKA_TOPIC"
+	confSinkKafkaProtoMessage  = "SINK_KAFKA_PROTO_MESSAGE"
+	confSinkKafkaProtoKey      = "SINK_KAFKA_PROTO_KEY"
+	confSinkKafkaProtoMapping  = "SINK_KAFKA_PROTO_MAPPING"
+)
+
 const helmReleaseNameMaxLength = 53
 
 var (
@@ -133,6 +144,12 @@ func readConfig(r resource.Resource, confJSON json.RawMessage, dc driverConf) (*
 		cfg.Namespace = ns
 	}
 
+	if cfg.EnvVariables[confSinkType] == sinkTypeKafka {
+		if err := validateKafkaSinkEnvVars(cfg.EnvVariables); err != nil {
+			return nil, err
+		}
+	}
+
 	if cfg.Autoscaler != nil && cfg.Autoscaler.Enabled {
 		if err := cfg.Autoscaler.Spec.ReadConfig(cfg, dc); err != nil {
 			return nil, err
@@ -144,4 +161,20 @@ func readConfig(r resource.Resource, confJSON json.RawMessage, dc driverConf) (*
 	}
 
 	return &cfg, nil
+}
+
+func validateKafkaSinkEnvVars(envVars map[string]string) error {
+	required := []string{
+		confSinkKafkaBrokers,
+		confSinkKafkaTopic,
+		confSinkKafkaProtoMessage,
+		confSinkKafkaProtoKey,
+		confSinkKafkaProtoMapping,
+	}
+	for _, key := range required {
+		if envVars[key] == "" {
+			return errors.ErrInvalid.WithMsgf("env variable '%s' is required when SINK_TYPE=KAFKA", key)
+		}
+	}
+	return nil
 }
