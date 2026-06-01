@@ -288,11 +288,6 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 		cfg.EnvVariables[keySinkKafkaKey] = cfg.Sink.SinkKafka.SinkKafkaProtoKey
 		cfg.EnvVariables[keySinkKafkaLingerMs] = cfg.Sink.SinkKafka.SinkKafkaLingerMs
 	} else if cfg.SinkType == SinkTypeInflux {
-
-		fmt.Printf("User configuration :: %s\n", cfg.Sink.SinkInflux.SinkInfluxURL)
-		fmt.Printf("Flink Resource configuration :: %s\n", flinkOut.Influx.URL)
-		fmt.Printf("Driver config :: %s\n", dc.EnvVariables[keySinkInfluxURL])
-		fmt.Printf("User env variable :: %s\n", cfg.EnvVariables[keySinkInfluxURL])
 		if cfg.Sink.SinkInflux.SinkInfluxPassword == "" {
 			cfg.Sink.SinkInflux.SinkInfluxPassword = flinkOut.Influx.Password
 		}
@@ -380,10 +375,6 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 	//transformation #5
 	//TODO: build name from title as project-<title>-dagger
 	cfg.EnvVariables[keyFlinkJobID] = modules.BuildResourceName("dagger", r.Name, r.Project, math.MaxInt)
-
-	//transformation #7
-	cfg.EnvVariables[keySinkInfluxURL] = flinkOut.Influx.URL
-	cfg.EnvVariables[keySinkInfluxUsername] = flinkOut.Influx.Username
 
 	delete(cfg.EnvVariables, SourceKafkaConsumerConfigAutoOffsetReset)
 	delete(cfg.EnvVariables, SourceKafkaConsumerConfigAutoCommitEnable)
