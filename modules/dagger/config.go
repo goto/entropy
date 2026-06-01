@@ -288,6 +288,11 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 		cfg.EnvVariables[keySinkKafkaKey] = cfg.Sink.SinkKafka.SinkKafkaProtoKey
 		cfg.EnvVariables[keySinkKafkaLingerMs] = cfg.Sink.SinkKafka.SinkKafkaLingerMs
 	} else if cfg.SinkType == SinkTypeInflux {
+
+		fmt.Printf("User configuration :: %s\n", cfg.Sink.SinkInflux.SinkInfluxURL)
+		fmt.Printf("Flink Resource configuration :: %s\n", flinkOut.Influx.URL)
+		fmt.Printf("Driver config :: %s\n", dc.EnvVariables[keySinkInfluxURL])
+		fmt.Printf("User env variable :: %s\n", cfg.EnvVariables[keySinkInfluxURL])
 		if cfg.Sink.SinkInflux.SinkInfluxPassword == "" {
 			cfg.Sink.SinkInflux.SinkInfluxPassword = flinkOut.Influx.Password
 		}
