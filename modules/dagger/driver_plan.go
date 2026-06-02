@@ -13,15 +13,12 @@ import (
 	"github.com/goto/entropy/pkg/kafka"
 )
 
-const SourceKafkaConsumerAutoOffsetReset = "SOURCE_KAFKA_CONSUMER_CONFIG_AUTO_OFFSET_RESET"
 const (
-	JobStateRunning                          = "running"
-	JobStateSuspended                        = "suspended"
-	StateDeployed                            = "DEPLOYED"
-	StateUserStopped                         = "USER_STOPPED"
-	StateSystemStopped                       = "SYSTEM_STOPPED"
-	KeySchemaRegistryStencilCacheAutoRefresh = "SCHEMA_REGISTRY_STENCIL_CACHE_AUTO_REFRESH"
-	KeySchemaRegistryStencilURLs             = "SCHEMA_REGISTRY_STENCIL_URLS"
+	JobStateRunning    = "running"
+	JobStateSuspended  = "suspended"
+	StateDeployed      = "DEPLOYED"
+	StateUserStopped   = "USER_STOPPED"
+	StateSystemStopped = "SYSTEM_STOPPED"
 )
 
 func (dd *daggerDriver) Plan(_ context.Context, exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
@@ -119,7 +116,14 @@ func (dd *daggerDriver) planChange(exr module.ExpandedResource, act module.Actio
 
 		newConf.Resources = mergeResources(curConf.Resources, newConf.Resources)
 
+		existingSchemaRegistryStencilURLs := curConf.EnvVariables[KeySchemaRegistryStencilURLs]
+
 		curConf = newConf
+
+		// if auto update is disabled, we should not update the schema registry stencil URLs even if it's included in the update request
+		if curConf.EnvVariables[keyDisableAutoUpdateStencilVersion] != "" && curConf.EnvVariables[keyDisableAutoUpdateStencilVersion] == "true" {
+			curConf.EnvVariables[KeySchemaRegistryStencilURLs] = existingSchemaRegistryStencilURLs
+		}
 
 	case StopAction:
 		curConf.State = StateUserStopped
@@ -236,6 +240,11 @@ func mergeConsumerGroupId(currStreams, newStreams []Source) []Source {
 }
 
 func updateStencilSchemaRegistryURLsParams(curConf *Config, act module.ActionRequest) error {
+	// Skip updating schema registry stencil URLs if auto update is disabled, to avoid potential issues caused by user error.
+	if curConf.EnvVariables[keyDisableAutoUpdateStencilVersion] != "" && curConf.EnvVariables[keyDisableAutoUpdateStencilVersion] == "true" {
+		return nil
+	}
+
 	if curConf.EnvVariables[KeySchemaRegistryStencilCacheAutoRefresh] != "" && curConf.EnvVariables[KeySchemaRegistryStencilCacheAutoRefresh] == "false" {
 		schemaRegistryStencilURLsParams := SchemaRegistryStencilURLsParams{}
 		err := json.Unmarshal([]byte(act.Params), &schemaRegistryStencilURLsParams)
