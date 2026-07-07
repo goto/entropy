@@ -327,12 +327,12 @@
     "requests_and_limits": {
         "default": {
             "limits": {
-                "cpu": "dummy_cpu_limit",
-                "memory": "dummy_memory_limit"
+                "cpu": "500m",
+                "memory": "1Gi"
             },
             "requests": {
-                "cpu": "dummy_cpu_request",
-                "memory": "dummy_memory_request"
+                "cpu": "200m",
+                "memory": "512Mi"
             }
         }
     },

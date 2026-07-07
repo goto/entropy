@@ -83,6 +83,14 @@ var Module = module.Descriptor{
 			return nil, err
 		}
 
+		for sinkType, rl := range conf.RequestsAndLimits {
+			if err := rl.Validate(); err != nil {
+				return nil, errors.ErrInvalid.
+					WithMsgf("invalid requests_and_limits for sink type '%s'", sinkType).
+					WithCausef("%s", err.Error())
+			}
+		}
+
 		return &firehoseDriver{
 			conf:    conf,
 			timeNow: time.Now,

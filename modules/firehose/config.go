@@ -125,6 +125,10 @@ func readConfig(r resource.Resource, confJSON json.RawMessage, dc driverConf) (*
 	cfg.Limits = rl.Limits.merge(cfg.Limits)
 	cfg.Requests = rl.Requests.merge(cfg.Requests)
 
+	if err := (RequestsAndLimits{Limits: cfg.Limits, Requests: cfg.Requests}).Validate(); err != nil {
+		return nil, err
+	}
+
 	if cfg.Namespace == "" {
 		ns := dc.Namespace[defaultKey]
 		if override, ok := dc.Namespace[cfg.EnvVariables[confSinkType]]; ok {

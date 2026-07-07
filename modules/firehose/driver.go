@@ -9,6 +9,8 @@ import (
 	"text/template"
 	"time"
 
+	k8sresource "k8s.io/apimachinery/pkg/api/resource"
+
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/modules"
@@ -158,6 +160,50 @@ type Triggers map[string]Trigger
 type RequestsAndLimits struct {
 	Limits   UsageSpec `json:"limits,omitempty"`
 	Requests UsageSpec `json:"requests,omitempty"`
+}
+
+func parseUsageQuantity(field, value string) (k8sresource.Quantity, error) {
+	q, err := k8sresource.ParseQuantity(value)
+	if err != nil {
+		return k8sresource.Quantity{}, errors.ErrInvalid.
+			WithMsgf("invalid %s value: '%s'", field, value).
+			WithCausef("%s", err.Error())
+	}
+	if q.Sign() <= 0 {
+		return k8sresource.Quantity{}, errors.ErrInvalid.
+			WithMsgf("%s must be a positive value, got '%s'", field, value)
+	}
+	return q, nil
+}
+
+// Validate ensures the limits/requests are valid, positive Kubernetes resource
+// quantities and that requests do not exceed limits, for both cpu and memory.
+func (rl RequestsAndLimits) Validate() error {
+	limitsCPU, err := parseUsageQuantity("limits.cpu", rl.Limits.CPU)
+	if err != nil {
+		return err
+	}
+	limitsMemory, err := parseUsageQuantity("limits.memory", rl.Limits.Memory)
+	if err != nil {
+		return err
+	}
+	requestsCPU, err := parseUsageQuantity("requests.cpu", rl.Requests.CPU)
+	if err != nil {
+		return err
+	}
+	requestsMemory, err := parseUsageQuantity("requests.memory", rl.Requests.Memory)
+	if err != nil {
+		return err
+	}
+
+	if requestsCPU.Cmp(limitsCPU) > 0 {
+		return errors.ErrInvalid.WithMsgf("requests.cpu (%s) must not exceed limits.cpu (%s)", rl.Requests.CPU, rl.Limits.CPU)
+	}
+	if requestsMemory.Cmp(limitsMemory) > 0 {
+		return errors.ErrInvalid.WithMsgf("requests.memory (%s) must not exceed limits.memory (%s)", rl.Requests.Memory, rl.Limits.Memory)
+	}
+
+	return nil
 }
 
 type InitContainer struct {

@@ -698,3 +698,93 @@ func firehoseDriverConf() driverConf {
 		},
 	}
 }
+
+func Test_RequestsAndLimits_Validate(t *testing.T) {
+	t.Parallel()
+
+	valid := RequestsAndLimits{
+		Limits:   UsageSpec{CPU: "500m", Memory: "1Gi"},
+		Requests: UsageSpec{CPU: "200m", Memory: "512Mi"},
+	}
+
+	table := []struct {
+		title   string
+		rl      RequestsAndLimits
+		wantErr bool
+	}{
+		{
+			title:   "Valid_RequestsWithinLimits",
+			rl:      valid,
+			wantErr: false,
+		},
+		{
+			// Kubernetes treats a bare number as a valid quantity (bytes for
+			// memory, cores for cpu) - this must NOT be rejected as a format error.
+			title: "Valid_BareNumberSuffix",
+			rl: RequestsAndLimits{
+				Limits:   UsageSpec{CPU: "2", Memory: "2147483648"},
+				Requests: UsageSpec{CPU: "1", Memory: "1073741824"},
+			},
+			wantErr: false,
+		},
+		{
+			title: "Invalid_UnparseableCPU",
+			rl: RequestsAndLimits{
+				Limits:   UsageSpec{CPU: "abc", Memory: "1Gi"},
+				Requests: valid.Requests,
+			},
+			wantErr: true,
+		},
+		{
+			title: "Invalid_UnrecognizedSuffix",
+			rl: RequestsAndLimits{
+				Limits:   UsageSpec{CPU: "5xyz", Memory: "1Gi"},
+				Requests: valid.Requests,
+			},
+			wantErr: true,
+		},
+		{
+			title: "Invalid_ZeroLimit",
+			rl: RequestsAndLimits{
+				Limits:   UsageSpec{CPU: "0", Memory: "1Gi"},
+				Requests: valid.Requests,
+			},
+			wantErr: true,
+		},
+		{
+			title: "Invalid_NegativeRequest",
+			rl: RequestsAndLimits{
+				Limits:   valid.Limits,
+				Requests: UsageSpec{CPU: "-100m", Memory: "512Mi"},
+			},
+			wantErr: true,
+		},
+		{
+			title: "Invalid_RequestsCPUExceedsLimits",
+			rl: RequestsAndLimits{
+				Limits:   UsageSpec{CPU: "100m", Memory: "1Gi"},
+				Requests: UsageSpec{CPU: "200m", Memory: "512Mi"},
+			},
+			wantErr: true,
+		},
+		{
+			title: "Invalid_RequestsMemoryExceedsLimits",
+			rl: RequestsAndLimits{
+				Limits:   UsageSpec{CPU: "500m", Memory: "256Mi"},
+				Requests: UsageSpec{CPU: "200m", Memory: "512Mi"},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range table {
+		t.Run(tt.title, func(t *testing.T) {
+			err := tt.rl.Validate()
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

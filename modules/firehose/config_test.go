@@ -111,6 +111,30 @@ func Test_readConfig_limitsAndRequests(t *testing.T) {
 			assert.Error(t, err)
 		})
 	}
+
+	t.Run("Invalid_MergedRequestsExceedDriverDefaultLimits", func(t *testing.T) {
+		// driver default limits.cpu is 200m; requesting more than that
+		// without also raising the limit must be rejected.
+		conf := modules.MustJSON(map[string]any{
+			"replicas":      1,
+			"env_variables": baseEnvVariables(),
+			"requests":      map[string]any{"cpu": "500m"},
+		})
+
+		_, err := readConfig(res, conf, testDriverConf())
+		assert.Error(t, err)
+	})
+
+	t.Run("Invalid_MergedLimitsCPUIsZero", func(t *testing.T) {
+		conf := modules.MustJSON(map[string]any{
+			"replicas":      1,
+			"env_variables": baseEnvVariables(),
+			"limits":        map[string]any{"cpu": "0"},
+		})
+
+		_, err := readConfig(res, conf, testDriverConf())
+		assert.Error(t, err)
+	})
 }
 
 func Test_safeReleaseName(t *testing.T) {
