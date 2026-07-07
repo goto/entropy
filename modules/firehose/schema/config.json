@@ -19,6 +19,12 @@
     "deployment_id": {
       "type": "string"
     },
+    "limits": {
+      "$ref": "#/definitions/usageSpec"
+    },
+    "requests": {
+      "$ref": "#/definitions/usageSpec"
+    },
     "env_variables": {
       "type": "object",
       "additionalProperties": true,
@@ -83,6 +89,20 @@
           "type": "object"
         }
       }
+    }
+  },
+  "definitions": {
+    "usageSpec": {
+      "type": "object",
+      "properties": {
+        "cpu": {
+          "type": "string"
+        },
+        "memory": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }
