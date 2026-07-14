@@ -17,12 +17,23 @@ import (
 )
 
 func (st *Store) GetByURN(ctx context.Context, urn string) (*resource.Resource, error) {
+	return st.getByURN(ctx, urn, false)
+}
+
+// getByURNIncludingDeleted is used internally by the sync worker, which must
+// keep being able to fetch resources that have already been tombstoned so
+// in-flight teardown work can finish.
+func (st *Store) getByURNIncludingDeleted(ctx context.Context, urn string) (*resource.Resource, error) {
+	return st.getByURN(ctx, urn, true)
+}
+
+func (st *Store) getByURN(ctx context.Context, urn string, includeDeleted bool) (*resource.Resource, error) {
 	var rec resourceModel
 	var tags []string
 	deps := map[string]string{}
 
 	readResourceParts := func(ctx context.Context, tx *sqlx.Tx) error {
-		if err := readResourceRecord(ctx, tx, urn, &rec); err != nil {
+		if err := readResourceRecord(ctx, tx, urn, includeDeleted, &rec); err != nil {
 			return err
 		}
 
@@ -68,6 +79,8 @@ func (st *Store) GetByURN(ctx context.Context, urn string) (*resource.Resource, 
 		UpdatedAt: rec.UpdatedAt,
 		CreatedBy: rec.CreatedBy,
 		UpdatedBy: rec.UpdatedBy,
+		DeletedAt: rec.DeletedAt,
+		DeletedBy: rec.DeletedBy.String,
 		Spec: resource.Spec{
 			Configs:      rec.SpecConfigs,
 			Dependencies: deps,
@@ -141,6 +154,8 @@ func (st *Store) List(ctx context.Context, filter resource.Filter, withSpecConfi
 			UpdatedAt: *res.UpdatedAt,
 			UpdatedBy: res.UpdatedBy,
 			CreatedBy: res.CreatedBy,
+			DeletedAt: res.DeletedAt,
+			DeletedBy: res.DeletedBy.String,
 			Spec: resource.Spec{
 				Configs:      res.SpecConfigs,
 				Dependencies: deps,
@@ -268,6 +283,36 @@ func (st *Store) Update(ctx context.Context, r resource.Resource, saveRevision b
 	return nil
 }
 
+func (st *Store) SoftDelete(ctx context.Context, urn string, deletedBy string) error {
+	ctx = otelsql.WithCustomAttributes(
+		ctx,
+		[]attribute.KeyValue{
+			attribute.String("db.repository.method", "SoftDelete"),
+			attribute.String(string(semconv.DBSQLTableKey), tableResources),
+		}...,
+	)
+
+	res, err := sq.Update(tableResources).
+		Set("deleted_at", sq.Expr("current_timestamp")).
+		Set("deleted_by", deletedBy).
+		Where(sq.Eq{"urn": urn}).
+		Where(sq.Expr("deleted_at IS NULL")).
+		PlaceholderFormat(sq.Dollar).
+		RunWith(st.db).
+		ExecContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	} else if affected == 0 {
+		return errors.ErrNotFound.WithMsgf("resource with urn '%s' does not exist", urn)
+	}
+	return nil
+}
+
 func (st *Store) Delete(ctx context.Context, urn string, hooks ...resource.MutationHook) error {
 	deleteFn := func(ctx context.Context, tx *sqlx.Tx) error {
 		id, err := translateURNToID(ctx, tx, urn)
@@ -325,7 +370,7 @@ func (st *Store) SyncOne(ctx context.Context, scope map[string][]string, syncFn 
 		return err
 	}
 
-	cur, err := st.GetByURN(ctx, urn)
+	cur, err := st.getByURNIncludingDeleted(ctx, urn)
 	if err != nil {
 		return err
 	}

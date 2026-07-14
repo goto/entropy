@@ -703,6 +703,11 @@ func TestService_DeleteResource(t *testing.T) {
 					Return(nil).
 					Once()
 
+				resourceRepo.EXPECT().
+					SoftDelete(mock.Anything, "orn:entropy:mock:foo:bar", "test-user").
+					Return(nil).
+					Once()
+
 				return core.New(resourceRepo, mod, deadClock, defaultSyncBackoff, defaultMaxRetries, serviceName)
 			},
 			urn:     "orn:entropy:mock:foo:bar",
@@ -716,7 +721,7 @@ func TestService_DeleteResource(t *testing.T) {
 			t.Parallel()
 			svc := tt.setup(t)
 
-			err := svc.DeleteResource(context.Background(), tt.urn)
+			err := svc.DeleteResource(context.Background(), tt.urn, "test-user")
 			if tt.wantErr != nil {
 				assert.Error(t, err)
 				assert.True(t, errors.Is(err, tt.wantErr))
