@@ -861,6 +861,146 @@ func TestService_DeleteResource(t *testing.T) {
 	}
 }
 
+func TestService_SoftDeleteResource(t *testing.T) {
+	t.Parallel()
+
+	testErr := errors.New("failed")
+
+	tests := []struct {
+		name    string
+		setup   func(t *testing.T) *core.Service
+		urn     string
+		wantErr error
+	}{
+		{
+			name: "ResourceNotFound",
+			setup: func(t *testing.T) *core.Service {
+				t.Helper()
+				resourceRepo := &mocks.ResourceStore{}
+				resourceRepo.EXPECT().
+					GetByURN(mock.Anything, "orn:entropy:mock:foo:bar").
+					Return(nil, testErr).
+					Once()
+
+				return core.New(resourceRepo, nil, deadClock, defaultSyncBackoff, defaultMaxRetries, serviceName)
+			},
+			urn:     "orn:entropy:mock:foo:bar",
+			wantErr: testErr,
+		},
+		{
+			name: "UpdateFailure",
+			setup: func(t *testing.T) *core.Service {
+				t.Helper()
+				mod := &mocks.ModuleService{}
+				mod.EXPECT().
+					PlanAction(mock.Anything, mock.Anything, mock.Anything).
+					Return(&resource.Resource{
+						URN:       "orn:entropy:mock:project:child",
+						Kind:      "mock",
+						Name:      "child",
+						Project:   "project",
+						State:     resource.State{Status: resource.StatusPending},
+						CreatedAt: frozenTime,
+						UpdatedAt: frozenTime,
+					}, nil).Once()
+				mod.EXPECT().
+					GetOutput(mock.Anything, mock.Anything).
+					Return(nil, nil).
+					Once()
+
+				resourceRepo := &mocks.ResourceStore{}
+				resourceRepo.EXPECT().
+					GetByURN(mock.Anything, "orn:entropy:mock:foo:bar").
+					Return(&resource.Resource{
+						URN:       "orn:entropy:mock:project:child",
+						Kind:      "mock",
+						Name:      "child",
+						Project:   "project",
+						State:     resource.State{Status: resource.StatusCompleted},
+						CreatedAt: frozenTime,
+						UpdatedAt: frozenTime,
+					}, nil).
+					Once()
+
+				resourceRepo.EXPECT().
+					Update(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					Return(testErr).
+					Once()
+
+				return core.New(resourceRepo, mod, deadClock, defaultSyncBackoff, defaultMaxRetries, serviceName)
+			},
+			urn:     "orn:entropy:mock:foo:bar",
+			wantErr: errors.ErrInternal,
+		},
+		{
+			name: "Success",
+			setup: func(t *testing.T) *core.Service {
+				t.Helper()
+				mod := &mocks.ModuleService{}
+				mod.EXPECT().
+					PlanAction(mock.Anything, mock.Anything, mock.Anything).
+					Return(&resource.Resource{
+						URN:       "orn:entropy:mock:project:child",
+						Kind:      "mock",
+						Name:      "child",
+						Project:   "project",
+						State:     resource.State{Status: resource.StatusPending},
+						CreatedAt: frozenTime,
+						UpdatedAt: frozenTime,
+					}, nil).Once()
+				mod.EXPECT().
+					GetOutput(mock.Anything, mock.Anything).
+					Return(nil, nil).
+					Once()
+
+				resourceRepo := &mocks.ResourceStore{}
+				resourceRepo.EXPECT().
+					GetByURN(mock.Anything, "orn:entropy:mock:foo:bar").
+					Return(&resource.Resource{
+						URN:       "orn:entropy:mock:project:child",
+						Kind:      "mock",
+						Name:      "child",
+						Project:   "project",
+						State:     resource.State{Status: resource.StatusCompleted},
+						CreatedAt: frozenTime,
+						UpdatedAt: frozenTime,
+					}, nil).
+					Once()
+
+				resourceRepo.EXPECT().
+					Update(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					Return(nil).
+					Once()
+
+				resourceRepo.EXPECT().
+					SoftDelete(mock.Anything, "orn:entropy:mock:foo:bar", "test-user").
+					Return(nil).
+					Once()
+
+				return core.New(resourceRepo, mod, deadClock, defaultSyncBackoff, defaultMaxRetries, serviceName)
+			},
+			urn:     "orn:entropy:mock:foo:bar",
+			wantErr: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			svc := tt.setup(t)
+
+			err := svc.SoftDeleteResource(context.Background(), tt.urn, "test-user")
+			if tt.wantErr != nil {
+				assert.Error(t, err)
+				assert.True(t, errors.Is(err, tt.wantErr))
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestService_ApplyAction(t *testing.T) {
 	t.Parallel()
 

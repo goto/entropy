@@ -80,3 +80,10 @@ ALTER TABLE revision_tags
 DROP CONSTRAINT revision_tags_revision_id_fkey,
     ADD CONSTRAINT revision_tags_revision_id_fkey FOREIGN KEY (revision_id)
           REFERENCES revisions (id) ON DELETE CASCADE;
+
+ALTER TABLE resources
+    ADD COLUMN IF NOT EXISTS deleted_at timestamptz,
+    ADD COLUMN IF NOT EXISTS deleted_by TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_resources_project_kind_active ON resources (project, kind) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_resources_next_sync_active ON resources (state_next_sync) WHERE deleted_at IS NULL;

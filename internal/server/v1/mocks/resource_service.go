@@ -458,6 +458,54 @@ func (_c *ResourceService_ListResources_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
+// SoftDeleteResource provides a mock function with given fields: ctx, urn, deletedBy
+func (_m *ResourceService) SoftDeleteResource(ctx context.Context, urn string, deletedBy string) error {
+	ret := _m.Called(ctx, urn, deletedBy)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SoftDeleteResource")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = rf(ctx, urn, deletedBy)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// ResourceService_SoftDeleteResource_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SoftDeleteResource'
+type ResourceService_SoftDeleteResource_Call struct {
+	*mock.Call
+}
+
+// SoftDeleteResource is a helper method to define mock.On call
+//   - ctx context.Context
+//   - urn string
+//   - deletedBy string
+func (_e *ResourceService_Expecter) SoftDeleteResource(ctx interface{}, urn interface{}, deletedBy interface{}) *ResourceService_SoftDeleteResource_Call {
+	return &ResourceService_SoftDeleteResource_Call{Call: _e.mock.On("SoftDeleteResource", ctx, urn, deletedBy)}
+}
+
+func (_c *ResourceService_SoftDeleteResource_Call) Run(run func(ctx context.Context, urn string, deletedBy string)) *ResourceService_SoftDeleteResource_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *ResourceService_SoftDeleteResource_Call) Return(_a0 error) *ResourceService_SoftDeleteResource_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ResourceService_SoftDeleteResource_Call) RunAndReturn(run func(context.Context, string, string) error) *ResourceService_SoftDeleteResource_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateResource provides a mock function with given fields: ctx, urn, req, resourceOpts
 func (_m *ResourceService) UpdateResource(ctx context.Context, urn string, req resource.UpdateRequest, resourceOpts ...core.Options) (*resource.Resource, error) {
 	_va := make([]interface{}, len(resourceOpts))

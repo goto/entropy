@@ -25,6 +25,7 @@ type Store interface {
 	Update(ctx context.Context, r Resource, saveRevision bool, reason string, hooks ...MutationHook) error
 	UpdateLabels(ctx context.Context, r Resource, saveRevision bool, reason string, hooks ...MutationHook) error
 	Delete(ctx context.Context, urn string, hooks ...MutationHook) error
+	SoftDelete(ctx context.Context, urn string, deletedBy string) error
 
 	Revisions(ctx context.Context, selector RevisionsSelector) ([]Revision, error)
 
@@ -49,6 +50,8 @@ type Resource struct {
 	UpdatedAt time.Time         `json:"updated_at"`
 	UpdatedBy string            `json:"updated_by"`
 	CreatedBy string            `json:"created_by"`
+	DeletedAt *time.Time        `json:"deleted_at,omitempty"`
+	DeletedBy string            `json:"deleted_by,omitempty"`
 	Spec      Spec              `json:"spec"`
 	State     State             `json:"state"`
 }
