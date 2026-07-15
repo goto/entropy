@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -63,11 +64,12 @@ type Spec struct {
 }
 
 type Filter struct {
-	Kind     string            `json:"kind"`
-	Project  string            `json:"project"`
-	Labels   map[string]string `json:"labels"`
-	PageSize int32             `json:"page_size"`
-	PageNum  int32             `json:"page_num"`
+	Kind        string            `json:"kind"`
+	Project     string            `json:"project"`
+	Labels      map[string]string `json:"labels"`
+	StateOutput map[string]string `json:"state_output"` // dot-path into state.output -> exact value
+	PageSize    int32             `json:"page_size"`
+	PageNum     int32             `json:"page_num"`
 }
 
 type UpdateRequest struct {
@@ -139,7 +141,71 @@ func (f Filter) isMatch(r Resource) bool {
 		}
 	}
 
+	for path, want := range f.StateOutput {
+		if !matchStateOutput(r.State.Output, path, want) {
+			return false
+		}
+	}
+
 	return true
+}
+
+// matchStateOutput reports whether the nested state.output JSON has a leaf,
+// reachable by the dot-separated path, whose stringified value equals want.
+// When a node along the path is an array, the remaining path is applied to
+// each element and the match succeeds if any element matches.
+func matchStateOutput(raw json.RawMessage, path, want string) bool {
+	if len(raw) == 0 {
+		return false
+	}
+
+	var decoded interface{}
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		return false
+	}
+
+	return matchPath(decoded, strings.Split(path, "."), want)
+}
+
+func matchPath(node interface{}, segments []string, want string) bool {
+	// Descend into arrays: match if any element matches the remaining path.
+	if arr, ok := node.([]interface{}); ok {
+		for _, elem := range arr {
+			if matchPath(elem, segments, want) {
+				return true
+			}
+		}
+		return false
+	}
+
+	if len(segments) == 0 {
+		return leafEquals(node, want)
+	}
+
+	obj, ok := node.(map[string]interface{})
+	if !ok {
+		return false
+	}
+
+	next, ok := obj[segments[0]]
+	if !ok {
+		return false
+	}
+
+	return matchPath(next, segments[1:], want)
+}
+
+func leafEquals(node interface{}, want string) bool {
+	switch v := node.(type) {
+	case string:
+		return v == want
+	case bool:
+		return strconv.FormatBool(v) == want
+	case float64:
+		return strconv.FormatFloat(v, 'f', -1, 64) == want
+	default:
+		return false
+	}
 }
 
 // GenerateURN generates an Entropy URN address for the given combination.
