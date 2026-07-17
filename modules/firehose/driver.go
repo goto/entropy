@@ -239,8 +239,10 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		}
 
 		telegrafConf = Telegraf{
-			Enabled: true,
-			Image:   conf.Telegraf.Image,
+			Enabled:  true,
+			Image:    conf.Telegraf.Image,
+			Limits:   conf.Telegraf.Limits,
+			Requests: conf.Telegraf.Requests,
 			Config: TelegrafConf{
 				Output:               conf.Telegraf.Config.Output,
 				AdditionalGlobalTags: telegrafTags,
@@ -396,6 +398,16 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 			"config": map[string]any{
 				"output":                 telegrafConf.Config.Output,
 				"additional_global_tags": telegrafConf.Config.AdditionalGlobalTags,
+			},
+			"resources": map[string]any{
+				"limits": map[string]any{
+					"cpu":    telegrafConf.Limits.CPU,
+					"memory": telegrafConf.Limits.Memory,
+				},
+				"requests": map[string]any{
+					"cpu":    telegrafConf.Requests.CPU,
+					"memory": telegrafConf.Requests.Memory,
+				},
 			},
 		},
 		"mountSecrets": mountSecrets,

@@ -70,9 +70,11 @@ type Config struct {
 }
 
 type Telegraf struct {
-	Enabled bool           `json:"enabled,omitempty"`
-	Image   map[string]any `json:"image,omitempty"`
-	Config  TelegrafConf   `json:"config,omitempty"`
+	Enabled  bool           `json:"enabled,omitempty"`
+	Image    map[string]any `json:"image,omitempty"`
+	Config   TelegrafConf   `json:"config,omitempty"`
+	Limits   UsageSpec      `json:"limits,omitempty"`
+	Requests UsageSpec      `json:"requests,omitempty"`
 }
 
 type TelegrafConf struct {
