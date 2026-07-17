@@ -37,6 +37,17 @@ func (s State) IsTerminal() bool {
 // scheduled for deletion.
 func (s State) InDeletion() bool { return s.Status == StatusDeleted }
 
+// IsValidStatus returns true if status is one of the known, settable
+// resource statuses. StatusUnspecified is intentionally excluded.
+func IsValidStatus(status string) bool {
+	switch status {
+	case StatusPending, StatusError, StatusCompleted, StatusDeleted:
+		return true
+	default:
+		return false
+	}
+}
+
 func (s State) Clone() State {
 	output := make([]byte, len(s.Output))
 	copy(output, s.Output)

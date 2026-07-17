@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/goto/entropy/core/module"
@@ -68,7 +69,13 @@ func (svc *Service) ApplyAction(ctx context.Context, urn string, act module.Acti
 	res, err := svc.GetResource(ctx, urn)
 	if err != nil {
 		return nil, err
-	} else if !res.State.IsTerminal() {
+	}
+
+	if act.Name == module.ForceUpdateStatusAction {
+		return svc.forceUpdateStatus(ctx, *res, act)
+	}
+
+	if !res.State.IsTerminal() {
 		return nil, errors.ErrInvalid.
 			WithMsgf("cannot perform '%s' on resource in '%s'", act.Name, res.State.Status)
 	}
@@ -165,6 +172,38 @@ func (svc *Service) upsert(ctx context.Context, res resource.Resource, isCreate 
 	}
 
 	return nil
+}
+
+type forceUpdateStatusParams struct {
+	Status string `json:"status"`
+	Reason string `json:"reason"`
+}
+
+// forceUpdateStatus directly overwrites a resource's State.Status, bypassing
+// module Plan logic and the terminal-state guard in ApplyAction. It exists
+// as an operator escape hatch for resources stuck in a bad state.
+func (svc *Service) forceUpdateStatus(ctx context.Context, res resource.Resource, act module.ActionRequest) (*resource.Resource, error) {
+	var params forceUpdateStatusParams
+	if err := json.Unmarshal(act.Params, &params); err != nil {
+		return nil, errors.ErrInvalid.WithMsgf("invalid params for '%s'", module.ForceUpdateStatusAction)
+	}
+	if !resource.IsValidStatus(params.Status) {
+		return nil, errors.ErrInvalid.WithMsgf("'%s' is not a valid status", params.Status)
+	}
+
+	res.State.Status = params.Status
+	res.UpdatedAt = svc.clock()
+	res.UpdatedBy = act.UserID
+
+	reason := fmt.Sprintf("action:%s", module.ForceUpdateStatusAction)
+	if params.Reason != "" {
+		reason = fmt.Sprintf("%s (%s)", reason, params.Reason)
+	}
+
+	if err := svc.store.Update(ctx, res, true, reason); err != nil {
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
+	}
+	return &res, nil
 }
 
 func isCreate(actionName string) bool {

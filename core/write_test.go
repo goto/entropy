@@ -939,3 +939,145 @@ func TestService_ApplyAction(t *testing.T) {
 		})
 	}
 }
+
+func TestService_ForceUpdateResourceStatus(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		setup   func(t *testing.T) *core.Service
+		urn     string
+		action  module.ActionRequest
+		want    *resource.Resource
+		wantErr error
+	}{
+		{
+			name: "InvalidParams",
+			setup: func(t *testing.T) *core.Service {
+				t.Helper()
+				mod := &mocks.ModuleService{}
+				mod.EXPECT().
+					GetOutput(mock.Anything, mock.Anything).
+					Return(nil, nil).
+					Once()
+
+				resourceRepo := &mocks.ResourceStore{}
+				resourceRepo.EXPECT().
+					GetByURN(mock.Anything, "orn:entropy:mock:foo:bar").
+					Return(&resource.Resource{
+						URN:     "orn:entropy:mock:foo:bar",
+						Kind:    "mock",
+						Project: "foo",
+						Name:    "bar",
+						State:   resource.State{Status: resource.StatusPending},
+					}, nil).
+					Once()
+
+				return core.New(resourceRepo, mod, deadClock, defaultSyncBackoff, defaultMaxRetries, serviceName)
+			},
+			urn: "orn:entropy:mock:foo:bar",
+			action: module.ActionRequest{
+				Name:   module.ForceUpdateStatusAction,
+				Params: []byte(`not-json`),
+			},
+			want:    nil,
+			wantErr: errors.ErrInvalid,
+		},
+		{
+			name: "InvalidStatus",
+			setup: func(t *testing.T) *core.Service {
+				t.Helper()
+				mod := &mocks.ModuleService{}
+				mod.EXPECT().
+					GetOutput(mock.Anything, mock.Anything).
+					Return(nil, nil).
+					Once()
+
+				resourceRepo := &mocks.ResourceStore{}
+				resourceRepo.EXPECT().
+					GetByURN(mock.Anything, "orn:entropy:mock:foo:bar").
+					Return(&resource.Resource{
+						URN:     "orn:entropy:mock:foo:bar",
+						Kind:    "mock",
+						Project: "foo",
+						Name:    "bar",
+						State:   resource.State{Status: resource.StatusPending},
+					}, nil).
+					Once()
+
+				return core.New(resourceRepo, mod, deadClock, defaultSyncBackoff, defaultMaxRetries, serviceName)
+			},
+			urn: "orn:entropy:mock:foo:bar",
+			action: module.ActionRequest{
+				Name:   module.ForceUpdateStatusAction,
+				Params: []byte(`{"status": "STATUS_UNSPECIFIED"}`),
+			},
+			want:    nil,
+			wantErr: errors.ErrInvalid,
+		},
+		{
+			name: "SuccessOnNonTerminalResource",
+			setup: func(t *testing.T) *core.Service {
+				t.Helper()
+				mod := &mocks.ModuleService{}
+				mod.EXPECT().
+					GetOutput(mock.Anything, mock.Anything).
+					Return(nil, nil).
+					Once()
+
+				resourceRepo := &mocks.ResourceStore{}
+				resourceRepo.EXPECT().
+					GetByURN(mock.Anything, "orn:entropy:mock:foo:bar").
+					Return(&resource.Resource{
+						URN:       "orn:entropy:mock:foo:bar",
+						Kind:      "mock",
+						Project:   "foo",
+						Name:      "bar",
+						CreatedAt: frozenTime,
+						State:     resource.State{Status: resource.StatusPending},
+					}, nil).
+					Once()
+				resourceRepo.EXPECT().
+					Update(mock.Anything, mock.Anything, true, mock.Anything).
+					Return(nil).
+					Once()
+
+				return core.New(resourceRepo, mod, deadClock, defaultSyncBackoff, defaultMaxRetries, serviceName)
+			},
+			urn: "orn:entropy:mock:foo:bar",
+			action: module.ActionRequest{
+				Name:   module.ForceUpdateStatusAction,
+				Params: []byte(`{"status": "STATUS_ERROR", "reason": "manual override"}`),
+				UserID: "user-1",
+			},
+			want: &resource.Resource{
+				URN:       "orn:entropy:mock:foo:bar",
+				Kind:      "mock",
+				Project:   "foo",
+				Name:      "bar",
+				CreatedAt: frozenTime,
+				UpdatedAt: frozenTime,
+				UpdatedBy: "user-1",
+				State:     resource.State{Status: resource.StatusError},
+			},
+			wantErr: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			svc := tt.setup(t)
+
+			got, err := svc.ApplyAction(context.Background(), tt.urn, tt.action)
+			if tt.wantErr != nil {
+				assert.Error(t, err)
+				assert.True(t, errors.Is(err, tt.wantErr), cmp.Diff(tt.want, err))
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equalf(t, tt.want, got, cmp.Diff(tt.want, got))
+		})
+	}
+}

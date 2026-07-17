@@ -26,6 +26,16 @@ func TestState_InDeletion(t *testing.T) {
 	assert.True(t, state.InDeletion())
 }
 
+func TestIsValidStatus(t *testing.T) {
+	t.Parallel()
+	assert.True(t, resource.IsValidStatus(resource.StatusPending))
+	assert.True(t, resource.IsValidStatus(resource.StatusError))
+	assert.True(t, resource.IsValidStatus(resource.StatusCompleted))
+	assert.True(t, resource.IsValidStatus(resource.StatusDeleted))
+	assert.False(t, resource.IsValidStatus(resource.StatusUnspecified))
+	assert.False(t, resource.IsValidStatus("garbage"))
+}
+
 func TestState_Clone(t *testing.T) {
 	t.Parallel()
 	originalState := resource.State{

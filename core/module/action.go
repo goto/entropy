@@ -13,6 +13,11 @@ const (
 	CreateAction = "create"
 	UpdateAction = "update"
 	DeleteAction = "delete"
+
+	// ForceUpdateStatusAction is a reserved action, handled directly by
+	// core.Service.ApplyAction, that lets an operator force-override a
+	// resource's State.Status without going through module Plan logic.
+	ForceUpdateStatusAction = "force_update_status"
 )
 
 // ActionRequest describes an invocation of action on module.
