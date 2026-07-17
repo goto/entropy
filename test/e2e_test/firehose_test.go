@@ -29,10 +29,11 @@ type FirehoseTestSuite struct {
 	pool                 *dockertest.Pool
 	resource             *dockertest.Resource
 	kubeProvider         *cluster.Provider
+	testClusterName      string
 }
 
 func (s *FirehoseTestSuite) SetupTest() {
-	s.ctx, s.moduleClient, s.resourceClient, s.appConfig, s.pool, s.resource, s.kubeProvider, s.cancelModuleClient, s.cancelResourceClient, s.cancel = testbench.SetupTests(s.T(), true, true)
+	s.ctx, s.moduleClient, s.resourceClient, s.appConfig, s.pool, s.resource, s.kubeProvider, s.testClusterName, s.cancelModuleClient, s.cancelResourceClient, s.cancel = testbench.SetupTests(s.T(), true, true)
 
 	modules, err := s.moduleClient.ListModules(s.ctx, &entropyv1beta1.ListModulesRequest{})
 	s.Require().NoError(err)
@@ -70,7 +71,7 @@ func (s *FirehoseTestSuite) TestCreateFirehose() {
 		})
 		s.Require().NoError(err)
 
-		pods, err := getRunningFirehosePods(s.ctx, s.kubeProvider, testbench.TestClusterName, testbench.TestNamespace, map[string]string{}, 90*time.Second)
+		pods, err := getRunningFirehosePods(s.ctx, s.kubeProvider, s.testClusterName, testbench.TestNamespace, map[string]string{}, 90*time.Second)
 		s.Require().NoError(err)
 		s.Require().Equal(1, len(pods))
 
@@ -88,7 +89,7 @@ func (s *FirehoseTestSuite) TearDownTest() {
 		s.T().Fatal(err)
 	}
 
-	if err := s.kubeProvider.Delete(testbench.TestClusterName, ""); err != nil {
+	if err := s.kubeProvider.Delete(s.testClusterName, ""); err != nil {
 		s.T().Fatal(err)
 	}
 
