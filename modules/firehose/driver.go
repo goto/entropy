@@ -172,8 +172,8 @@ type InitContainer struct {
 }
 
 type UsageSpec struct {
-	CPU    string `json:"cpu,omitempty" validate:"required"`
-	Memory string `json:"memory,omitempty" validate:"required"`
+	CPU    string `json:"cpu,omitempty"`
+	Memory string `json:"memory,omitempty"`
 }
 
 type Output struct {
@@ -239,8 +239,10 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		}
 
 		telegrafConf = Telegraf{
-			Enabled: true,
-			Image:   conf.Telegraf.Image,
+			Enabled:  true,
+			Image:    conf.Telegraf.Image,
+			Limits:   conf.Telegraf.Limits,
+			Requests: conf.Telegraf.Requests,
 			Config: TelegrafConf{
 				Output:               conf.Telegraf.Config.Output,
 				AdditionalGlobalTags: telegrafTags,
@@ -390,14 +392,7 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 			"command": fd.conf.InitContainer.Command,
 			"args":    fd.conf.InitContainer.Args,
 		},
-		"telegraf": map[string]any{
-			"enabled": telegrafConf.Enabled,
-			"image":   telegrafConf.Image,
-			"config": map[string]any{
-				"output":                 telegrafConf.Config.Output,
-				"additional_global_tags": telegrafConf.Config.AdditionalGlobalTags,
-			},
-		},
+		"telegraf": buildTelegrafValues(telegrafConf),
 		"mountSecrets": mountSecrets,
 	}
 
@@ -517,4 +512,31 @@ func renderTplOfMapStringAny(labelsTpl map[string]any, labelsValues map[string]s
 	}
 
 	return labelsTpl, nil
+}
+
+func buildTelegrafValues(telegrafConf Telegraf) map[string]any {
+	values := map[string]any{
+		"enabled": telegrafConf.Enabled,
+		"image":   telegrafConf.Image,
+		"config": map[string]any{
+			"output":                 telegrafConf.Config.Output,
+			"additional_global_tags": telegrafConf.Config.AdditionalGlobalTags,
+		},
+	}
+
+	if telegrafConf.Limits.CPU != "" || telegrafConf.Limits.Memory != "" ||
+		telegrafConf.Requests.CPU != "" || telegrafConf.Requests.Memory != "" {
+		values["resources"] = map[string]any{
+			"limits": map[string]any{
+				"cpu":    telegrafConf.Limits.CPU,
+				"memory": telegrafConf.Limits.Memory,
+			},
+			"requests": map[string]any{
+				"cpu":    telegrafConf.Requests.CPU,
+				"memory": telegrafConf.Requests.Memory,
+			},
+		}
+	}
+
+	return values
 }

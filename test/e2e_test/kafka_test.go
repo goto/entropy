@@ -28,7 +28,7 @@ type KafkaTestSuite struct {
 }
 
 func (s *KafkaTestSuite) SetupTest() {
-	s.ctx, s.moduleClient, s.resourceClient, _, s.pool, s.resource, _, s.cancelModuleClient, s.cancelResourceClient, s.cancel = testbench.SetupTests(s.T(), false, false)
+	s.ctx, s.moduleClient, s.resourceClient, _, s.pool, s.resource, _, _, s.cancelModuleClient, s.cancelResourceClient, s.cancel = testbench.SetupTests(s.T(), false, false)
 }
 
 func (s *KafkaTestSuite) TestKafka() {

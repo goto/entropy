@@ -26,15 +26,14 @@ import (
 )
 
 var (
-	UserIDHeader    = "user-id"
-	zapLogger       = log.NewZap()
-	TestDataPath    = ""
-	TestClusterName = fmt.Sprintf("test-cluster-%s", uuid.New())
-	TestNamespace   = "default"
+	UserIDHeader  = "user-id"
+	zapLogger     = log.NewZap()
+	TestDataPath  = ""
+	TestNamespace = "default"
 )
 
 func SetupTests(t *testing.T, spawnWorkers bool, setupKube bool) (context.Context, entropyv1beta1.ModuleServiceClient, entropyv1beta1.ResourceServiceClient, *cli.Config,
-	*dockertest.Pool, *dockertest.Resource, *cluster.Provider, func(), func(), func()) {
+	*dockertest.Pool, *dockertest.Resource, *cluster.Provider, string, func(), func(), func()) {
 	t.Helper()
 
 	servicePort, err := getFreePort()
@@ -48,10 +47,12 @@ func SetupTests(t *testing.T, spawnWorkers bool, setupKube bool) (context.Contex
 	}
 
 	var provider *cluster.Provider
+	testClusterName := ""
 	if setupKube {
-		zapLogger.Info("creating cluster")
+		testClusterName = fmt.Sprintf("test-cluster-%s", uuid.New())
+		zapLogger.Info("creating cluster", "cluster_name", testClusterName)
 		provider = cluster.NewProvider()
-		err = provider.Create(TestClusterName)
+		err = provider.Create(testClusterName)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -127,13 +128,13 @@ func SetupTests(t *testing.T, spawnWorkers bool, setupKube bool) (context.Contex
 	}
 
 	if setupKube {
-		err = BootstrapKubernetesResource(ctx, resourceClient, provider, TestDataPath)
+		err = BootstrapKubernetesResource(ctx, resourceClient, provider, TestDataPath, testClusterName)
 		if err != nil {
 			t.Fatal()
 		}
 	}
 
-	return ctx, moduleClient, resourceClient, appConfig, pool, postgres.GetResource(), provider, cancelModuleClient, cancelResourceClient, cancel
+	return ctx, moduleClient, resourceClient, appConfig, pool, postgres.GetResource(), provider, testClusterName, cancelModuleClient, cancelResourceClient, cancel
 }
 
 func SetupWorker(t *testing.T, ctx context.Context, appConfig cli.Config) {
