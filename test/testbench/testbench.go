@@ -128,7 +128,7 @@ func SetupTests(t *testing.T, spawnWorkers bool, setupKube bool) (context.Contex
 	}
 
 	if setupKube {
-		err = BootstrapKubernetesResource(ctx, resourceClient, provider, TestDataPath)
+		err = BootstrapKubernetesResource(ctx, resourceClient, provider, TestDataPath, testClusterName)
 		if err != nil {
 			t.Fatal()
 		}
