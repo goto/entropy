@@ -24,7 +24,8 @@
         "enum": [
           "INFLUX",
           "KAFKA",
-          "BIGQUERY"
+          "BIGQUERY",
+          "CSV"
         ]
       },
       "env_variables": {
@@ -39,7 +40,8 @@
             "enum": [
               "INFLUX",
               "KAFKA",
-              "BIGQUERY"
+              "BIGQUERY",
+              "CSV"
             ]
           }
         }

@@ -62,6 +62,7 @@ const (
 	SinkTypeInflux   = "INFLUX"
 	SinkTypeKafka    = "KAFKA"
 	SinkTypeBigquery = "BIGQUERY"
+	SinkTypeCSV      = "CSV"
 )
 
 // BigQuery-related constants
@@ -85,6 +86,17 @@ const (
 	keySinkConnectorSchemaProtoMessageClass = "SINK_CONNECTOR_SCHEMA_PROTO_MESSAGE_CLASS"
 	keySinkKafkaProduceLargeMessageEnable   = "SINK_KAFKA_PRODUCE_LARGE_MESSAGE_ENABLE"
 	keySinkBigqueryCredentialPath           = "SINK_BIGQUERY_CREDENTIAL_PATH"
+)
+
+// CSV-related constants
+const (
+	keySinkCsvBasePath            = "SINK_CSV_BASE_PATH"
+	keySinkCsvWriteMode           = "SINK_CSV_WRITE_MODE"
+	keySinkCsvPartitionDateFormat = "SINK_CSV_PARTITION_DATE_FORMAT"
+	keySinkCsvPartitionTimezone   = "SINK_CSV_PARTITION_TIMEZONE"
+	keySinkCsvDelimiter           = "SINK_CSV_DELIMITER"
+	keySinkCsvWriteHeader         = "SINK_CSV_WRITE_HEADER"
+	keySinkCsvFilenamePrefix      = "SINK_CSV_FILENAME_PREFIX"
 )
 
 var (
@@ -213,10 +225,21 @@ type SinkBigquery struct {
 	SinkConnectorSchemaProtoMessageClass string `json:"SINK_CONNECTOR_SCHEMA_PROTO_MESSAGE_CLASS"`
 }
 
+type SinkCSV struct {
+	SinkCsvBasePath            string `json:"SINK_CSV_BASE_PATH,omitempty"`
+	SinkCsvWriteMode           string `json:"SINK_CSV_WRITE_MODE,omitempty"`
+	SinkCsvPartitionDateFormat string `json:"SINK_CSV_PARTITION_DATE_FORMAT,omitempty"`
+	SinkCsvPartitionTimezone   string `json:"SINK_CSV_PARTITION_TIMEZONE,omitempty"`
+	SinkCsvDelimiter           string `json:"SINK_CSV_DELIMITER,omitempty"`
+	SinkCsvWriteHeader         string `json:"SINK_CSV_WRITE_HEADER,omitempty"`
+	SinkCsvFilenamePrefix      string `json:"SINK_CSV_FILENAME_PREFIX,omitempty"`
+}
+
 type Sink struct {
 	SinkKafka
 	SinkInflux
 	SinkBigquery
+	SinkCSV
 }
 
 func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverConf) (*Config, error) {
@@ -362,6 +385,31 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 		cfg.EnvVariables[keySinkBigqueryTableClusteringKeys] = cfg.Sink.SinkBigquery.SinkBigqueryTableClusteringKeys
 		cfg.EnvVariables[keySinkErrorTypesForFailure] = cfg.Sink.SinkBigquery.SinkErrorTypesForFailure
 		cfg.EnvVariables[keySinkConnectorSchemaProtoMessageClass] = cfg.Sink.SinkBigquery.SinkConnectorSchemaProtoMessageClass
+	} else if cfg.SinkType == SinkTypeCSV {
+		if cfg.Sink.SinkCSV.SinkCsvBasePath == "" {
+			return nil, errors.ErrInvalid.WithMsgf("SINK_CSV_BASE_PATH is required for csv sink")
+		}
+		cfg.EnvVariables[keySinkCsvBasePath] = cfg.Sink.SinkCSV.SinkCsvBasePath
+
+		// optional keys: emit only when provided so the Dagger app's own defaults apply otherwise
+		if v := cfg.Sink.SinkCSV.SinkCsvWriteMode; v != "" {
+			cfg.EnvVariables[keySinkCsvWriteMode] = v
+		}
+		if v := cfg.Sink.SinkCSV.SinkCsvPartitionDateFormat; v != "" {
+			cfg.EnvVariables[keySinkCsvPartitionDateFormat] = v
+		}
+		if v := cfg.Sink.SinkCSV.SinkCsvPartitionTimezone; v != "" {
+			cfg.EnvVariables[keySinkCsvPartitionTimezone] = v
+		}
+		if v := cfg.Sink.SinkCSV.SinkCsvDelimiter; v != "" {
+			cfg.EnvVariables[keySinkCsvDelimiter] = v
+		}
+		if v := cfg.Sink.SinkCSV.SinkCsvWriteHeader; v != "" {
+			cfg.EnvVariables[keySinkCsvWriteHeader] = v
+		}
+		if v := cfg.Sink.SinkCSV.SinkCsvFilenamePrefix; v != "" {
+			cfg.EnvVariables[keySinkCsvFilenamePrefix] = v
+		}
 	}
 
 	//transformation #2
