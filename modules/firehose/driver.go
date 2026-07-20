@@ -172,8 +172,8 @@ type InitContainer struct {
 }
 
 type UsageSpec struct {
-	CPU    string `json:"cpu,omitempty" validate:"required"`
-	Memory string `json:"memory,omitempty" validate:"required"`
+	CPU    string `json:"cpu,omitempty"`
+	Memory string `json:"memory,omitempty"`
 }
 
 type Output struct {
