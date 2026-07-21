@@ -133,6 +133,26 @@ type Config struct {
 	DaggerK8sHAURL      string            `json:"dagger_k8s_ha_url,omitempty"`
 	CloudProvider       string            `json:"cloud_provider,omitempty"`
 	FSOSSEndpoint       string            `json:"fs_oss_endpoint,omitempty"`
+
+	// TaskManagerServiceAccount, when set, becomes
+	// kubernetes.taskmanager.service-account in the FlinkDeployment. It is the
+	// OAuth identity aegis-kafka authorized for ACL streams. Empty preserves the
+	// default (serviceAccount: flink) behaviour.
+	TaskManagerServiceAccount string `json:"taskmanager_service_account,omitempty"`
+
+	// ACLMounts is the set of secret / projected-token volume mounts required by
+	// ACL (SASL_SSL/OAUTHBEARER, SSL, PLAIN/SCRAM) source streams. It is
+
+	ACLMounts []ACLMount `json:"acl_mounts,omitempty"`
+}
+
+// ACLMount describes a single podTemplate volume+mount for an ACL stream.
+// Type is either "secret" or "projected".
+type ACLMount struct {
+	Name       string `json:"name"`
+	MountPath  string `json:"mountPath"`
+	SecretName string `json:"secretName,omitempty"`
+	Type       string `json:"type"`
 }
 
 type ChartValues struct {
@@ -154,6 +174,10 @@ type SourceKafka struct {
 	SourceKafkaName                           string `json:"SOURCE_KAFKA_NAME"`
 	SourceKafkaConsumerConfigGroupID          string `json:"SOURCE_KAFKA_CONSUMER_CONFIG_GROUP_ID"`
 	SourceKafkaConsumerConfigBootstrapServers string `json:"SOURCE_KAFKA_CONSUMER_CONFIG_BOOTSTRAP_SERVERS"`
+	// SourceKafkaConsumerAdditionalConfigurations carries the SASL/SSL consumer
+	// config for ACL streams. It is nil for plaintext streams so that STREAMS
+	// stays byte-for-byte identical to the pre-ACL behaviour.
+	SourceKafkaConsumerAdditionalConfigurations map[string]interface{} `json:"SOURCE_KAFKA_CONSUMER_ADDITIONAL_CONFIGURATIONS,omitempty"`
 }
 
 type SourceParquet struct {

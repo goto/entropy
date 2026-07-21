@@ -48,6 +48,57 @@
         },
         "organization": {
             "type": "string"
+        },
+        "security": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+                "security_protocol": {
+                    "type": "string"
+                },
+                "sasl_mechanism": {
+                    "type": "string"
+                },
+                "ssl_protocol": {
+                    "type": "string"
+                },
+                "ssl_truststore_type": {
+                    "type": "string"
+                },
+                "ssl_cert_secret": {
+                    "type": "string"
+                },
+                "ssl_truststore_password_details": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "properties": {
+                        "secretName": {
+                            "type": "string"
+                        },
+                        "key": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "acls": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "properties": {
+                            "secretName": {
+                                "type": "string"
+                            },
+                            "usernameKey": {
+                                "type": "string"
+                            },
+                            "passwordKey": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

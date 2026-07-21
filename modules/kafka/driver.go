@@ -21,6 +21,10 @@ type kafkaDriver struct {
 
 type Output struct {
 	URL string `json:"url"`
+	// Security exposes the stream's optional security profile so dependents
+	// (e.g. the dagger module) can build the SASL/SSL consumer config. Nil for
+	// plaintext streams.
+	Security *SecurityProfile `json:"security,omitempty"`
 }
 
 type driverConf struct {
@@ -47,7 +51,8 @@ func (m *kafkaDriver) Plan(ctx context.Context, res module.ExpandedResource,
 	res.Resource.State = resource.State{
 		Status: resource.StatusCompleted,
 		Output: modules.MustJSON(Output{
-			URL: mapUrl(cfg),
+			URL:      mapUrl(cfg),
+			Security: cfg.Security,
 		}),
 	}
 
@@ -69,7 +74,8 @@ func (m *kafkaDriver) Output(ctx context.Context, res module.ExpandedResource) (
 	}
 
 	return modules.MustJSON(Output{
-		URL: mapUrl(cfg),
+		URL:      mapUrl(cfg),
+		Security: cfg.Security,
 	}), nil
 }
 

@@ -43,6 +43,12 @@ func (dd *daggerDriver) planCreate(exr module.ExpandedResource, act module.Actio
 		return nil, err
 	}
 
+	// resolve ACL source streams (bootstrap servers + SASL/SSL consumer config +
+	// podTemplate mounts). No-op for plaintext sources.
+	if err := applyStreamSecurity(exr, conf); err != nil {
+		return nil, errors.ErrInvalid.WithMsgf("failed to resolve source streams").WithCausef("%s", err.Error())
+	}
+
 	//transformation #12
 	conf.EnvVariables[keyStreams] = string(mustMarshalJSON(conf.Source))
 	conf.EnvVariables[keyFlinkParallelism] = fmt.Sprint(conf.Replicas)
@@ -97,6 +103,9 @@ func (dd *daggerDriver) planChange(exr module.ExpandedResource, act module.Actio
 		}
 
 		newConf.Source = mergeConsumerGroupId(curConf.Source, newConf.Source)
+		if err := applyStreamSecurity(exr, newConf); err != nil {
+			return nil, errors.ErrInvalid.WithMsgf("failed to resolve source streams").WithCausef("%s", err.Error())
+		}
 		newConf.EnvVariables[keyStreams] = string(mustMarshalJSON(newConf.Source))
 		newConf.EnvVariables[keyFlinkParallelism] = fmt.Sprint(newConf.Replicas)
 
@@ -185,6 +194,9 @@ func (dd *daggerDriver) planReset(exr module.ExpandedResource, act module.Action
 	curConf.ResetOffset = resetValue
 
 	curConf.Source = dd.consumerReset(context.Background(), *curConf, resetValue)
+	if err := applyStreamSecurity(exr, curConf); err != nil {
+		return nil, errors.ErrInvalid.WithMsgf("failed to resolve source streams").WithCausef("%s", err.Error())
+	}
 	curConf.EnvVariables[keyStreams] = string(mustMarshalJSON(curConf.Source))
 
 	curConf.ChartValues = &dd.conf.ChartValues
