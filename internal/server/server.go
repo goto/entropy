@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -25,6 +26,7 @@ import (
 	modulesv1 "github.com/goto/entropy/internal/server/v1/modules"
 	resourcesv1 "github.com/goto/entropy/internal/server/v1/resources"
 	"github.com/goto/entropy/pkg/common"
+	"github.com/goto/entropy/pkg/masking"
 	"github.com/goto/entropy/pkg/version"
 	commonv1 "github.com/goto/entropy/proto/gotocompany/common/v1"
 	entropyv1beta1 "github.com/goto/entropy/proto/gotocompany/entropy/v1beta1"
@@ -41,8 +43,14 @@ const (
 // Serve initialises all the gRPC+HTTP API routes, starts listening for requests at addr, and blocks until server exits.
 // Server exits gracefully when context is cancelled.
 func Serve(ctx context.Context, httpAddr, grpcAddr string, nrApp *newrelic.Application,
-	resourceSvc resourcesv1.ResourceService, moduleSvc modulesv1.ModuleService,
+	resourceSvc resourcesv1.ResourceService, moduleSvc modulesv1.ModuleService, maskKey []byte,
 ) error {
+	var masker *masking.Masker
+	if len(maskKey) > 0 {
+		masker = masking.New(maskKey)
+	}
+	modConfigLookup := moduleConfigLookup{svc: moduleSvc}
+
 	grpcOpts := []grpc.ServerOption{
 		grpc.UnaryInterceptor(grpcmiddleware.ChainUnaryServer(
 			grpcrecovery.UnaryServerInterceptor(),
@@ -75,14 +83,14 @@ func Serve(ctx context.Context, httpAddr, grpcAddr string, nrApp *newrelic.Appli
 	}
 
 	resourceServiceRPC := &resourcesv1.LogWrapper{
-		ResourceServiceServer: resourcesv1.NewAPIServer(resourceSvc),
+		ResourceServiceServer: resourcesv1.NewAPIServer(resourceSvc, masker, modConfigLookup),
 	}
 	grpcServer.RegisterService(&entropyv1beta1.ResourceService_ServiceDesc, resourceServiceRPC)
 	if err := entropyv1beta1.RegisterResourceServiceHandlerServer(ctx, rpcHTTPGateway, resourceServiceRPC); err != nil {
 		return err
 	}
 
-	moduleServiceRPC := modulesv1.NewAPIServer(moduleSvc)
+	moduleServiceRPC := modulesv1.NewAPIServer(moduleSvc, masker)
 	grpcServer.RegisterService(&entropyv1beta1.ModuleService_ServiceDesc, moduleServiceRPC)
 	if err := entropyv1beta1.RegisterModuleServiceHandlerServer(ctx, rpcHTTPGateway, moduleServiceRPC); err != nil {
 		return err
@@ -117,4 +125,18 @@ func Serve(ctx context.Context, httpAddr, grpcAddr string, nrApp *newrelic.Appli
 		mux.WithGRPCTarget(grpcAddr, grpcServer),
 		mux.WithGracePeriod(gracePeriod),
 	)
+}
+
+// moduleConfigLookup adapts the module service to masking.ModuleConfigLookup,
+// exposing only a module's raw configs by URN.
+type moduleConfigLookup struct {
+	svc modulesv1.ModuleService
+}
+
+func (l moduleConfigLookup) ModuleConfigs(ctx context.Context, moduleURN string) (json.RawMessage, error) {
+	mod, err := l.svc.GetModule(ctx, moduleURN)
+	if err != nil {
+		return nil, err
+	}
+	return mod.Configs, nil
 }

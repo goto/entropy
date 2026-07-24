@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/newrelic/go-agent/v3/newrelic"
@@ -21,6 +22,7 @@ import (
 	"github.com/goto/entropy/modules/kafka"
 	"github.com/goto/entropy/modules/kubernetes"
 	"github.com/goto/entropy/pkg/logger"
+	"github.com/goto/entropy/pkg/masking"
 	"github.com/goto/entropy/pkg/telemetry"
 )
 
@@ -71,7 +73,19 @@ func StartServer(ctx context.Context, cfg Config, migrate, spawnWorker bool) err
 
 	store := setupStorage(cfg.PGConnStr, cfg.Syncer, cfg.Service)
 	moduleService := module.NewService(setupRegistry(), store)
-	resourceService := core.New(store, moduleService, time.Now, cfg.Syncer.SyncBackoffInterval, cfg.Syncer.MaxRetries, cfg.Telemetry.ServiceName)
+
+	// TODO: Securely load this value from an environment variable or secrets
+	// vault. Do not hardcode. When empty, masking is disabled (pass-through).
+	var maskKey []byte
+	if cfg.Masking.HMACKey != "" {
+		maskKey = []byte(cfg.Masking.HMACKey)
+	}
+	var coreOpts []core.Option
+	if len(maskKey) > 0 {
+		coreOpts = append(coreOpts, core.WithMasking(masking.New(maskKey), moduleConfigLookup{svc: moduleService}))
+	}
+
+	resourceService := core.New(store, moduleService, time.Now, cfg.Syncer.SyncBackoffInterval, cfg.Syncer.MaxRetries, cfg.Telemetry.ServiceName, coreOpts...)
 
 	if migrate {
 		if migrateErr := runMigrations(ctx, cfg); migrateErr != nil {
@@ -91,8 +105,22 @@ func StartServer(ctx context.Context, cfg Config, migrate, spawnWorker bool) err
 
 	return entropyserver.Serve(ctx,
 		cfg.Service.httpAddr(), cfg.Service.grpcAddr(),
-		nrApp, resourceService, moduleService,
+		nrApp, resourceService, moduleService, maskKey,
 	)
+}
+
+// moduleConfigLookup adapts the module service to masking.ModuleConfigLookup
+// for the write-path merge.
+type moduleConfigLookup struct {
+	svc *module.Service
+}
+
+func (l moduleConfigLookup) ModuleConfigs(ctx context.Context, moduleURN string) (json.RawMessage, error) {
+	mod, err := l.svc.GetModule(ctx, moduleURN)
+	if err != nil {
+		return nil, err
+	}
+	return mod.Configs, nil
 }
 
 func setupRegistry() module.Registry {

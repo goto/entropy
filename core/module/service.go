@@ -7,6 +7,7 @@ import (
 
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/pkg/errors"
+	"github.com/goto/entropy/pkg/masking"
 )
 
 type Service struct {
@@ -101,6 +102,10 @@ func (mr *Service) CreateModule(ctx context.Context, mod Module) (*Module, error
 		return nil, err
 	}
 
+	if err := validateSensitiveConfig(mod.Configs); err != nil {
+		return nil, err
+	}
+
 	if _, _, err := mr.registry.GetDriver(ctx, mod); err != nil {
 		if errors.Is(err, errors.ErrNotFound) {
 			return nil, errors.ErrInvalid.WithMsgf("driver not found for kind '%s'", mod.Name)
@@ -131,6 +136,10 @@ func (mr *Service) UpdateModule(ctx context.Context, urn string, newConfigs json
 	mod.Configs = newConfigs
 
 	if err := mod.sanitise(false); err != nil {
+		return nil, err
+	}
+
+	if err := validateSensitiveConfig(mod.Configs); err != nil {
 		return nil, err
 	}
 
@@ -176,4 +185,18 @@ func (mr *Service) initDriver(ctx context.Context, mod Module) (Driver, Descript
 
 func generateURN(name, project string) string {
 	return fmt.Sprintf("orn:entropy:module:%s:%s", project, name)
+}
+
+// validateSensitiveConfig checks that the sensitive_config path list (if
+// present) in a module's configs is syntactically well-formed. Paths are not
+// required to resolve against any current config.
+func validateSensitiveConfig(configs json.RawMessage) error {
+	paths, err := masking.PathsFromConfigs(configs)
+	if err != nil {
+		return errors.ErrInvalid.WithMsgf("invalid 'sensitive_config'").WithCausef("%s", err.Error())
+	}
+	if err := masking.ValidatePaths(paths); err != nil {
+		return errors.ErrInvalid.WithMsgf("invalid 'sensitive_config'").WithCausef("%s", err.Error())
+	}
+	return nil
 }

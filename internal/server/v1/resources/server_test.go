@@ -47,7 +47,7 @@ func TestAPIServer_CreateResource(t *testing.T) {
 				resourceService.EXPECT().
 					CreateResource(mock.Anything, mock.Anything, core.WithDryRun(false)).
 					Return(nil, errors.ErrConflict).Once()
-				return NewAPIServer(resourceService)
+				return NewAPIServer(resourceService, nil, nil)
 			},
 			request: &entropyv1beta1.CreateResourceRequest{
 				Resource: &entropyv1beta1.Resource{
@@ -72,7 +72,7 @@ func TestAPIServer_CreateResource(t *testing.T) {
 					CreateResource(mock.Anything, mock.Anything, core.WithDryRun(false)).
 					Return(nil, errors.ErrInvalid).Once()
 
-				return NewAPIServer(resourceService)
+				return NewAPIServer(resourceService, nil, nil)
 			},
 			request: &entropyv1beta1.CreateResourceRequest{
 				Resource: &entropyv1beta1.Resource{
@@ -111,7 +111,7 @@ func TestAPIServer_CreateResource(t *testing.T) {
 						},
 					}, nil).Once()
 
-				return NewAPIServer(resourceService)
+				return NewAPIServer(resourceService, nil, nil)
 			},
 			request: &entropyv1beta1.CreateResourceRequest{
 				Resource: &entropyv1beta1.Resource{
@@ -192,7 +192,7 @@ func TestAPIServer_UpdateResource(t *testing.T) {
 				resourceService.EXPECT().
 					UpdateResource(mock.Anything, "p-testdata-gl-testname-log", mock.Anything, core.WithDryRun(false)).
 					Return(nil, errors.ErrNotFound).Once()
-				return NewAPIServer(resourceService)
+				return NewAPIServer(resourceService, nil, nil)
 			},
 			request: &entropyv1beta1.UpdateResourceRequest{
 				Urn: "p-testdata-gl-testname-log",
@@ -211,7 +211,7 @@ func TestAPIServer_UpdateResource(t *testing.T) {
 				resourceService.EXPECT().
 					UpdateResource(mock.Anything, "p-testdata-gl-testname-log", mock.Anything, core.WithDryRun(false)).
 					Return(nil, errors.ErrInvalid).Once()
-				return NewAPIServer(resourceService)
+				return NewAPIServer(resourceService, nil, nil)
 			},
 			request: &entropyv1beta1.UpdateResourceRequest{
 				Urn: "p-testdata-gl-testname-log",
@@ -245,7 +245,7 @@ func TestAPIServer_UpdateResource(t *testing.T) {
 						},
 					}, nil).Once()
 
-				return NewAPIServer(resourceService)
+				return NewAPIServer(resourceService, nil, nil)
 			},
 			request: &entropyv1beta1.UpdateResourceRequest{
 				Urn: "p-testdata-gl-testname-log",
@@ -321,7 +321,7 @@ func TestAPIServer_GetResource(t *testing.T) {
 				resourceService.EXPECT().
 					GetResource(mock.Anything, "p-testdata-gl-testname-log").
 					Return(nil, errors.ErrNotFound).Once()
-				return NewAPIServer(resourceService)
+				return NewAPIServer(resourceService, nil, nil)
 			},
 			request: &entropyv1beta1.GetResourceRequest{
 				Urn: "p-testdata-gl-testname-log",
@@ -352,7 +352,7 @@ func TestAPIServer_GetResource(t *testing.T) {
 						},
 					}, nil).Once()
 
-				return NewAPIServer(resourceService)
+				return NewAPIServer(resourceService, nil, nil)
 			},
 			request: &entropyv1beta1.GetResourceRequest{
 				Urn: "p-testdata-gl-testname-log",
@@ -422,7 +422,7 @@ func TestAPIServer_ListResources(t *testing.T) {
 					ListResources(mock.Anything, mock.Anything, false).
 					Return(resource.PagedResource{}, errors.New("failed")).Once()
 
-				return NewAPIServer(resourceService)
+				return NewAPIServer(resourceService, nil, nil)
 			},
 			request: &entropyv1beta1.ListResourcesRequest{
 				Project: "p-testdata-gl",
@@ -459,7 +459,7 @@ func TestAPIServer_ListResources(t *testing.T) {
 						},
 					}, nil).Once()
 
-				return NewAPIServer(resourceService)
+				return NewAPIServer(resourceService, nil, nil)
 			},
 			request: &entropyv1beta1.ListResourcesRequest{
 				Project: "p-testdata-gl",
@@ -526,7 +526,7 @@ func TestAPIServer_DeleteResource(t *testing.T) {
 				resourceService.EXPECT().
 					DeleteResource(mock.Anything, "p-testdata-gl-testname-log").
 					Return(errors.ErrNotFound).Once()
-				return NewAPIServer(resourceService)
+				return NewAPIServer(resourceService, nil, nil)
 			},
 			request: &entropyv1beta1.DeleteResourceRequest{
 				Urn: "p-testdata-gl-testname-log",
@@ -543,7 +543,7 @@ func TestAPIServer_DeleteResource(t *testing.T) {
 					DeleteResource(mock.Anything, "p-testdata-gl-testname-log").
 					Return(nil).Once()
 
-				return NewAPIServer(resourceService)
+				return NewAPIServer(resourceService, nil, nil)
 			},
 			request: &entropyv1beta1.DeleteResourceRequest{
 				Urn: "p-testdata-gl-testname-log",
@@ -596,7 +596,7 @@ func TestAPIServer_ApplyAction(t *testing.T) {
 				resourceService.EXPECT().
 					ApplyAction(mock.Anything, "p-testdata-gl-testname-log", mock.Anything, core.WithDryRun(false)).
 					Return(nil, errors.ErrNotFound).Once()
-				return NewAPIServer(resourceService)
+				return NewAPIServer(resourceService, nil, nil)
 			},
 			request: &entropyv1beta1.ApplyActionRequest{
 				Urn:    "p-testdata-gl-testname-log",
@@ -628,7 +628,7 @@ func TestAPIServer_ApplyAction(t *testing.T) {
 						},
 					}, nil).Once()
 
-				return NewAPIServer(resourceService)
+				return NewAPIServer(resourceService, nil, nil)
 			},
 			request: &entropyv1beta1.ApplyActionRequest{
 				Urn:    "p-testdata-gl-testname-log",

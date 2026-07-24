@@ -2,11 +2,13 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/pkg/errors"
+	"github.com/goto/entropy/pkg/masking"
 	"github.com/goto/entropy/pkg/telemetry"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
@@ -89,6 +91,14 @@ func (svc *Service) execAction(ctx context.Context, res resource.Resource, act m
 		zap.String("last_err", res.State.SyncResult.LastError),
 	)
 
+	// Restore stored secrets for any sensitive field the client resent in
+	// masked form, so drivers see the real (restored) value during Plan.
+	restoredParams, err := svc.restoreSensitive(ctx, res, act.Params, isCreate(act.Name))
+	if err != nil {
+		return nil, err
+	}
+	act.Params = restoredParams
+
 	planned, err := svc.planChange(ctx, res, act)
 	if err != nil {
 		return nil, err
@@ -124,6 +134,41 @@ func (svc *Service) execAction(ctx context.Context, res resource.Resource, act m
 	pendingCounter.Add(context.Background(), 1, metric.WithAttributes(attribute.String("resource", res.URN)))
 
 	return planned, nil
+}
+
+// restoreSensitive applies the write-path merge: sensitive fields resent in
+// masked form are replaced with the currently-stored value. It is a no-op when
+// masking is disabled, no sensitive paths are configured, or the module cannot
+// be resolved (fail-open). A masked value with nothing to restore (e.g. on
+// Create) is rejected as invalid input.
+func (svc *Service) restoreSensitive(ctx context.Context, res resource.Resource, incoming json.RawMessage, isCreate bool) (json.RawMessage, error) {
+	if svc.masker == nil || len(incoming) == 0 {
+		return incoming, nil
+	}
+
+	paths, err := masking.NewProvider(svc.moduleConfig).PathsFor(ctx, res.Kind, res.Project)
+	if err != nil {
+		zap.L().Warn("masking: could not resolve sensitive_config on write; passing configs through",
+			zap.String("resource_urn", res.URN), zap.Error(err))
+		return incoming, nil
+	}
+	if len(paths) == 0 {
+		return incoming, nil
+	}
+
+	var stored json.RawMessage
+	if !isCreate {
+		stored = res.Spec.Configs
+	}
+
+	out, err := svc.masker.Restore(incoming, stored, paths)
+	if err != nil {
+		if errors.Is(err, masking.ErrMaskedWithoutStored) {
+			return nil, errors.ErrInvalid.WithMsgf("a masked sensitive value cannot be set directly; provide the real value")
+		}
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
+	}
+	return out, nil
 }
 
 func (svc *Service) planChange(ctx context.Context, res resource.Resource, act module.ActionRequest) (*resource.Resource, error) {
