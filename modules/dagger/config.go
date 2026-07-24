@@ -12,6 +12,7 @@ import (
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/modules"
 	"github.com/goto/entropy/modules/flink"
+	kafkamod "github.com/goto/entropy/modules/kafka"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/validator"
 )
@@ -141,9 +142,13 @@ type Config struct {
 	TaskManagerServiceAccount string `json:"taskmanager_service_account,omitempty"`
 
 	// ACLMounts is the set of secret / projected-token volume mounts required by
-	// ACL (SASL_SSL/OAUTHBEARER, SSL, PLAIN/SCRAM) source streams. It is
-
+	// ACL (SASL_SSL/OAUTHBEARER, SSL, PLAIN/SCRAM) source streams. It is computed
+	// by applyStreamSecurity from the resolved stream security profiles.
 	ACLMounts []ACLMount `json:"acl_mounts,omitempty"`
+
+	// StreamSecurity holds the kafka security profile fetched by Dex, keyed by
+	// SOURCE_KAFKA_NAME. References only — never inline secret values.
+	StreamSecurity map[string]*kafkamod.SecurityProfile `json:"stream_security,omitempty"`
 }
 
 // ACLMount describes a single podTemplate volume+mount for an ACL stream.

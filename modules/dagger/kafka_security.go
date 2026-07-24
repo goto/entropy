@@ -253,24 +253,28 @@ func buildACLMounts(sources []Source, profiles map[string]*kafkamod.SecurityProf
 	return mounts
 }
 
-// applyStreamSecurity resolves each source's kafka dependency, injects the
+// applyStreamSecurity resolves each source's kafka security profile, injects the
 // SASL/SSL consumer config into STREAMS, and records the podTemplate ACL mounts
 // on conf. It is a no-op (leaves conf untouched) for daggers whose sources have
-// no kafka dependency or no security profile.
+// no security profile.
 func applyStreamSecurity(exr module.ExpandedResource, conf *Config) error {
 	profiles, err := resolveSourceStreams(exr, conf)
-	if err != nil {
+	if err != nil { 
 		return err
 	}
 	conf.ACLMounts = buildACLMounts(conf.Source, profiles, conf.Team)
 	return nil
 }
 
-// resolveSourceStreams looks up each source's kind=kafka dependency (keyed by
+// resolveSourceStreams resolves each source's kafka security profile (keyed by
 // SOURCE_KAFKA_NAME), populates bootstrap servers and the SASL/SSL consumer
 // config, and returns the resolved security profiles keyed by stream name.
-// Sources without a matching kafka dependency (or with a plaintext profile) are
-// left untouched — preserving byte-for-byte identical STREAMS for ODS daggers.
+//
+// The profile is resolved inline-first: conf.StreamSecurity (populated by Dex on
+// the product path) takes precedence; otherwise it falls back to the kafka
+// dependency Output (raw-Entropy path). Sources with neither a profile nor a
+// plaintext profile are left untouched — preserving byte-for-byte identical
+// STREAMS for ODS daggers.
 func resolveSourceStreams(exr module.ExpandedResource, conf *Config) (map[string]*kafkamod.SecurityProfile, error) {
 	profiles := map[string]*kafkamod.SecurityProfile{}
 
@@ -280,28 +284,34 @@ func resolveSourceStreams(exr module.ExpandedResource, conf *Config) (map[string
 			continue
 		}
 
-		dep, ok := exr.Dependencies[streamName]
-		if !ok || dep.Kind != kafkamod.Module.Kind {
+		// inline profile (Dex product path) wins over the kafka dependency.
+		security := conf.StreamSecurity[streamName]
+
+		// fall back to the kafka dependency (raw-Entropy path): it also carries
+		// the resolved broker URL for bootstrap servers.
+		if security == nil {
+			if dep, ok := exr.Dependencies[streamName]; ok && dep.Kind == kafkamod.Module.Kind {
+				var out kafkamod.Output
+				if err := json.Unmarshal(dep.Output, &out); err != nil {
+					return nil, fmt.Errorf("invalid kafka dependency output for stream %q: %w", streamName, err)
+				}
+
+				// bootstrap servers: explicit source value wins, else resolved URL.
+				if conf.Source[i].SourceKafkaConsumerConfigBootstrapServers == "" && out.URL != "" {
+					conf.Source[i].SourceKafkaConsumerConfigBootstrapServers = out.URL
+				}
+
+				security = out.Security
+			}
+		}
+
+		if !hasSecurityProfile(security) {
 			continue
 		}
 
-		var out kafkamod.Output
-		if err := json.Unmarshal(dep.Output, &out); err != nil {
-			return nil, fmt.Errorf("invalid kafka dependency output for stream %q: %w", streamName, err)
-		}
-
-		// bootstrap servers: explicit source value wins, else resolved URL.
-		if conf.Source[i].SourceKafkaConsumerConfigBootstrapServers == "" && out.URL != "" {
-			conf.Source[i].SourceKafkaConsumerConfigBootstrapServers = out.URL
-		}
-
-		if !hasSecurityProfile(out.Security) {
-			continue
-		}
-
-		profiles[streamName] = out.Security
+		profiles[streamName] = security
 		conf.Source[i].SourceKafkaConsumerAdditionalConfigurations =
-			buildAdditionalConfigurations(streamName, out.Security, conf.Team)
+			buildAdditionalConfigurations(streamName, security, conf.Team)
 	}
 
 	return profiles, nil

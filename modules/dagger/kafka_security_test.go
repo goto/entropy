@@ -122,7 +122,47 @@ func TestResolveSourceStreams_PopulatesBootstrapAndConfig(t *testing.T) {
 	assert.Contains(t, profiles, pocStream)
 }
 
-// R2: an explicit bootstrap servers value on the source is not overwritten.
+// Product (Dex) path: the security profile is inlined on conf.StreamSecurity
+// with NO kafka dependency present, and the ACL wiring still fires.
+func TestResolveSourceStreams_InlineProfile_NoDependency(t *testing.T) {
+	conf := &Config{
+		Team:   "team-x",
+		Source: []Source{{SourceKafka: SourceKafka{SourceKafkaName: pocStream}}},
+		StreamSecurity: map[string]*kafkamod.SecurityProfile{
+			pocStream: oauthbearerProfile(),
+		},
+	}
+
+	profiles, err := resolveSourceStreams(module.ExpandedResource{}, conf)
+	require.NoError(t, err)
+
+	require.Contains(t, profiles, pocStream)
+	assert.NotNil(t, conf.Source[0].SourceKafkaConsumerAdditionalConfigurations)
+	assert.Equal(t,
+		"SASL_SSL",
+		conf.Source[0].SourceKafkaConsumerAdditionalConfigurations[keyConsumerSecurityProtocol])
+
+	mounts := buildACLMounts(conf.Source, profiles, conf.Team)
+	require.Len(t, mounts, 3)
+}
+
+// a full plaintext dagger (no stream_security, no kafka dependency) produces
+// no additional configs, no mounts, and no taskmanager SA — STREAMS/podTemplate
+// unchanged.
+func TestApplyStreamSecurity_PlaintextDagger_NoWiring(t *testing.T) {
+	conf := &Config{
+		Team:   "team-x",
+		Source: []Source{{SourceKafka: SourceKafka{SourceKafkaName: pocStream}}},
+	}
+
+	require.NoError(t, applyStreamSecurity(module.ExpandedResource{}, conf))
+
+	assert.Nil(t, conf.Source[0].SourceKafkaConsumerAdditionalConfigurations)
+	assert.Nil(t, conf.ACLMounts)
+	assert.Empty(t, conf.TaskManagerServiceAccount)
+}
+
+// an explicit bootstrap servers value on the source is not overwritten.
 func TestResolveSourceStreams_KeepsExplicitBootstrap(t *testing.T) {
 	out := kafkamod.Output{URL: "resolved:9098"}
 	outJSON, err := json.Marshal(out)
