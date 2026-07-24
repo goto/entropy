@@ -7,14 +7,12 @@ import (
 )
 
 // Restore implements the write-path merge. For each sensitive path whose
-// incoming leaf is in masked form (`****-` prefix), the leaf is replaced with
-// the value currently stored at the same path; a non-masked incoming leaf is
-// kept as-is (new or rotated secret). The incoming fingerprint is never
-// validated for staleness, so a Get -> edit -> Update round-trip can never
-// clobber a real secret.
-//
-// If an incoming leaf is masked but stored has no value at that path,
-// ErrMaskedWithoutStored is returned (e.g. a masked value on Create).
+// incoming leaf is in masked form (`****-` prefix): if a value is currently
+// stored at the same path, the leaf is replaced with it; if nothing is stored
+// there (e.g. a masked value on Create, or a new field), the leaf is dropped.
+// A non-masked incoming leaf is kept as-is (new or rotated secret). The
+// incoming fingerprint is never validated for staleness, so a Get -> edit ->
+// Update round-trip can never clobber a real secret.
 func (m *Masker) Restore(incoming, stored json.RawMessage, paths []string) (json.RawMessage, error) {
 	if len(incoming) == 0 || len(paths) == 0 {
 		return incoming, nil
@@ -33,9 +31,7 @@ func (m *Masker) Restore(incoming, stored json.RawMessage, paths []string) (json
 	}
 
 	for _, path := range paths {
-		if err := restorePath(incomingTree, storedTree, strings.Split(path, ".")); err != nil {
-			return nil, err
-		}
+		restorePath(incomingTree, storedTree, strings.Split(path, "."))
 	}
 
 	out, err := json.Marshal(incomingTree)
@@ -46,10 +42,10 @@ func (m *Masker) Restore(incoming, stored json.RawMessage, paths []string) (json
 }
 
 // restorePath walks segments in lockstep across the incoming and stored trees.
-func restorePath(incoming, stored any, segments []string) error {
+func restorePath(incoming, stored any, segments []string) {
 	incObj, ok := incoming.(map[string]any)
 	if !ok {
-		return nil
+		return
 	}
 	stoObj, _ := stored.(map[string]any) // nil-safe: lookups just miss.
 
@@ -58,41 +54,38 @@ func restorePath(incoming, stored any, segments []string) error {
 
 	if seg == wildcard {
 		for k, v := range incObj {
-			if !isMasked(v) {
-				continue
-			}
-			if err := restoreLeaf(incObj, stoObj, k); err != nil {
-				return err
+			if isMasked(v) {
+				restoreLeaf(incObj, stoObj, k)
 			}
 		}
-		return nil
+		return
 	}
 
 	if last {
 		if isMasked(incObj[seg]) {
-			return restoreLeaf(incObj, stoObj, seg)
+			restoreLeaf(incObj, stoObj, seg)
 		}
-		return nil
+		return
 	}
 
 	child, exists := incObj[seg]
 	if !exists {
-		return nil
+		return
 	}
 	var storedChild any
 	if stoObj != nil {
 		storedChild = stoObj[seg]
 	}
-	return restorePath(child, storedChild, segments[1:])
+	restorePath(child, storedChild, segments[1:])
 }
 
-// restoreLeaf replaces incObj[key] with the stored value, or errors if there is
-// no stored value to restore.
-func restoreLeaf(incObj, stoObj map[string]any, key string) error {
+// restoreLeaf replaces incObj[key] with the stored value, or drops the key if
+// there is no stored value to restore.
+func restoreLeaf(incObj, stoObj map[string]any, key string) {
 	storedVal, ok := stoObj[key]
 	if !ok {
-		return ErrMaskedWithoutStored
+		delete(incObj, key)
+		return
 	}
 	incObj[key] = storedVal
-	return nil
 }

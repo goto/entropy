@@ -8,27 +8,19 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/goto/entropy/core/resource"
-	"github.com/goto/entropy/pkg/masking"
 )
-
-// newMaskProvider builds a request-scoped provider that caches module lookups.
-// Callers that map more than one resource in a request (List, GetRevisions)
-// should create one provider and reuse it.
-func (server APIServer) newMaskProvider() *masking.Provider {
-	return masking.NewProvider(server.moduleConfig)
-}
 
 // maskResource returns a copy of res with sensitive spec.configs and
 // state.output values replaced by their masked fingerprints. It never mutates
 // the source resource (Mask returns fresh bytes). Masking is fail-open: on any
 // resolution or masking error the original value is kept and a warning logged,
 // so an orphaned resource (no module) is returned unmasked.
-func (server APIServer) maskResource(ctx context.Context, provider *masking.Provider, res resource.Resource) resource.Resource {
+func (server APIServer) maskResource(ctx context.Context, res resource.Resource) resource.Resource {
 	if server.masker == nil {
 		return res
 	}
 
-	paths, err := provider.PathsFor(ctx, res.Kind, res.Project)
+	paths, err := server.configCache.PathsFor(ctx, res.Kind, res.Project)
 	if err != nil {
 		zap.L().Warn("masking: could not resolve sensitive_config; returning unmasked",
 			zap.String("resource_urn", res.URN), zap.Error(err))
@@ -45,7 +37,7 @@ func (server APIServer) maskResource(ctx context.Context, provider *masking.Prov
 
 // maskRevision masks a revision's spec.configs. A revision carries only its URN
 // and spec, so the kind/project are recovered from the resource URN.
-func (server APIServer) maskRevision(ctx context.Context, provider *masking.Provider, rev resource.Revision) resource.Revision {
+func (server APIServer) maskRevision(ctx context.Context, rev resource.Revision) resource.Revision {
 	if server.masker == nil {
 		return rev
 	}
@@ -57,7 +49,7 @@ func (server APIServer) maskRevision(ctx context.Context, provider *masking.Prov
 		return rev
 	}
 
-	paths, err := provider.PathsFor(ctx, kind, project)
+	paths, err := server.configCache.PathsFor(ctx, kind, project)
 	if err != nil {
 		zap.L().Warn("masking: could not resolve sensitive_config; returning unmasked",
 			zap.String("revision_urn", rev.URN), zap.Error(err))

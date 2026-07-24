@@ -80,9 +80,15 @@ func StartServer(ctx context.Context, cfg Config, migrate, spawnWorker bool) err
 	if cfg.Masking.HMACKey != "" {
 		maskKey = []byte(cfg.Masking.HMACKey)
 	}
+
+	var masker *masking.Masker
+	var configCache *masking.ConfigCache
 	var coreOpts []core.Option
 	if len(maskKey) > 0 {
-		coreOpts = append(coreOpts, core.WithMasking(masking.New(maskKey), moduleConfigLookup{svc: moduleService}))
+		masker = masking.New(maskKey)
+		configCache = masking.NewConfigCache(moduleConfigLookup{svc: moduleService})
+		moduleService.SetMaskingCache(configCache)
+		coreOpts = append(coreOpts, core.WithMasking(masker, configCache))
 	}
 
 	resourceService := core.New(store, moduleService, time.Now, cfg.Syncer.SyncBackoffInterval, cfg.Syncer.MaxRetries, cfg.Telemetry.ServiceName, coreOpts...)
@@ -105,7 +111,7 @@ func StartServer(ctx context.Context, cfg Config, migrate, spawnWorker bool) err
 
 	return entropyserver.Serve(ctx,
 		cfg.Service.httpAddr(), cfg.Service.grpcAddr(),
-		nrApp, resourceService, moduleService, maskKey,
+		nrApp, resourceService, moduleService, masker, configCache,
 	)
 }
 

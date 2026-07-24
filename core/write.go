@@ -8,7 +8,6 @@ import (
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/pkg/errors"
-	"github.com/goto/entropy/pkg/masking"
 	"github.com/goto/entropy/pkg/telemetry"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
@@ -137,16 +136,16 @@ func (svc *Service) execAction(ctx context.Context, res resource.Resource, act m
 }
 
 // restoreSensitive applies the write-path merge: sensitive fields resent in
-// masked form are replaced with the currently-stored value. It is a no-op when
-// masking is disabled, no sensitive paths are configured, or the module cannot
-// be resolved (fail-open). A masked value with nothing to restore (e.g. on
-// Create) is rejected as invalid input.
+// masked form are replaced with the currently-stored value, or dropped if
+// nothing is stored yet (e.g. on Create). It is a no-op when masking is
+// disabled, no sensitive paths are configured, or the module cannot be
+// resolved (fail-open).
 func (svc *Service) restoreSensitive(ctx context.Context, res resource.Resource, incoming json.RawMessage, isCreate bool) (json.RawMessage, error) {
 	if svc.masker == nil || len(incoming) == 0 {
 		return incoming, nil
 	}
 
-	paths, err := masking.NewProvider(svc.moduleConfig).PathsFor(ctx, res.Kind, res.Project)
+	paths, err := svc.configCache.PathsFor(ctx, res.Kind, res.Project)
 	if err != nil {
 		zap.L().Warn("masking: could not resolve sensitive_config on write; passing configs through",
 			zap.String("resource_urn", res.URN), zap.Error(err))
@@ -163,9 +162,6 @@ func (svc *Service) restoreSensitive(ctx context.Context, res resource.Resource,
 
 	out, err := svc.masker.Restore(incoming, stored, paths)
 	if err != nil {
-		if errors.Is(err, masking.ErrMaskedWithoutStored) {
-			return nil, errors.ErrInvalid.WithMsgf("a masked sensitive value cannot be set directly; provide the real value")
-		}
 		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 	return out, nil

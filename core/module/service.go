@@ -13,6 +13,8 @@ import (
 type Service struct {
 	store    Store
 	registry Registry
+
+	configCache *masking.ConfigCache
 }
 
 func NewService(registry Registry, store Store) *Service {
@@ -20,6 +22,13 @@ func NewService(registry Registry, store Store) *Service {
 		store:    store,
 		registry: registry,
 	}
+}
+
+// SetMaskingCache wires the masking config cache into the service so that
+// module Create/Update can evict stale sensitive_config entries. When unset,
+// eviction is a no-op (masking disabled).
+func (mr *Service) SetMaskingCache(cache *masking.ConfigCache) {
+	mr.configCache = cache
 }
 
 func (mr *Service) PlanAction(ctx context.Context, res ExpandedResource, act ActionRequest) (*resource.Resource, error) {
@@ -125,6 +134,10 @@ func (mr *Service) CreateModule(ctx context.Context, mod Module) (*Module, error
 		}
 		return nil, err
 	}
+
+	if mr.configCache != nil {
+		mr.configCache.Evict(mod.Name, mod.Project)
+	}
 	return &mod, nil
 }
 
@@ -145,6 +158,10 @@ func (mr *Service) UpdateModule(ctx context.Context, urn string, newConfigs json
 
 	if err := mr.store.UpdateModule(ctx, *mod); err != nil {
 		return nil, err
+	}
+
+	if mr.configCache != nil {
+		mr.configCache.Evict(mod.Name, mod.Project)
 	}
 	return mod, nil
 }

@@ -12,7 +12,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -27,11 +26,6 @@ const fingerprintLen = 8
 // wildcard matches every direct child key of the node named by the preceding
 // path segment.
 const wildcard = "*"
-
-// ErrMaskedWithoutStored is returned by Restore when an incoming value is in
-// masked form but there is no stored value to restore for that path. Callers
-// (e.g. resource Create) surface this as invalid input.
-var ErrMaskedWithoutStored = errors.New("masking: incoming value is masked but no stored value exists")
 
 // Masker holds the HMAC key used to fingerprint sensitive values.
 type Masker struct {

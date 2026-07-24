@@ -2,7 +2,6 @@ package masking
 
 import (
 	"encoding/json"
-	"errors"
 	"testing"
 )
 
@@ -178,13 +177,20 @@ func TestRestore_RealInputPersists(t *testing.T) {
 	}
 }
 
-func TestRestore_CreateRejectsMaskedInput(t *testing.T) {
+func TestRestore_CreateDropsMaskedInput(t *testing.T) {
 	m := New(testKey)
-	incoming := json.RawMessage(`{"env_variables":{"PWD":"****-abcd1234"}}`)
+	incoming := json.RawMessage(`{"env_variables":{"PWD":"****-abcd1234","REPLICAS":"5"}}`)
 
-	_, err := m.Restore(incoming, nil, []string{"env_variables.PWD"})
-	if !errors.Is(err, ErrMaskedWithoutStored) {
-		t.Errorf("expected ErrMaskedWithoutStored, got %v", err)
+	out, err := m.Restore(incoming, nil, []string{"env_variables.PWD"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	env := unmarshal(t, out)["env_variables"].(map[string]any)
+	if _, ok := env["PWD"]; ok {
+		t.Errorf("masked value with nothing to restore should be dropped, got: %v", env["PWD"])
+	}
+	if env["REPLICAS"] != "5" {
+		t.Errorf("non-sensitive incoming value changed: %v", env["REPLICAS"])
 	}
 }
 

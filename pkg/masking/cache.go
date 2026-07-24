@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 )
 
 // ModuleConfigLookup resolves the raw configs JSON of a module by its URN. It is
@@ -16,47 +17,66 @@ type ModuleConfigLookup interface {
 	ModuleConfigs(ctx context.Context, moduleURN string) (json.RawMessage, error)
 }
 
-// Provider resolves the sensitive_config path list for a resource's
-// (kind, project). It caches lookups per module URN for the lifetime of the
-// instance, so a Provider should be created once per request and reused across
-// the resources mapped in that request (e.g. within a single ListResources).
+// ConfigCache resolves and caches the sensitive_config path list for a
+// resource's (kind, project), for the lifetime of the process. Entries are
+// populated lazily via lookup and must be evicted by the caller (module
+// Create/Update) whenever a module's configs change, so reads stay correct
+// without a TTL.
 //
-// A Provider is not safe for concurrent use; mapping within a request is
-// sequential.
-type Provider struct {
+// ConfigCache is safe for concurrent use.
+type ConfigCache struct {
 	lookup ModuleConfigLookup
-	cache  map[string][]string
+
+	mu    sync.RWMutex
+	cache map[string][]string
 }
 
-// NewProvider builds a request-scoped Provider backed by lookup.
-func NewProvider(lookup ModuleConfigLookup) *Provider {
-	return &Provider{
+// NewConfigCache builds a ConfigCache backed by lookup.
+func NewConfigCache(lookup ModuleConfigLookup) *ConfigCache {
+	return &ConfigCache{
 		lookup: lookup,
 		cache:  map[string][]string{},
 	}
 }
 
 // PathsFor returns the sensitive_config paths for the module owning
-// (kind, project). Results are cached per module URN. A missing module returns
+// (kind, project), populating the cache on a miss. A missing module returns
 // the lookup's error (unwrapping to not-found), which callers treat as
-// fail-open.
-func (p *Provider) PathsFor(ctx context.Context, kind, project string) ([]string, error) {
+// fail-open; the miss is not cached.
+func (c *ConfigCache) PathsFor(ctx context.Context, kind, project string) ([]string, error) {
 	urn := moduleURN(kind, project)
-	if paths, ok := p.cache[urn]; ok {
+
+	c.mu.RLock()
+	paths, ok := c.cache[urn]
+	c.mu.RUnlock()
+	if ok {
 		return paths, nil
 	}
 
-	configs, err := p.lookup.ModuleConfigs(ctx, urn)
+	configs, err := c.lookup.ModuleConfigs(ctx, urn)
 	if err != nil {
 		return nil, err
 	}
 
-	paths, err := PathsFromConfigs(configs)
+	paths, err = PathsFromConfigs(configs)
 	if err != nil {
 		return nil, err
 	}
-	p.cache[urn] = paths
+
+	c.mu.Lock()
+	c.cache[urn] = paths
+	c.mu.Unlock()
 	return paths, nil
+}
+
+// Evict removes the cached sensitive_config paths for (kind, project), so the
+// next PathsFor call re-resolves them from the module's current configs. Call
+// this after a module Create/Update.
+func (c *ConfigCache) Evict(kind, project string) {
+	urn := moduleURN(kind, project)
+	c.mu.Lock()
+	delete(c.cache, urn)
+	c.mu.Unlock()
 }
 
 // PathsFromConfigs parses the sensitive_config list out of a raw module configs

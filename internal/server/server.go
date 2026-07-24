@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -41,16 +40,12 @@ const (
 )
 
 // Serve initialises all the gRPC+HTTP API routes, starts listening for requests at addr, and blocks until server exits.
-// Server exits gracefully when context is cancelled.
+// Server exits gracefully when context is cancelled. masker and configCache enable
+// response masking; pass nil for both to disable masking.
 func Serve(ctx context.Context, httpAddr, grpcAddr string, nrApp *newrelic.Application,
-	resourceSvc resourcesv1.ResourceService, moduleSvc modulesv1.ModuleService, maskKey []byte,
+	resourceSvc resourcesv1.ResourceService, moduleSvc modulesv1.ModuleService,
+	masker *masking.Masker, configCache *masking.ConfigCache,
 ) error {
-	var masker *masking.Masker
-	if len(maskKey) > 0 {
-		masker = masking.New(maskKey)
-	}
-	modConfigLookup := moduleConfigLookup{svc: moduleSvc}
-
 	grpcOpts := []grpc.ServerOption{
 		grpc.UnaryInterceptor(grpcmiddleware.ChainUnaryServer(
 			grpcrecovery.UnaryServerInterceptor(),
@@ -83,7 +78,7 @@ func Serve(ctx context.Context, httpAddr, grpcAddr string, nrApp *newrelic.Appli
 	}
 
 	resourceServiceRPC := &resourcesv1.LogWrapper{
-		ResourceServiceServer: resourcesv1.NewAPIServer(resourceSvc, masker, modConfigLookup),
+		ResourceServiceServer: resourcesv1.NewAPIServer(resourceSvc, masker, configCache),
 	}
 	grpcServer.RegisterService(&entropyv1beta1.ResourceService_ServiceDesc, resourceServiceRPC)
 	if err := entropyv1beta1.RegisterResourceServiceHandlerServer(ctx, rpcHTTPGateway, resourceServiceRPC); err != nil {
@@ -125,18 +120,4 @@ func Serve(ctx context.Context, httpAddr, grpcAddr string, nrApp *newrelic.Appli
 		mux.WithGRPCTarget(grpcAddr, grpcServer),
 		mux.WithGracePeriod(gracePeriod),
 	)
-}
-
-// moduleConfigLookup adapts the module service to masking.ModuleConfigLookup,
-// exposing only a module's raw configs by URN.
-type moduleConfigLookup struct {
-	svc modulesv1.ModuleService
-}
-
-func (l moduleConfigLookup) ModuleConfigs(ctx context.Context, moduleURN string) (json.RawMessage, error) {
-	mod, err := l.svc.GetModule(ctx, moduleURN)
-	if err != nil {
-		return nil, err
-	}
-	return mod.Configs, nil
 }

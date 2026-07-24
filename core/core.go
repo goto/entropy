@@ -21,8 +21,8 @@ type Service struct {
 	maxSyncRetries int
 	serviceName    string
 
-	masker       *masking.Masker
-	moduleConfig masking.ModuleConfigLookup
+	masker      *masking.Masker
+	configCache *masking.ConfigCache
 }
 
 // Option configures optional behaviour on a Service.
@@ -31,10 +31,10 @@ type Option func(*Service)
 // WithMasking enables the write-path merge that restores stored sensitive
 // values when an incoming config carries a masked value. When not set, the
 // write path passes configs through unchanged.
-func WithMasking(masker *masking.Masker, moduleConfig masking.ModuleConfigLookup) Option {
+func WithMasking(masker *masking.Masker, configCache *masking.ConfigCache) Option {
 	return func(svc *Service) {
 		svc.masker = masker
-		svc.moduleConfig = moduleConfig
+		svc.configCache = configCache
 	}
 }
 
