@@ -27,6 +27,11 @@ type DriverConf struct {
 	Namespace         string                       `json:"namespace"`         // maybe we shouldn't restrict namespace?
 	RequestsAndLimits map[string]RequestsAndLimits `json:"requestsAndLimits"` // to use when not provided
 	EnvVariables      map[string]string            `json:"env_variables"`
+	Containers        map[string]ContainerOverride `json:"containers,omitempty"`
+}
+
+type ContainerOverride struct {
+	EnvVariables map[string]string `json:"env_variables,omitempty"`
 }
 
 type RequestsAndLimits struct {
@@ -93,6 +98,9 @@ func ReadConfig(r resource.Resource, confJSON json.RawMessage, dc DriverConf) (*
 	for i := range cfg.Containers {
 		c := &cfg.Containers[i]
 		c.EnvVariables = modules.CloneAndMergeMaps(dc.EnvVariables, c.EnvVariables)
+		if ov, ok := dc.Containers[c.Name]; ok && len(ov.EnvVariables) > 0 {
+			c.EnvVariables = modules.CloneAndMergeMaps(c.EnvVariables, ov.EnvVariables)
+		}
 		if c.Requests.CPU == "" {
 			c.Requests.CPU = rl.Requests.CPU
 		}

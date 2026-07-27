@@ -11,6 +11,7 @@ import (
 	"github.com/goto/entropy/modules"
 	"github.com/goto/entropy/modules/job/config"
 	"github.com/goto/entropy/modules/kubernetes"
+	"github.com/goto/entropy/pkg/kube/container"
 	kubejob "github.com/goto/entropy/pkg/kube/job"
 	"github.com/goto/entropy/pkg/kube/pod"
 )
@@ -22,6 +23,7 @@ func TestDriver(t *testing.T) {
 		title      string
 		res        resource.Resource
 		kubeOutput kubernetes.Output
+		conf       config.DriverConf
 		want       *kubejob.Job
 		wantErr    error
 	}{
@@ -186,12 +188,114 @@ func TestDriver(t *testing.T) {
 			},
 			wantErr: nil,
 		},
+		{
+			title: "container env override from module config wins over client value",
+			res: resource.Resource{
+				URN:     "orn:entropy:job:test-1",
+				Kind:    "job",
+				Name:    "test-1",
+				Project: "project-1",
+				Labels: map[string]string{
+					"team": "team-1",
+				},
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+				UpdatedBy: "john.doe@goto.com",
+				CreatedBy: "john.doe@goto.com",
+				Spec: resource.Spec{
+					Configs: []byte(`{
+                                     "replicas": 1,
+                                     "namespace": "namespace-1",
+                                     "containers": [
+                                         {
+                                             "name": "driver",
+                                             "image": "foo/bar:latest",
+                                             "env_variables": {
+                                                 "SOURCE_KAFKA_PASSWORD": "****-abc12345",
+                                                 "SINK_TYPE": "LOG"
+                                             }
+                                         },
+                                         {
+                                             "name": "sidecar",
+                                             "image": "foo/sidecar:latest",
+                                             "env_variables": {
+                                                 "SOME_KEY": "some-value"
+                                             }
+                                         }
+                                     ]
+                                 }`),
+					Dependencies: map[string]string{},
+				},
+				State: resource.State{
+					Status: resource.StatusPending,
+					Output: nil,
+				},
+			},
+			kubeOutput: kubernetes.Output{},
+			want: &kubejob.Job{
+				Name:      "project-1-test-1-job",
+				Namespace: "namespace-1",
+				Labels: map[string]string{
+					"name":         "test-1",
+					"orchestrator": "entropy",
+				},
+				Pod: &pod.Pod{
+					Name: "project-1-test-1-job",
+					Labels: map[string]string{
+						"app": "project-1-test-1-job",
+					},
+					Containers: []container.Container{
+						{
+							Name:  "driver",
+							Image: "foo/bar:latest",
+							EnvMap: map[string]string{
+								"SOURCE_KAFKA_PASSWORD": "s3cr3t!",
+								"SINK_TYPE":             "LOG",
+							},
+							Requests: map[string]string{"cpu": "", "memory": ""},
+							Limits:   map[string]string{"cpu": "", "memory": ""},
+						},
+						{
+							Name:  "sidecar",
+							Image: "foo/sidecar:latest",
+							EnvMap: map[string]string{
+								"SOME_KEY": "some-value",
+							},
+							Requests: map[string]string{"cpu": "", "memory": ""},
+							Limits:   map[string]string{"cpu": "", "memory": ""},
+						},
+					},
+				},
+				Parallelism: func() *int32 { v := int32(1); return &v }(),
+				BackOffList: func() *int32 { v := int32(0); return &v }(),
+				TTLSeconds:  func() *int32 { v := int32(172800); return &v }(),
+			},
+			wantErr: nil,
+			conf: config.DriverConf{
+				Containers: map[string]config.ContainerOverride{
+					"driver": {
+						EnvVariables: map[string]string{
+							"SOURCE_KAFKA_PASSWORD": "s3cr3t!",
+						},
+					},
+					"missing-container": {
+						EnvVariables: map[string]string{
+							"IGNORED_KEY": "ignored-value",
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range table {
 		t.Run(tt.title, func(t *testing.T) {
+			dc := driverConf()
+			if tt.conf.Containers != nil {
+				dc = tt.conf
+			}
 			drv := &Driver{
-				Conf: driverConf(),
+				Conf: dc,
 			}
 
 			conf, err := config.ReadConfig(tt.res, tt.res.Spec.Configs, drv.Conf)
