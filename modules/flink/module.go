@@ -4,6 +4,8 @@ import (
 	_ "embed"
 	"encoding/json"
 
+	"go.uber.org/zap"
+
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/pkg/errors"
 )
@@ -23,11 +25,14 @@ var Module = module.Descriptor{
 		},
 	},
 	DriverFactory: func(conf json.RawMessage) (module.Driver, error) {
-		fd := &flinkDriver{}
-		err := json.Unmarshal(conf, &fd)
-		if err != nil {
-			return nil, errors.ErrInvalid.WithMsgf("failed to unmarshal module config: %v", err)
+		var fd flinkDriver
+		if len(conf) > 0 {
+			if err := json.Unmarshal(conf, &fd); err != nil {
+				return nil, errors.ErrInvalid.WithMsgf("failed to unmarshal module config: %v", err)
+			}
+		} else {
+			zap.L().Warn("flink module has empty config; driver initialised with zero values")
 		}
-		return fd, nil
+		return &fd, nil
 	},
 }
