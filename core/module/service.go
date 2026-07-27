@@ -25,7 +25,7 @@ func NewService(registry Registry, store Store) *Service {
 }
 
 // SetMaskingCache wires the masking config cache into the service so that
-// module Create/Update can evict stale sensitive_config entries. When unset,
+// module Create/Update can evict stale sensitive_configs entries. When unset,
 // eviction is a no-op (masking disabled).
 func (mr *Service) SetMaskingCache(cache *masking.ConfigCache) {
 	mr.configCache = cache
@@ -111,7 +111,7 @@ func (mr *Service) CreateModule(ctx context.Context, mod Module) (*Module, error
 		return nil, err
 	}
 
-	if err := validateSensitiveConfig(mod.Configs); err != nil {
+	if err := validateSensitiveConfigs(mod.Configs); err != nil {
 		return nil, err
 	}
 
@@ -152,7 +152,7 @@ func (mr *Service) UpdateModule(ctx context.Context, urn string, newConfigs json
 		return nil, err
 	}
 
-	if err := validateSensitiveConfig(mod.Configs); err != nil {
+	if err := validateSensitiveConfigs(mod.Configs); err != nil {
 		return nil, err
 	}
 
@@ -204,16 +204,16 @@ func generateURN(name, project string) string {
 	return fmt.Sprintf("orn:entropy:module:%s:%s", project, name)
 }
 
-// validateSensitiveConfig checks that the sensitive_config path list (if
+// validateSensitiveConfigs checks that the sensitive_configs path list (if
 // present) in a module's configs is syntactically well-formed. Paths are not
 // required to resolve against any current config.
-func validateSensitiveConfig(configs json.RawMessage) error {
+func validateSensitiveConfigs(configs json.RawMessage) error {
 	paths, err := masking.PathsFromConfigs(configs)
 	if err != nil {
-		return errors.ErrInvalid.WithMsgf("invalid 'sensitive_config'").WithCausef("%s", err.Error())
+		return errors.ErrInvalid.WithMsgf("invalid 'sensitive_configs'").WithCausef("%s", err.Error())
 	}
 	if err := masking.ValidatePaths(paths); err != nil {
-		return errors.ErrInvalid.WithMsgf("invalid 'sensitive_config'").WithCausef("%s", err.Error())
+		return errors.ErrInvalid.WithMsgf("invalid 'sensitive_configs'").WithCausef("%s", err.Error())
 	}
 	return nil
 }

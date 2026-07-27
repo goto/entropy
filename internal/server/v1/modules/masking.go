@@ -8,8 +8,8 @@ import (
 )
 
 // maskModule returns a copy of mod with sensitive values in its configs masked,
-// resolving the path list from the module's own sensitive_config key. The
-// sensitive_config list itself is field-path metadata, not a secret, so it is
+// resolving the path list from the module's own sensitive_configs key. The
+// sensitive_configs list itself is field-path metadata, not a secret, so it is
 // never masked. Fail-open: on any error the original configs are kept and a
 // warning logged.
 func (srv *APIServer) maskModule(mod module.Module) module.Module {
@@ -19,7 +19,7 @@ func (srv *APIServer) maskModule(mod module.Module) module.Module {
 
 	paths, err := masking.PathsFromConfigs(mod.Configs)
 	if err != nil {
-		zap.L().Warn("masking: could not parse module sensitive_config; returning unmasked",
+		zap.L().Warn("masking: could not parse module sensitive_configs; returning unmasked",
 			zap.String("module_urn", mod.URN), zap.Error(err))
 		return mod
 	}

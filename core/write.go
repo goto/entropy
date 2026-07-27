@@ -147,7 +147,7 @@ func (svc *Service) restoreSensitive(ctx context.Context, res resource.Resource,
 
 	paths, err := svc.configCache.PathsFor(ctx, res.Kind, res.Project)
 	if err != nil {
-		zap.L().Warn("masking: could not resolve sensitive_config on write; passing configs through",
+		zap.L().Warn("masking: could not resolve sensitive_configs on write; passing configs through",
 			zap.String("resource_urn", res.URN), zap.Error(err))
 		return incoming, nil
 	}

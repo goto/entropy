@@ -22,7 +22,7 @@ func (server APIServer) maskResource(ctx context.Context, res resource.Resource)
 
 	paths, err := server.configCache.PathsFor(ctx, res.Kind, res.Project)
 	if err != nil {
-		zap.L().Warn("masking: could not resolve sensitive_config; returning unmasked",
+		zap.L().Warn("masking: could not resolve sensitive_configs; returning unmasked",
 			zap.String("resource_urn", res.URN), zap.Error(err))
 		return res
 	}
@@ -50,7 +50,7 @@ func (server APIServer) maskRevision(ctx context.Context, rev resource.Revision)
 
 	paths, err := server.configCache.PathsFor(ctx, kind, project)
 	if err != nil {
-		zap.L().Warn("masking: could not resolve sensitive_config; returning unmasked",
+		zap.L().Warn("masking: could not resolve sensitive_configs; returning unmasked",
 			zap.String("revision_urn", rev.URN), zap.Error(err))
 		return rev
 	}

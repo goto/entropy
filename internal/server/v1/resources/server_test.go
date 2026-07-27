@@ -544,7 +544,7 @@ func TestAPIServer_ListResources_MaskingGate(t *testing.T) {
 
 		masker := masking.New([]byte("test-hmac-key"))
 		configCache := masking.NewConfigCache(fakeModuleConfigLookup{
-			configs: json.RawMessage(`{"sensitive_config":["password"]}`),
+			configs: json.RawMessage(`{"sensitive_configs":["password"]}`),
 		})
 		return NewAPIServer(resourceService, masker, configCache)
 	}

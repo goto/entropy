@@ -17,7 +17,7 @@ type ModuleConfigLookup interface {
 	ModuleConfigs(ctx context.Context, moduleURN string) (json.RawMessage, error)
 }
 
-// ConfigCache resolves and caches the sensitive_config path list for a
+// ConfigCache resolves and caches the sensitive_configs path list for a
 // resource's (kind, project), for the lifetime of the process. Entries are
 // populated lazily via lookup and must be evicted by the caller (module
 // Create/Update) whenever a module's configs change, so reads stay correct
@@ -39,7 +39,7 @@ func NewConfigCache(lookup ModuleConfigLookup) *ConfigCache {
 	}
 }
 
-// PathsFor returns the sensitive_config paths for the module owning
+// PathsFor returns the sensitive_configs paths for the module owning
 // (kind, project), populating the cache on a miss. A missing module returns
 // the lookup's error (unwrapping to not-found), which callers treat as
 // fail-open; the miss is not cached.
@@ -69,7 +69,7 @@ func (c *ConfigCache) PathsFor(ctx context.Context, kind, project string) ([]str
 	return paths, nil
 }
 
-// Evict removes the cached sensitive_config paths for (kind, project), so the
+// Evict removes the cached sensitive_configs paths for (kind, project), so the
 // next PathsFor call re-resolves them from the module's current configs. Call
 // this after a module Create/Update.
 func (c *ConfigCache) Evict(kind, project string) {
@@ -79,19 +79,19 @@ func (c *ConfigCache) Evict(kind, project string) {
 	c.mu.Unlock()
 }
 
-// PathsFromConfigs parses the sensitive_config list out of a raw module configs
+// PathsFromConfigs parses the sensitive_configs list out of a raw module configs
 // payload. A missing key yields nil with no error.
 func PathsFromConfigs(configs json.RawMessage) ([]string, error) {
 	if len(configs) == 0 {
 		return nil, nil
 	}
 	var env struct {
-		SensitiveConfig []string `json:"sensitive_config"`
+		SensitiveConfigs []string `json:"sensitive_configs"`
 	}
 	if err := json.Unmarshal(configs, &env); err != nil {
 		return nil, fmt.Errorf("masking: parse module configs: %w", err)
 	}
-	return env.SensitiveConfig, nil
+	return env.SensitiveConfigs, nil
 }
 
 // moduleURN builds the module URN for a (kind, project). Module URNs order

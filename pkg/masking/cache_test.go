@@ -31,7 +31,7 @@ func (f *fakeLookup) ModuleConfigs(_ context.Context, urn string) (json.RawMessa
 func TestConfigCache_PathsForAndCache(t *testing.T) {
 	urn := "orn:entropy:module:my-project:firehose"
 	lk := &fakeLookup{configs: map[string]json.RawMessage{
-		urn: json.RawMessage(`{"sensitive_config":["env_variables.PWD","env_variables.*"]}`),
+		urn: json.RawMessage(`{"sensitive_configs":["env_variables.PWD","env_variables.*"]}`),
 	}}
 	c := NewConfigCache(lk)
 
@@ -62,7 +62,7 @@ func TestConfigCache_MissingModulePropagatesError(t *testing.T) {
 func TestConfigCache_EvictForcesReResolve(t *testing.T) {
 	urn := "orn:entropy:module:my-project:firehose"
 	lk := &fakeLookup{configs: map[string]json.RawMessage{
-		urn: json.RawMessage(`{"sensitive_config":["env_variables.PWD"]}`),
+		urn: json.RawMessage(`{"sensitive_configs":["env_variables.PWD"]}`),
 	}}
 	c := NewConfigCache(lk)
 
@@ -75,7 +75,7 @@ func TestConfigCache_EvictForcesReResolve(t *testing.T) {
 
 	c.Evict("firehose", "my-project")
 
-	lk.configs[urn] = json.RawMessage(`{"sensitive_config":["env_variables.PWD","env_variables.TOKEN"]}`)
+	lk.configs[urn] = json.RawMessage(`{"sensitive_configs":["env_variables.PWD","env_variables.TOKEN"]}`)
 	paths, err := c.PathsFor(context.Background(), "firehose", "my-project")
 	if err != nil {
 		t.Fatal(err)
