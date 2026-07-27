@@ -10,11 +10,11 @@ import (
 	"github.com/goto/entropy/core/resource"
 )
 
-// maskResource returns a copy of res with sensitive spec.configs and
-// state.output values replaced by their masked fingerprints. It never mutates
-// the source resource (Mask returns fresh bytes). Masking is fail-open: on any
-// resolution or masking error the original value is kept and a warning logged,
-// so an orphaned resource (no module) is returned unmasked.
+// maskResource returns a copy of res with sensitive spec.configs values
+// replaced by their masked fingerprints. It never mutates the source resource
+// (Mask returns fresh bytes). Masking is fail-open: on any resolution or masking
+// error the original value is kept and a warning logged, so an orphaned resource
+// (no module) is returned unmasked.
 func (server APIServer) maskResource(ctx context.Context, res resource.Resource) resource.Resource {
 	if server.masker == nil {
 		return res
@@ -31,7 +31,6 @@ func (server APIServer) maskResource(ctx context.Context, res resource.Resource)
 	}
 
 	res.Spec.Configs = server.maskBytes(res.Spec.Configs, paths, res.URN)
-	res.State.Output = server.maskBytes(res.State.Output, paths, res.URN)
 	return res
 }
 

@@ -141,7 +141,12 @@ func (server APIServer) ListResources(ctx context.Context, request *entropyv1bet
 
 	var responseResources []*entropyv1beta1.Resource
 	for _, res := range resources.Resources {
-		responseResource, err := resourceToProto(server.maskResource(ctx, res))
+		// Masking targets spec.configs, which is only hydrated when
+		// withSpecConfigs is set; skip the mask work otherwise.
+		if withSpecConfigs {
+			res = server.maskResource(ctx, res)
+		}
+		responseResource, err := resourceToProto(res)
 		if err != nil {
 			return nil, serverutils.ToRPCError(err)
 		}
