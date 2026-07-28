@@ -44,10 +44,12 @@ func bootstrapResources(ctx context.Context, store *postgres.Store) ([]resource.
 		return nil, err
 	}
 
-	for _, d := range data {
+	for i, d := range data {
 		if err := store.Create(ctx, d); err != nil {
 			return nil, err
 		}
+		data[i].Spec.Configs = json.RawMessage{}
+		data[i].Spec.Dependencies = map[string]string{}
 	}
 
 	return data, nil

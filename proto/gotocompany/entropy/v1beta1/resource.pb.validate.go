@@ -1990,6 +1990,245 @@ var _ interface {
 	ErrorName() string
 } = UpdateResourceResponseValidationError{}
 
+// Validate checks the field values on UpdateResourceLabelsRequest with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *UpdateResourceLabelsRequest) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on UpdateResourceLabelsRequest with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// UpdateResourceLabelsRequestMultiError, or nil if none found.
+func (m *UpdateResourceLabelsRequest) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *UpdateResourceLabelsRequest) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	// no validation rules for Urn
+
+	// no validation rules for Labels
+
+	if len(errors) > 0 {
+		return UpdateResourceLabelsRequestMultiError(errors)
+	}
+
+	return nil
+}
+
+// UpdateResourceLabelsRequestMultiError is an error wrapping multiple
+// validation errors returned by UpdateResourceLabelsRequest.ValidateAll() if
+// the designated constraints aren't met.
+type UpdateResourceLabelsRequestMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m UpdateResourceLabelsRequestMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m UpdateResourceLabelsRequestMultiError) AllErrors() []error { return m }
+
+// UpdateResourceLabelsRequestValidationError is the validation error returned
+// by UpdateResourceLabelsRequest.Validate if the designated constraints
+// aren't met.
+type UpdateResourceLabelsRequestValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e UpdateResourceLabelsRequestValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e UpdateResourceLabelsRequestValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e UpdateResourceLabelsRequestValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e UpdateResourceLabelsRequestValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e UpdateResourceLabelsRequestValidationError) ErrorName() string {
+	return "UpdateResourceLabelsRequestValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e UpdateResourceLabelsRequestValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sUpdateResourceLabelsRequest.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = UpdateResourceLabelsRequestValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = UpdateResourceLabelsRequestValidationError{}
+
+// Validate checks the field values on UpdateResourceLabelsResponse with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *UpdateResourceLabelsResponse) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on UpdateResourceLabelsResponse with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// UpdateResourceLabelsResponseMultiError, or nil if none found.
+func (m *UpdateResourceLabelsResponse) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *UpdateResourceLabelsResponse) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	if all {
+		switch v := interface{}(m.GetResource()).(type) {
+		case interface{ ValidateAll() error }:
+			if err := v.ValidateAll(); err != nil {
+				errors = append(errors, UpdateResourceLabelsResponseValidationError{
+					field:  "Resource",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		case interface{ Validate() error }:
+			if err := v.Validate(); err != nil {
+				errors = append(errors, UpdateResourceLabelsResponseValidationError{
+					field:  "Resource",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		}
+	} else if v, ok := interface{}(m.GetResource()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return UpdateResourceLabelsResponseValidationError{
+				field:  "Resource",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if len(errors) > 0 {
+		return UpdateResourceLabelsResponseMultiError(errors)
+	}
+
+	return nil
+}
+
+// UpdateResourceLabelsResponseMultiError is an error wrapping multiple
+// validation errors returned by UpdateResourceLabelsResponse.ValidateAll() if
+// the designated constraints aren't met.
+type UpdateResourceLabelsResponseMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m UpdateResourceLabelsResponseMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m UpdateResourceLabelsResponseMultiError) AllErrors() []error { return m }
+
+// UpdateResourceLabelsResponseValidationError is the validation error returned
+// by UpdateResourceLabelsResponse.Validate if the designated constraints
+// aren't met.
+type UpdateResourceLabelsResponseValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e UpdateResourceLabelsResponseValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e UpdateResourceLabelsResponseValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e UpdateResourceLabelsResponseValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e UpdateResourceLabelsResponseValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e UpdateResourceLabelsResponseValidationError) ErrorName() string {
+	return "UpdateResourceLabelsResponseValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e UpdateResourceLabelsResponseValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sUpdateResourceLabelsResponse.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = UpdateResourceLabelsResponseValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = UpdateResourceLabelsResponseValidationError{}
+
 // Validate checks the field values on DeleteResourceRequest with the rules
 // defined in the proto definition for this message. If any rules are
 // violated, the first error encountered is returned, or nil if there are no violations.

@@ -9,7 +9,8 @@
         },
         "state": {
             "next_sync_at": "0001-01-01T00:00:00Z"
-        }
+        },
+        "configs": {}
     },
     {
         "urn": "orn:entropy:dagger:test-project-01:test-dagger",
@@ -21,7 +22,8 @@
         },
         "state": {
             "next_sync_at": "0001-01-01T00:00:00Z"
-        }
+        },
+        "configs": {}
     },
     {
         "urn": "orn:entropy:firehose:test-project-01:test-firehose-01",
@@ -33,7 +35,8 @@
         },
         "state": {
             "next_sync_at": "0001-01-01T00:00:00Z"
-        }
+        },
+        "configs": {}
     },
     {
         "urn": "orn:entropy:dagger:test-project-00:test-dagger-01",
@@ -45,7 +48,8 @@
         },
         "state": {
             "next_sync_at": "0001-01-01T00:00:00Z"
-        }
+        },
+        "configs": {}
     },
     {
         "urn": "orn:entropy:firehose:test-project-00:test-firehose-02",
@@ -57,7 +61,8 @@
         },
         "state": {
             "next_sync_at": "0001-01-01T00:00:00Z"
-        }
+        },
+        "configs": {}
     },
     {
         "urn": "orn:entropy:dagger:test-project-01:test-dagger-02",
@@ -69,6 +74,7 @@
         },
         "state": {
             "next_sync_at": "0001-01-01T00:00:00Z"
-        }
+        },
+        "configs": {}
     }
 ]

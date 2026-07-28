@@ -1,7 +1,9 @@
 package postgres_test
 
 import (
+	"cmp"
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/goto/entropy/core/resource"
@@ -106,6 +108,36 @@ func (s *ResourceStoreTestSuite) TestSyncOne() {
 			}
 		})
 	}
+}
+
+func (s *ResourceStoreTestSuite) TestUpdateLabels() {
+	target := s.resources[0]
+
+	newLabels := map[string]string{"description": "test firehose resource"}
+	target.Labels = newLabels
+	target.UpdatedBy = "test-user"
+
+	err := s.store.UpdateLabels(s.ctx, target, true, "patch:labels")
+	s.Assert().NoError(err)
+
+	got, err := s.store.GetByURN(s.ctx, target.URN)
+	s.Require().NoError(err)
+
+	s.Assert().Equal(newLabels, got.Labels)
+	s.Assert().Equal(s.resources[0].Spec.Configs, got.Spec.Configs)
+	s.Assert().Equal(s.resources[0].State.Status, got.State.Status)
+	s.Assert().Equal(s.resources[0].Spec.Dependencies, got.Spec.Dependencies)
+
+	revisions, err := s.store.Revisions(s.ctx, resource.RevisionsSelector{URN: target.URN})
+
+	slices.SortFunc(revisions, func(a, b resource.Revision) int {
+		return cmp.Compare(a.ID, b.ID)
+	})
+
+	s.Require().NoError(err)
+	s.Require().NotEmpty(revisions)
+	s.Assert().Equal("patch:labels", revisions[len(revisions)-1].Reason)
+	s.Assert().Equal(newLabels, revisions[len(revisions)-1].Labels)
 }
 
 func (s *ResourceStoreTestSuite) TearDownTest() {

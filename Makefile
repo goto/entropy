@@ -1,7 +1,7 @@
 NAME=github.com/goto/entropy
 VERSION=$(shell git describe --tags --always --first-parent 2>/dev/null)
 COMMIT=$(shell git rev-parse --short HEAD)
-PROTON_COMMIT="6c5bc2b621abe2812cc8288a5f6363570bab911a"
+PROTON_COMMIT="fee73992266760855d92326542fce2aa69a8f131"
 BUILD_TIME=$(shell date)
 COVERAGE_DIR=coverage
 BUILD_DIR=dist

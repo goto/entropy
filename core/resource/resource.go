@@ -23,6 +23,7 @@ type Store interface {
 
 	Create(ctx context.Context, r Resource, hooks ...MutationHook) error
 	Update(ctx context.Context, r Resource, saveRevision bool, reason string, hooks ...MutationHook) error
+	UpdateLabels(ctx context.Context, r Resource, saveRevision bool, reason string, hooks ...MutationHook) error
 	Delete(ctx context.Context, urn string, hooks ...MutationHook) error
 
 	Revisions(ctx context.Context, selector RevisionsSelector) ([]Revision, error)
