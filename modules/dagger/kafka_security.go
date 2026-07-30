@@ -1,12 +1,14 @@
 package dagger
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/goto/entropy/core/module"
+	"github.com/goto/entropy/core/resource"
 	kafkamod "github.com/goto/entropy/modules/kafka"
 )
 
@@ -254,12 +256,12 @@ func buildACLMounts(sources []Source, profiles map[string]*kafkamod.SecurityProf
 }
 
 // applyStreamSecurity resolves each source's kafka security profile, injects the
-// SASL/SSL consumer config into STREAMS, and records the podTemplate ACL mounts
-// on conf. It is a no-op (leaves conf untouched) for daggers whose sources have
-// no security profile.
-func applyStreamSecurity(exr module.ExpandedResource, conf *Config) error {
-	profiles, err := resolveSourceStreams(exr, conf)
-	if err != nil { 
+// SASL/SSL consumer config into the source, and records the podTemplate ACL
+// mounts on conf. It is a no-op (leaves conf untouched) for daggers whose
+// sources have no security profile.
+func (dd *daggerDriver) applyStreamSecurity(ctx context.Context, exr module.ExpandedResource, conf *Config) error {
+	profiles, err := dd.resolveSourceStreams(ctx, exr, conf)
+	if err != nil {
 		return err
 	}
 	conf.ACLMounts = buildACLMounts(conf.Source, profiles, conf.Team)
@@ -267,15 +269,16 @@ func applyStreamSecurity(exr module.ExpandedResource, conf *Config) error {
 }
 
 // resolveSourceStreams resolves each source's kafka security profile (keyed by
-// SOURCE_KAFKA_NAME), populates bootstrap servers and the SASL/SSL consumer
-// config, and returns the resolved security profiles keyed by stream name.
+// SOURCE_KAFKA_NAME), populates the SASL/SSL consumer config, and returns the
+// resolved profiles keyed by stream name.
 //
-// The profile is resolved inline-first: conf.StreamSecurity (populated by Dex on
-// the product path) takes precedence; otherwise it falls back to the kafka
-// dependency Output (raw-Entropy path). Sources with neither a profile nor a
-// plaintext profile are left untouched — preserving byte-for-byte identical
-// STREAMS for ODS daggers.
-func resolveSourceStreams(exr module.ExpandedResource, conf *Config) (map[string]*kafkamod.SecurityProfile, error) {
+// Resolution order per source: an inline conf.StreamSecurity entry, then a
+// declared kafka dependency (raw-Entropy path), then — when the source carries
+// the SOURCE_KAFKA_SECURITY_ENABLED flag (the Dex product path) — the kafka
+// resource fetched internally by URN via dd.getResource, with no dependency.
+// Sources with none of these (plaintext) are left untouched, preserving
+// byte-for-byte identical STREAMS for ODS daggers.
+func (dd *daggerDriver) resolveSourceStreams(ctx context.Context, exr module.ExpandedResource, conf *Config) (map[string]*kafkamod.SecurityProfile, error) {
 	profiles := map[string]*kafkamod.SecurityProfile{}
 
 	for i := range conf.Source {
@@ -284,25 +287,34 @@ func resolveSourceStreams(exr module.ExpandedResource, conf *Config) (map[string
 			continue
 		}
 
-		// inline profile (Dex product path) wins over the kafka dependency.
+		// 1. inline profile, if Dex ever sends one.
 		security := conf.StreamSecurity[streamName]
 
-		// fall back to the kafka dependency (raw-Entropy path): it also carries
-		// the resolved broker URL for bootstrap servers.
+		// 2. declared kafka dependency (raw-Entropy path): also carries the URL.
 		if security == nil {
 			if dep, ok := exr.Dependencies[streamName]; ok && dep.Kind == kafkamod.Module.Kind {
 				var out kafkamod.Output
 				if err := json.Unmarshal(dep.Output, &out); err != nil {
 					return nil, fmt.Errorf("invalid kafka dependency output for stream %q: %w", streamName, err)
 				}
-
-				// bootstrap servers: explicit source value wins, else resolved URL.
 				if conf.Source[i].SourceKafkaConsumerConfigBootstrapServers == "" && out.URL != "" {
 					conf.Source[i].SourceKafkaConsumerConfigBootstrapServers = out.URL
 				}
-
 				security = out.Security
 			}
+		}
+
+		// 3. flag set (Dex product path): fetch the kafka resource internally by
+		// URN and read its security profile — no dependency declared.
+		if security == nil && conf.Source[i].SourceKafkaSecurityEnabled {
+			out, err := dd.fetchKafkaOutput(ctx, exr.Resource.Project, streamName)
+			if err != nil {
+				return nil, err
+			}
+			if conf.Source[i].SourceKafkaConsumerConfigBootstrapServers == "" && out.URL != "" {
+				conf.Source[i].SourceKafkaConsumerConfigBootstrapServers = out.URL
+			}
+			security = out.Security
 		}
 
 		if !hasSecurityProfile(security) {
@@ -315,4 +327,34 @@ func resolveSourceStreams(exr module.ExpandedResource, conf *Config) (map[string
 	}
 
 	return profiles, nil
+}
+
+// fetchKafkaOutput fetches the kafka stream's resource by URN and decodes its
+// Output (url + security profile). SOURCE_KAFKA_NAME is the kafka resource name.
+func (dd *daggerDriver) fetchKafkaOutput(ctx context.Context, project, streamName string) (kafkamod.Output, error) {
+	var out kafkamod.Output
+	if dd.getResource == nil {
+		return out, fmt.Errorf("cannot resolve kafka stream %q: resource getter not configured", streamName)
+	}
+
+	urn := resource.GenerateURN(kafkamod.Module.Kind, project, streamName)
+	res, err := dd.getResource(ctx, urn)
+	if err != nil {
+		return out, fmt.Errorf("failed to fetch kafka stream %q (%s): %w", streamName, urn, err)
+	}
+	if err := json.Unmarshal(res.State.Output, &out); err != nil {
+		return out, fmt.Errorf("invalid kafka output for stream %q: %w", streamName, err)
+	}
+	return out, nil
+}
+
+// streamsJSON marshals sources for the STREAMS env var, stripping the transient
+// SOURCE_KAFKA_SECURITY_ENABLED flag so it never leaks into the running job.
+func streamsJSON(sources []Source) string {
+	sanitized := make([]Source, len(sources))
+	copy(sanitized, sources)
+	for i := range sanitized {
+		sanitized[i].SourceKafkaSecurityEnabled = false
+	}
+	return string(mustMarshalJSON(sanitized))
 }

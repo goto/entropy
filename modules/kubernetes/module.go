@@ -20,8 +20,7 @@ var Module = module.Descriptor{
 	},
 	DriverFactory: func(conf json.RawMessage) (module.Driver, error) {
 		kd := &kubeDriver{}
-		err := json.Unmarshal(conf, &kd)
-		if err != nil {
+		if err := json.Unmarshal(conf, kd); err != nil {
 			return nil, errors.ErrInvalid.WithMsgf("failed to unmarshal module config: %v", err)
 		}
 		return kd, nil

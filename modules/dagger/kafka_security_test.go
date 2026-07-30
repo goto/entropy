@@ -1,6 +1,7 @@
 package dagger
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/goto/entropy/core/module"
+	"github.com/goto/entropy/core/resource"
 	kafkamod "github.com/goto/entropy/modules/kafka"
 )
 
@@ -114,7 +116,7 @@ func TestResolveSourceStreams_PopulatesBootstrapAndConfig(t *testing.T) {
 		Source: []Source{{SourceKafka: SourceKafka{SourceKafkaName: pocStream}}},
 	}
 
-	profiles, err := resolveSourceStreams(exr, conf)
+	profiles, err := (&daggerDriver{}).resolveSourceStreams(context.Background(), exr, conf)
 	require.NoError(t, err)
 
 	assert.Equal(t, "broker-1:9098,broker-2:9098", conf.Source[0].SourceKafkaConsumerConfigBootstrapServers)
@@ -133,7 +135,7 @@ func TestResolveSourceStreams_InlineProfile_NoDependency(t *testing.T) {
 		},
 	}
 
-	profiles, err := resolveSourceStreams(module.ExpandedResource{}, conf)
+	profiles, err := (&daggerDriver{}).resolveSourceStreams(context.Background(), module.ExpandedResource{}, conf)
 	require.NoError(t, err)
 
 	require.Contains(t, profiles, pocStream)
@@ -146,6 +148,40 @@ func TestResolveSourceStreams_InlineProfile_NoDependency(t *testing.T) {
 	require.Len(t, mounts, 3)
 }
 
+func TestResolveSourceStreams_FlagFetchesInternally(t *testing.T) {
+	out := kafkamod.Output{URL: "11.0.0.1:9098", Security: oauthbearerProfile()}
+	outJSON, err := json.Marshal(out)
+	require.NoError(t, err)
+
+	var gotURN string
+	dd := &daggerDriver{
+		getResource: func(_ context.Context, urn string) (*resource.Resource, error) {
+			gotURN = urn
+			return &resource.Resource{State: resource.State{Output: outJSON}}, nil
+		},
+	}
+
+	exr := module.ExpandedResource{Resource: resource.Resource{Project: "al-dp-id-s"}}
+	conf := &Config{
+		Team: "team-x",
+		Source: []Source{{SourceKafka: SourceKafka{
+			SourceKafkaName:            pocStream,
+			SourceKafkaSecurityEnabled: true,
+		}}},
+	}
+
+	profiles, err := dd.resolveSourceStreams(context.Background(), exr, conf)
+	require.NoError(t, err)
+
+	assert.Equal(t, resource.GenerateURN(kafkamod.Module.Kind, "al-dp-id-s", pocStream), gotURN)
+	require.Contains(t, profiles, pocStream)
+	assert.Equal(t, "11.0.0.1:9098", conf.Source[0].SourceKafkaConsumerConfigBootstrapServers)
+	assert.NotNil(t, conf.Source[0].SourceKafkaConsumerAdditionalConfigurations)
+
+	// the flag must be stripped from the STREAMS env var.
+	assert.NotContains(t, streamsJSON(conf.Source), "SOURCE_KAFKA_SECURITY_ENABLED")
+}
+
 // a full plaintext dagger (no stream_security, no kafka dependency) produces
 // no additional configs, no mounts, and no taskmanager SA — STREAMS/podTemplate
 // unchanged.
@@ -155,7 +191,7 @@ func TestApplyStreamSecurity_PlaintextDagger_NoWiring(t *testing.T) {
 		Source: []Source{{SourceKafka: SourceKafka{SourceKafkaName: pocStream}}},
 	}
 
-	require.NoError(t, applyStreamSecurity(module.ExpandedResource{}, conf))
+	require.NoError(t, (&daggerDriver{}).applyStreamSecurity(context.Background(), module.ExpandedResource{}, conf))
 
 	assert.Nil(t, conf.Source[0].SourceKafkaConsumerAdditionalConfigurations)
 	assert.Nil(t, conf.ACLMounts)
@@ -180,7 +216,7 @@ func TestResolveSourceStreams_KeepsExplicitBootstrap(t *testing.T) {
 		}}},
 	}
 
-	_, err = resolveSourceStreams(exr, conf)
+	_, err = (&daggerDriver{}).resolveSourceStreams(context.Background(), exr, conf)
 	require.NoError(t, err)
 	assert.Equal(t, "explicit:9092", conf.Source[0].SourceKafkaConsumerConfigBootstrapServers)
 }

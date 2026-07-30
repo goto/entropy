@@ -179,6 +179,7 @@ type SourceKafka struct {
 	SourceKafkaName                           string `json:"SOURCE_KAFKA_NAME"`
 	SourceKafkaConsumerConfigGroupID          string `json:"SOURCE_KAFKA_CONSUMER_CONFIG_GROUP_ID"`
 	SourceKafkaConsumerConfigBootstrapServers string `json:"SOURCE_KAFKA_CONSUMER_CONFIG_BOOTSTRAP_SERVERS"`
+	SourceKafkaSecurityEnabled                bool   `json:"SOURCE_KAFKA_SECURITY_ENABLED,omitempty"`
 	// SourceKafkaConsumerAdditionalConfigurations carries the SASL/SSL consumer
 	// config for ACL streams. It is nil for plaintext streams so that STREAMS
 	// stays byte-for-byte identical to the pre-ACL behaviour.

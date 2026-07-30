@@ -69,7 +69,10 @@ type daggerDriver struct {
 	kubeGetCRD       kubeGetCRDFn
 	consumerReset    consumerResetFn
 	kubeProxyService kubeProxyServiceFn
+	getResource      ResourceGetter
 }
+
+type ResourceGetter func(ctx context.Context, urn string) (*resource.Resource, error)
 
 type (
 	kubeDeployFn       func(ctx context.Context, isCreate bool, conf kube.Config, hc helm.ReleaseConfig) error
