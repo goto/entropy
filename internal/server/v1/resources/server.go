@@ -9,6 +9,7 @@ import (
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/internal/server/serverutils"
+	"github.com/goto/entropy/pkg/masking"
 	entropyv1beta1 "github.com/goto/entropy/proto/gotocompany/entropy/v1beta1"
 )
 
@@ -28,11 +29,18 @@ type ResourceService interface {
 type APIServer struct {
 	entropyv1beta1.UnimplementedResourceServiceServer
 	resourceSvc ResourceService
+	masker      *masking.Masker
+	configCache *masking.ConfigCache
 }
 
-func NewAPIServer(resourceService ResourceService) *APIServer {
+// NewAPIServer builds the resource API server. masker and configCache enable
+// response masking of sensitive spec.configs/state.output values; when masker
+// is nil, responses are returned unmasked (masking disabled).
+func NewAPIServer(resourceService ResourceService, masker *masking.Masker, configCache *masking.ConfigCache) *APIServer {
 	return &APIServer{
 		resourceSvc: resourceService,
+		masker:      masker,
+		configCache: configCache,
 	}
 }
 
@@ -54,7 +62,8 @@ func (server APIServer) CreateResource(ctx context.Context, request *entropyv1be
 		return nil, serverutils.ToRPCError(err)
 	}
 
-	responseResource, err := resourceToProto(*result)
+	masked := server.maskResource(ctx, *result)
+	responseResource, err := resourceToProto(masked)
 	if err != nil {
 		return nil, serverutils.ToRPCError(err)
 	}
@@ -86,7 +95,8 @@ func (server APIServer) UpdateResource(ctx context.Context, request *entropyv1be
 		return nil, serverutils.ToRPCError(err)
 	}
 
-	responseResource, err := resourceToProto(*res)
+	masked := server.maskResource(ctx, *res)
+	responseResource, err := resourceToProto(masked)
 	if err != nil {
 		return nil, serverutils.ToRPCError(err)
 	}
@@ -102,7 +112,8 @@ func (server APIServer) GetResource(ctx context.Context, request *entropyv1beta1
 		return nil, serverutils.ToRPCError(err)
 	}
 
-	responseResource, err := resourceToProto(*res)
+	masked := server.maskResource(ctx, *res)
+	responseResource, err := resourceToProto(masked)
 	if err != nil {
 		return nil, serverutils.ToRPCError(err)
 	}
@@ -130,6 +141,11 @@ func (server APIServer) ListResources(ctx context.Context, request *entropyv1bet
 
 	var responseResources []*entropyv1beta1.Resource
 	for _, res := range resources.Resources {
+		// Masking targets spec.configs, which is only hydrated when
+		// withSpecConfigs is set; skip the mask work otherwise.
+		if withSpecConfigs {
+			res = server.maskResource(ctx, res)
+		}
 		responseResource, err := resourceToProto(res)
 		if err != nil {
 			return nil, serverutils.ToRPCError(err)
@@ -175,7 +191,8 @@ func (server APIServer) ApplyAction(ctx context.Context, request *entropyv1beta1
 		return nil, serverutils.ToRPCError(err)
 	}
 
-	responseResource, err := resourceToProto(*updatedRes)
+	masked := server.maskResource(ctx, *updatedRes)
+	responseResource, err := resourceToProto(masked)
 	if err != nil {
 		return nil, serverutils.ToRPCError(err)
 	}
@@ -225,7 +242,7 @@ func (server APIServer) GetResourceRevisions(ctx context.Context, request *entro
 
 	var responseRevisions []*entropyv1beta1.ResourceRevision
 	for _, res := range revisions {
-		responseRevision, err := revisionToProto(res)
+		responseRevision, err := revisionToProto(server.maskRevision(ctx, res))
 		if err != nil {
 			return nil, serverutils.ToRPCError(err)
 		}

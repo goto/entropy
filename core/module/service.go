@@ -7,11 +7,14 @@ import (
 
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/pkg/errors"
+	"github.com/goto/entropy/pkg/masking"
 )
 
 type Service struct {
 	store    Store
 	registry Registry
+
+	configCache *masking.ConfigCache
 }
 
 func NewService(registry Registry, store Store) *Service {
@@ -19,6 +22,13 @@ func NewService(registry Registry, store Store) *Service {
 		store:    store,
 		registry: registry,
 	}
+}
+
+// SetMaskingCache wires the masking config cache into the service so that
+// module Create/Update can evict stale sensitive_configs entries. When unset,
+// eviction is a no-op (masking disabled).
+func (mr *Service) SetMaskingCache(cache *masking.ConfigCache) {
+	mr.configCache = cache
 }
 
 func (mr *Service) PlanAction(ctx context.Context, res ExpandedResource, act ActionRequest) (*resource.Resource, error) {
@@ -101,6 +111,10 @@ func (mr *Service) CreateModule(ctx context.Context, mod Module) (*Module, error
 		return nil, err
 	}
 
+	if err := validateSensitiveConfigs(mod.Configs); err != nil {
+		return nil, err
+	}
+
 	if _, _, err := mr.registry.GetDriver(ctx, mod); err != nil {
 		if errors.Is(err, errors.ErrNotFound) {
 			return nil, errors.ErrInvalid.WithMsgf("driver not found for kind '%s'", mod.Name)
@@ -120,6 +134,10 @@ func (mr *Service) CreateModule(ctx context.Context, mod Module) (*Module, error
 		}
 		return nil, err
 	}
+
+	if mr.configCache != nil {
+		mr.configCache.Evict(mod.Name, mod.Project)
+	}
 	return &mod, nil
 }
 
@@ -134,8 +152,16 @@ func (mr *Service) UpdateModule(ctx context.Context, urn string, newConfigs json
 		return nil, err
 	}
 
+	if err := validateSensitiveConfigs(mod.Configs); err != nil {
+		return nil, err
+	}
+
 	if err := mr.store.UpdateModule(ctx, *mod); err != nil {
 		return nil, err
+	}
+
+	if mr.configCache != nil {
+		mr.configCache.Evict(mod.Name, mod.Project)
 	}
 	return mod, nil
 }
@@ -176,4 +202,18 @@ func (mr *Service) initDriver(ctx context.Context, mod Module) (Driver, Descript
 
 func generateURN(name, project string) string {
 	return fmt.Sprintf("orn:entropy:module:%s:%s", project, name)
+}
+
+// validateSensitiveConfigs checks that the sensitive_configs path list (if
+// present) in a module's configs is syntactically well-formed. Paths are not
+// required to resolve against any current config.
+func validateSensitiveConfigs(configs json.RawMessage) error {
+	paths, err := masking.PathsFromConfigs(configs)
+	if err != nil {
+		return errors.ErrInvalid.WithMsgf("invalid 'sensitive_configs'").WithCausef("%s", err.Error())
+	}
+	if err := masking.ValidatePaths(paths); err != nil {
+		return errors.ErrInvalid.WithMsgf("invalid 'sensitive_configs'").WithCausef("%s", err.Error())
+	}
+	return nil
 }

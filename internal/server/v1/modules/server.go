@@ -8,6 +8,7 @@ import (
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/internal/server/serverutils"
+	"github.com/goto/entropy/pkg/masking"
 	entropyv1beta1 "github.com/goto/entropy/proto/gotocompany/entropy/v1beta1"
 )
 
@@ -23,11 +24,15 @@ type APIServer struct {
 	entropyv1beta1.UnimplementedModuleServiceServer
 
 	moduleService ModuleService
+	masker        *masking.Masker
 }
 
-func NewAPIServer(moduleService ModuleService) *APIServer {
+// NewAPIServer builds the module API server. masker enables response masking of
+// sensitive values in module configs; when nil, configs are returned unmasked.
+func NewAPIServer(moduleService ModuleService, masker *masking.Masker) *APIServer {
 	return &APIServer{
 		moduleService: moduleService,
+		masker:        masker,
 	}
 }
 
@@ -39,7 +44,7 @@ func (srv *APIServer) ListModules(ctx context.Context, request *entropyv1beta1.L
 
 	var responseModules []*entropyv1beta1.Module
 	for _, mod := range mods {
-		rm, err := moduleToProto(mod)
+		rm, err := moduleToProto(srv.maskModule(mod))
 		if err != nil {
 			return nil, serverutils.ToRPCError(err)
 		}
@@ -57,7 +62,7 @@ func (srv *APIServer) GetModule(ctx context.Context, request *entropyv1beta1.Get
 		return nil, serverutils.ToRPCError(err)
 	}
 
-	resp, err := moduleToProto(*mod)
+	resp, err := moduleToProto(srv.maskModule(*mod))
 	if err != nil {
 		return nil, serverutils.ToRPCError(err)
 	}
