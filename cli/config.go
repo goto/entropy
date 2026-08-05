@@ -27,6 +27,15 @@ type Config struct {
 	Service   ServeConfig      `mapstructure:"service"`
 	PGConnStr string           `mapstructure:"pg_conn_str" default:"postgres://postgres@localhost:5432/entropy?sslmode=disable"`
 	Telemetry telemetry.Config `mapstructure:"telemetry"`
+	Masking   MaskingConfig    `mapstructure:"masking"`
+}
+
+// MaskingConfig holds settings for response masking of sensitive values.
+type MaskingConfig struct {
+	// HMACKey is the key used to fingerprint sensitive values. It must be
+	// sourced from an environment variable / secret manager and never
+	// hardcoded. When empty, response masking is disabled (pass-through).
+	HMACKey string `mapstructure:"hmac_key"`
 }
 
 type SyncerConf struct {

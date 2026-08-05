@@ -26,10 +26,11 @@ type FlinkTestSuite struct {
 	pool                 *dockertest.Pool
 	appConfig            *cli.Config
 	kubeProvider         *cluster.Provider
+	testClusterName      string
 }
 
 func (s *FlinkTestSuite) SetupTest() {
-	s.ctx, s.moduleClient, s.resourceClient, s.appConfig, s.pool, s.resource, s.kubeProvider, s.cancelModuleClient, s.cancelResourceClient, s.cancel = testbench.SetupTests(s.T(), true, true)
+	s.ctx, s.moduleClient, s.resourceClient, s.appConfig, s.pool, s.resource, s.kubeProvider, s.testClusterName, s.cancelModuleClient, s.cancelResourceClient, s.cancel = testbench.SetupTests(s.T(), true, true)
 
 	modules, err := s.moduleClient.ListModules(s.ctx, &entropyv1beta1.ListModulesRequest{})
 	s.Require().NoError(err)
@@ -126,7 +127,7 @@ func (s *FlinkTestSuite) TearDownTest() {
 		s.T().Fatal(err)
 	}
 
-	if err := s.kubeProvider.Delete(testbench.TestClusterName, ""); err != nil {
+	if err := s.kubeProvider.Delete(s.testClusterName, ""); err != nil {
 		s.T().Fatal(err)
 	}
 

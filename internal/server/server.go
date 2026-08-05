@@ -25,6 +25,7 @@ import (
 	modulesv1 "github.com/goto/entropy/internal/server/v1/modules"
 	resourcesv1 "github.com/goto/entropy/internal/server/v1/resources"
 	"github.com/goto/entropy/pkg/common"
+	"github.com/goto/entropy/pkg/masking"
 	"github.com/goto/entropy/pkg/version"
 	commonv1 "github.com/goto/entropy/proto/gotocompany/common/v1"
 	entropyv1beta1 "github.com/goto/entropy/proto/gotocompany/entropy/v1beta1"
@@ -39,9 +40,11 @@ const (
 )
 
 // Serve initialises all the gRPC+HTTP API routes, starts listening for requests at addr, and blocks until server exits.
-// Server exits gracefully when context is cancelled.
+// Server exits gracefully when context is cancelled. masker and configCache enable
+// response masking; pass nil for both to disable masking.
 func Serve(ctx context.Context, httpAddr, grpcAddr string, nrApp *newrelic.Application,
 	resourceSvc resourcesv1.ResourceService, moduleSvc modulesv1.ModuleService,
+	masker *masking.Masker, configCache *masking.ConfigCache,
 ) error {
 	grpcOpts := []grpc.ServerOption{
 		grpc.UnaryInterceptor(grpcmiddleware.ChainUnaryServer(
@@ -75,14 +78,14 @@ func Serve(ctx context.Context, httpAddr, grpcAddr string, nrApp *newrelic.Appli
 	}
 
 	resourceServiceRPC := &resourcesv1.LogWrapper{
-		ResourceServiceServer: resourcesv1.NewAPIServer(resourceSvc),
+		ResourceServiceServer: resourcesv1.NewAPIServer(resourceSvc, masker, configCache),
 	}
 	grpcServer.RegisterService(&entropyv1beta1.ResourceService_ServiceDesc, resourceServiceRPC)
 	if err := entropyv1beta1.RegisterResourceServiceHandlerServer(ctx, rpcHTTPGateway, resourceServiceRPC); err != nil {
 		return err
 	}
 
-	moduleServiceRPC := modulesv1.NewAPIServer(moduleSvc)
+	moduleServiceRPC := modulesv1.NewAPIServer(moduleSvc, masker)
 	grpcServer.RegisterService(&entropyv1beta1.ModuleService_ServiceDesc, moduleServiceRPC)
 	if err := entropyv1beta1.RegisterModuleServiceHandlerServer(ctx, rpcHTTPGateway, moduleServiceRPC); err != nil {
 		return err

@@ -10,6 +10,7 @@ import (
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/pkg/errors"
+	"github.com/goto/entropy/pkg/masking"
 )
 
 type Service struct {
@@ -19,6 +20,22 @@ type Service struct {
 	syncBackoff    time.Duration
 	maxSyncRetries int
 	serviceName    string
+
+	masker      *masking.Masker
+	configCache *masking.ConfigCache
+}
+
+// Option configures optional behaviour on a Service.
+type Option func(*Service)
+
+// WithMasking enables the write-path merge that restores stored sensitive
+// values when an incoming config carries a masked value. When not set, the
+// write path passes configs through unchanged.
+func WithMasking(masker *masking.Masker, configCache *masking.ConfigCache) Option {
+	return func(svc *Service) {
+		svc.masker = masker
+		svc.configCache = configCache
+	}
 }
 
 type ModuleService interface {
@@ -28,12 +45,12 @@ type ModuleService interface {
 	GetOutput(ctx context.Context, res module.ExpandedResource) (json.RawMessage, error)
 }
 
-func New(repo resource.Store, moduleSvc ModuleService, clockFn func() time.Time, syncBackoffInterval time.Duration, maxRetries int, serviceName string) *Service {
+func New(repo resource.Store, moduleSvc ModuleService, clockFn func() time.Time, syncBackoffInterval time.Duration, maxRetries int, serviceName string, opts ...Option) *Service {
 	if clockFn == nil {
 		clockFn = time.Now
 	}
 
-	return &Service{
+	svc := &Service{
 		clock:          clockFn,
 		store:          repo,
 		syncBackoff:    syncBackoffInterval,
@@ -41,6 +58,10 @@ func New(repo resource.Store, moduleSvc ModuleService, clockFn func() time.Time,
 		moduleSvc:      moduleSvc,
 		serviceName:    serviceName,
 	}
+	for _, opt := range opts {
+		opt(svc)
+	}
+	return svc
 }
 
 func (svc *Service) generateModuleSpec(ctx context.Context, res resource.Resource) (*module.ExpandedResource, error) {

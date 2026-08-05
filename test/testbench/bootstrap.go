@@ -85,13 +85,13 @@ func BootstrapFlinkModule(ctx context.Context, client entropyv1beta1.ModuleServi
 	return nil
 }
 
-func BootstrapKubernetesResource(ctx context.Context, client entropyv1beta1.ResourceServiceClient, kubeProvider *cluster.Provider, testDataPath string) error {
+func BootstrapKubernetesResource(ctx context.Context, client entropyv1beta1.ResourceServiceClient, kubeProvider *cluster.Provider, testDataPath string, clusterName string) error {
 	resourceData, err := os.ReadFile(testDataPath + "/resource/kubernetes_resource.json")
 	if err != nil {
 		return err
 	}
 
-	host, clientCertificate, clientKey, err := GetClusterCredentials(kubeProvider, TestClusterName)
+	host, clientCertificate, clientKey, err := GetClusterCredentials(kubeProvider, clusterName)
 	if err != nil {
 		return err
 	}
