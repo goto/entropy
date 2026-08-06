@@ -13,7 +13,7 @@ import (
 	"github.com/goto/entropy/pkg/errors"
 )
 
-const listResourceByFilterQuery = `SELECT r.id, r.urn, r.kind, r.name, r.project, r.created_at, r.updated_at, r.state_status, r.state_output, r.state_module_data, r.state_next_sync, r.state_sync_result, r.created_by, r.updated_by,
+const listResourceByFilterQuery = `SELECT r.id, r.urn, r.kind, r.name, r.project, r.created_at, r.updated_at, r.state_status, r.state_output, r.state_module_data, r.state_next_sync, r.state_sync_result, r.created_by, r.updated_by, r.deleted_at, r.deleted_by,
 	COALESCE(NULLIF(array_agg(rt.tag), '{NULL}'), '{}')::text[] AS tags,
 	jsonb_object_agg(COALESCE(rd.dependency_key, ''), d.urn) AS dependencies
 FROM resources r
@@ -22,12 +22,13 @@ FROM resources r
          LEFT JOIN resource_tags rt ON r.id = rt.resource_id
 WHERE ($1 = '' OR r.project = $1)
   AND ($2 = '' OR r.kind = $2)
+  AND r.deleted_at IS NULL
 GROUP BY r.id
 LIMIT $3
 OFFSET $4
 `
 
-const listResourceWithSpecConfigsByFilterQuery = `SELECT r.id, r.urn, r.kind, r.name, r.project, r.created_at, r.updated_at, r.spec_configs, r.state_status, r.state_output, r.state_module_data, r.state_next_sync, r.state_sync_result, r.created_by, r.updated_by,
+const listResourceWithSpecConfigsByFilterQuery = `SELECT r.id, r.urn, r.kind, r.name, r.project, r.created_at, r.updated_at, r.spec_configs, r.state_status, r.state_output, r.state_module_data, r.state_next_sync, r.state_sync_result, r.created_by, r.updated_by, r.deleted_at, r.deleted_by,
 	COALESCE(NULLIF(array_agg(rt.tag), '{NULL}'), '{}')::text[] AS tags,
 	jsonb_object_agg(COALESCE(rd.dependency_key, ''), d.urn) AS dependencies
 FROM resources r
@@ -36,6 +37,7 @@ FROM resources r
          LEFT JOIN resource_tags rt ON r.id = rt.resource_id
 WHERE ($1 = '' OR r.project = $1)
   AND ($2 = '' OR r.kind = $2)
+  AND r.deleted_at IS NULL
 GROUP BY r.id
 LIMIT $3
 OFFSET $4
@@ -57,6 +59,8 @@ type resourceModel struct {
 	StateModuleData []byte          `db:"state_module_data"`
 	StateNextSync   *time.Time      `db:"state_next_sync"`
 	StateSyncResult json.RawMessage `db:"state_sync_result"`
+	DeletedAt       *time.Time      `db:"deleted_at"`
+	DeletedBy       sql.NullString  `db:"deleted_by"`
 }
 
 type ListResourceByFilterRow struct {
@@ -75,6 +79,8 @@ type ListResourceByFilterRow struct {
 	StateSyncResult []byte
 	CreatedBy       string
 	UpdatedBy       string
+	DeletedAt       *time.Time
+	DeletedBy       sql.NullString
 	Tags            pq.StringArray
 	Dependencies    []byte
 }
@@ -110,6 +116,8 @@ func listResourceWithSpecConfigsByFilter(ctx context.Context, db *sqlx.DB, proje
 			&i.StateSyncResult,
 			&i.CreatedBy,
 			&i.UpdatedBy,
+			&i.DeletedAt,
+			&i.DeletedBy,
 			&i.Tags,
 			&i.Dependencies,
 		); err != nil {
@@ -153,6 +161,8 @@ func listResourceByFilter(ctx context.Context, db *sqlx.DB, project, kind string
 			&i.StateSyncResult,
 			&i.CreatedBy,
 			&i.UpdatedBy,
+			&i.DeletedAt,
+			&i.DeletedBy,
 			&i.Tags,
 			&i.Dependencies,
 		); err != nil {
@@ -166,13 +176,16 @@ func listResourceByFilter(ctx context.Context, db *sqlx.DB, project, kind string
 	return items, nil
 }
 
-func readResourceRecord(ctx context.Context, r sqlx.QueryerContext, urn string, into *resourceModel) error {
+func readResourceRecord(ctx context.Context, r sqlx.QueryerContext, urn string, includeDeleted bool, into *resourceModel) error {
 	cols := []string{
 		"id", "urn", "kind", "project", "name", "created_at", "updated_at", "created_by", "updated_by",
 		"spec_configs", "state_status", "state_output", "state_module_data",
-		"state_next_sync", "state_sync_result",
+		"state_next_sync", "state_sync_result", "deleted_at", "deleted_by",
 	}
 	builder := sq.Select(cols...).From(tableResources).Where(sq.Eq{"urn": urn})
+	if !includeDeleted {
+		builder = builder.Where(sq.Expr("deleted_at IS NULL"))
+	}
 
 	query, args, err := builder.PlaceholderFormat(sq.Dollar).ToSql()
 	if err != nil {
@@ -218,10 +231,18 @@ func readResourceDeps(ctx context.Context, r sq.BaseRunner, id int64, into map[s
 }
 
 func translateURNToID(ctx context.Context, r sq.BaseRunner, urn string) (int64, error) {
-	row := sq.Select("id").
+	return translateURNToIDInternal(ctx, r, urn, false)
+}
+
+func translateURNToIDInternal(ctx context.Context, r sq.BaseRunner, urn string, includeDeleted bool) (int64, error) {
+	q := sq.Select("id").
 		From(tableResources).
-		Where(sq.Eq{"urn": urn}).
-		PlaceholderFormat(sq.Dollar).
+		Where(sq.Eq{"urn": urn})
+	if !includeDeleted {
+		q = q.Where(sq.Expr("deleted_at IS NULL"))
+	}
+
+	row := q.PlaceholderFormat(sq.Dollar).
 		RunWith(r).
 		QueryRowContext(ctx)
 

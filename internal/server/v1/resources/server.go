@@ -18,7 +18,7 @@ type ResourceService interface {
 	ListResources(ctx context.Context, filter resource.Filter, withSpecConfigs bool) (resource.PagedResource, error)
 	CreateResource(ctx context.Context, res resource.Resource, resourceOpts ...core.Options) (*resource.Resource, error)
 	UpdateResource(ctx context.Context, urn string, req resource.UpdateRequest, resourceOpts ...core.Options) (*resource.Resource, error)
-	DeleteResource(ctx context.Context, urn string) error
+	DeleteResource(ctx context.Context, urn string, deletedBy string) error
 
 	ApplyAction(ctx context.Context, urn string, action module.ActionRequest, resourceOpts ...core.Options) (*resource.Resource, error)
 	GetLog(ctx context.Context, urn string, filter map[string]string) (<-chan module.LogChunk, error)
@@ -160,8 +160,12 @@ func (server APIServer) ListResources(ctx context.Context, request *entropyv1bet
 }
 
 func (server APIServer) DeleteResource(ctx context.Context, request *entropyv1beta1.DeleteResourceRequest) (*entropyv1beta1.DeleteResourceResponse, error) {
-	err := server.resourceSvc.DeleteResource(ctx, request.GetUrn())
+	userIdentifier, err := serverutils.GetUserIdentifier(ctx)
 	if err != nil {
+		return nil, serverutils.ToRPCError(err)
+	}
+
+	if err := server.resourceSvc.DeleteResource(ctx, request.GetUrn(), userIdentifier); err != nil {
 		return nil, serverutils.ToRPCError(err)
 	}
 

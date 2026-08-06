@@ -599,7 +599,7 @@ func TestAPIServer_DeleteResource(t *testing.T) {
 				t.Helper()
 				resourceService := &mocks.ResourceService{}
 				resourceService.EXPECT().
-					DeleteResource(mock.Anything, "p-testdata-gl-testname-log").
+					DeleteResource(mock.Anything, "p-testdata-gl-testname-log", "john.doe@goto.com").
 					Return(errors.ErrNotFound).Once()
 				return NewAPIServer(resourceService, nil, nil)
 			},
@@ -615,7 +615,7 @@ func TestAPIServer_DeleteResource(t *testing.T) {
 				t.Helper()
 				resourceService := &mocks.ResourceService{}
 				resourceService.EXPECT().
-					DeleteResource(mock.Anything, "p-testdata-gl-testname-log").
+					DeleteResource(mock.Anything, "p-testdata-gl-testname-log", "john.doe@goto.com").
 					Return(nil).Once()
 
 				return NewAPIServer(resourceService, nil, nil)
@@ -633,7 +633,11 @@ func TestAPIServer_DeleteResource(t *testing.T) {
 			t.Parallel()
 			srv := tt.setup(t)
 
-			got, err := srv.DeleteResource(context.Background(), tt.request)
+			ctx := context.Background()
+			md := metadata.New(map[string]string{"user-id": "john.doe@goto.com"})
+			ctx = metadata.NewIncomingContext(ctx, md)
+
+			got, err := srv.DeleteResource(ctx, tt.request)
 			if tt.wantErr != nil {
 				assert.Error(t, err)
 				assert.Truef(t, errors.Is(err, tt.wantErr), "'%s' != '%s'", tt.wantErr, err)
