@@ -8,6 +8,7 @@ import (
 
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/modules"
+	kafkamod "github.com/goto/entropy/modules/kafka"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/validator"
 )
@@ -67,6 +68,52 @@ type Config struct {
 	ChartValues   *ChartValues  `json:"chart_values,omitempty"`
 	InitContainer InitContainer `json:"init_container,omitempty"`
 	Autoscaler    *Autoscaler   `json:"autoscaler,omitempty"`
+
+	// Team owns the firehose. It selects the credential reference from a
+	// stream's PLAIN/SCRAM ACL list.
+	Team string `json:"team,omitempty"`
+
+	// StreamName is the name of the kafka resource backing SOURCE_KAFKA_BROKERS.
+	// It is the key used to resolve the stream's security profile and the stable
+	// directory name of its mounted secrets. Falls back to the SOURCE_KAFKA_NAME
+	// env variable when unset.
+	StreamName string `json:"stream_name,omitempty"`
+
+	// StreamSecurityEnabled makes the driver resolve StreamName's kafka resource
+	// internally (by URN, without a declared dependency) to read its security
+	// profile.
+	StreamSecurityEnabled bool `json:"stream_security_enabled,omitempty"`
+
+	// StreamSecurity holds the kafka security profile fetched by Dex, keyed by
+	// stream name. References only — never inline secret values.
+	StreamSecurity map[string]*kafkamod.SecurityProfile `json:"stream_security,omitempty"`
+
+	// ACLMounts is the set of secret / projected-token volume mounts required by
+	// an ACL (SASL_SSL/OAUTHBEARER, SSL, PLAIN/SCRAM) source stream. It is
+	// computed by applyStreamSecurity from the resolved stream security profile.
+	ACLMounts []ACLMount `json:"acl_mounts,omitempty"`
+
+	// ServiceAccount, when set, becomes the pod's service account. It is the
+	// OAuth identity authorized for ACL streams. Empty preserves the chart's
+	// default service account.
+	ServiceAccount string `json:"service_account,omitempty"`
+}
+
+// ACLMount describes a single pod volume+mount for an ACL stream.
+// Type is either "secret" or "projected".
+type ACLMount struct {
+	Name       string `json:"name"`
+	MountPath  string `json:"mountPath"`
+	SecretName string `json:"secretName,omitempty"`
+	Type       string `json:"type"`
+}
+
+// streamName is the kafka resource name backing this firehose, if any.
+func (cfg *Config) streamName() string {
+	if cfg.StreamName != "" {
+		return cfg.StreamName
+	}
+	return cfg.EnvVariables[keySourceKafkaName]
 }
 
 type Telegraf struct {

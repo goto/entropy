@@ -8,6 +8,8 @@ import (
 )
 
 func BenchmarkDriverFactory(b *testing.B) {
+	desc := Module(nil)
+
 	b.SetParallelism(10000)
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -18,7 +20,7 @@ func BenchmarkDriverFactory(b *testing.B) {
 
 			config := json.RawMessage(configFile)
 
-			_, _ = Module.DriverFactory(config)
+			_, _ = desc.DriverFactory(config)
 		}
 	})
 }

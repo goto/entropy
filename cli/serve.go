@@ -72,8 +72,6 @@ func StartServer(ctx context.Context, cfg Config, migrate, spawnWorker bool) err
 	}
 
 	store := setupStorage(cfg.PGConnStr, cfg.Syncer, cfg.Service)
-	resourceService := core.New(store, moduleService, time.Now, cfg.Syncer.SyncBackoffInterval, cfg.Syncer.MaxRetries, cfg.Telemetry.ServiceName)
-	
 	moduleService := module.NewService(setupRegistry(store), store)
 
 	// TODO: Securely load this value from an environment variable or secrets
@@ -134,12 +132,13 @@ func (l moduleConfigLookup) ModuleConfigs(ctx context.Context, moduleURN string)
 func setupRegistry(store *postgres.Store) module.Registry {
 	supported := []module.Descriptor{
 		kubernetes.Module,
-		firehose.Module,
 		job.Module,
 		kafka.Module,
 		flink.Module,
-		// dagger resolves ACL kafka streams by fetching their resource internally
-		// (no dependency), so it needs a resource getter backed by the store.
+		// dagger and firehose resolve ACL kafka streams by fetching their
+		// resource internally (no dependency), so they need a resource getter
+		// backed by the store.
+		firehose.Module(store.GetByURN),
 		dagger.Module(store.GetByURN),
 	}
 

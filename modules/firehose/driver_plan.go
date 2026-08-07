@@ -21,23 +21,23 @@ var suffixRegex = regexp.MustCompile(`^([A-Za-z0-9-]+)-([0-9]+)$`)
 
 var errCauseInvalidNamespaceUpdate = "cannot update kube namespace of a running firehose"
 
-func (fd *firehoseDriver) Plan(_ context.Context, exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
+func (fd *firehoseDriver) Plan(ctx context.Context, exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
 	switch act.Name {
 	case module.CreateAction:
-		return fd.planCreate(exr, act)
+		return fd.planCreate(ctx, exr, act)
 
 	case ResetAction:
-		return fd.planReset(exr, act)
+		return fd.planReset(ctx, exr, act)
 
 	case ResetV2Action:
-		return fd.planResetV2(exr, act)
+		return fd.planResetV2(ctx, exr, act)
 
 	default:
-		return fd.planChange(exr, act)
+		return fd.planChange(ctx, exr, act)
 	}
 }
 
-func (fd *firehoseDriver) planChange(exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
+func (fd *firehoseDriver) planChange(ctx context.Context, exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
 	curConf, err := readConfig(exr.Resource, exr.Resource.Spec.Configs, fd.conf)
 	if err != nil {
 		return nil, err
@@ -82,6 +82,12 @@ func (fd *firehoseDriver) planChange(exr module.ExpandedResource, act module.Act
 			if !curConf.Stopped {
 				return nil, errors.ErrInvalid.WithCausef("%s", errCauseInvalidNamespaceUpdate)
 			}
+		}
+
+		// resolve the ACL source stream (SASL/SSL consumer config + pod mounts).
+		// No-op for plaintext sources.
+		if err := fd.applyStreamSecurity(ctx, exr, newConf); err != nil {
+			return nil, errors.ErrInvalid.WithMsgf("failed to resolve source stream").WithCausef("%s", err.Error())
 		}
 
 		curConf = newConf
@@ -144,10 +150,16 @@ func (fd *firehoseDriver) planChange(exr module.ExpandedResource, act module.Act
 	return &exr.Resource, nil
 }
 
-func (fd *firehoseDriver) planCreate(exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
+func (fd *firehoseDriver) planCreate(ctx context.Context, exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
 	conf, err := readConfig(exr.Resource, act.Params, fd.conf)
 	if err != nil {
 		return nil, err
+	}
+
+	// resolve the ACL source stream (SASL/SSL consumer config + pod mounts).
+	// No-op for plaintext sources.
+	if err := fd.applyStreamSecurity(ctx, exr, conf); err != nil {
+		return nil, errors.ErrInvalid.WithMsgf("failed to resolve source stream").WithCausef("%s", err.Error())
 	}
 
 	chartVals, err := mergeChartValues(&fd.conf.ChartValues, conf.ChartValues)
@@ -193,7 +205,7 @@ func (fd *firehoseDriver) planCreate(exr module.ExpandedResource, act module.Act
 	return &exr.Resource, nil
 }
 
-func (fd *firehoseDriver) planResetV2(exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
+func (fd *firehoseDriver) planResetV2(ctx context.Context, exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
 	resetValue, err := kafka.ParseResetV2Params(act.Params)
 	if err != nil {
 		return nil, err
@@ -204,6 +216,10 @@ func (fd *firehoseDriver) planResetV2(exr module.ExpandedResource, act module.Ac
 	curConf, err := readConfig(exr.Resource, exr.Resource.Spec.Configs, fd.conf)
 	if err != nil {
 		return nil, err
+	}
+
+	if err := fd.applyStreamSecurity(ctx, exr, curConf); err != nil {
+		return nil, errors.ErrInvalid.WithMsgf("failed to resolve source stream").WithCausef("%s", err.Error())
 	}
 
 	curConf.ResetOffset = resetValue
@@ -225,7 +241,7 @@ func (fd *firehoseDriver) planResetV2(exr module.ExpandedResource, act module.Ac
 	return &exr.Resource, nil
 }
 
-func (fd *firehoseDriver) planReset(exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
+func (fd *firehoseDriver) planReset(ctx context.Context, exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
 	resetValue, err := kafka.ParseResetParams(act.Params)
 	if err != nil {
 		return nil, err
@@ -236,6 +252,10 @@ func (fd *firehoseDriver) planReset(exr module.ExpandedResource, act module.Acti
 	curConf, err := readConfig(exr.Resource, exr.Resource.Spec.Configs, fd.conf)
 	if err != nil {
 		return nil, err
+	}
+
+	if err := fd.applyStreamSecurity(ctx, exr, curConf); err != nil {
+		return nil, errors.ErrInvalid.WithMsgf("failed to resolve source stream").WithCausef("%s", err.Error())
 	}
 
 	curConf.ResetOffset = resetValue

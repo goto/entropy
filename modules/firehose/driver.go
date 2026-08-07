@@ -90,7 +90,12 @@ type firehoseDriver struct {
 	kubeGetPod        kubeGetPodFn
 	kubeGetDeployment kubeGetDeploymentFn
 	consumerReset     consumerResetFn
+	getResource       ResourceGetter
 }
+
+// ResourceGetter fetches a resource by URN. It lets the driver resolve an ACL
+// kafka stream internally, without declaring it as a dependency.
+type ResourceGetter func(ctx context.Context, urn string) (*resource.Resource, error)
 
 type (
 	kubeDeployFn        func(ctx context.Context, isCreate bool, conf kube.Config, hc helm.ReleaseConfig) error
@@ -147,6 +152,10 @@ type driverConf struct {
 	KubeDeployTimeout int `json:"kube_deploy_timeout_seconds"`
 
 	Autoscaler FirehoseAutoscaler `json:"autoscaler,omitempty"`
+
+	// KafkaSecurity holds the deployment level settings used when wiring an ACL
+	// (SASL/SSL) source stream.
+	KafkaSecurity KafkaSecurity `json:"kafka_security,omitempty"`
 }
 
 type FirehoseAutoscaler struct {
@@ -394,6 +403,25 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		},
 		"telegraf": buildTelegrafValues(telegrafConf),
 		"mountSecrets": mountSecrets,
+	}
+
+	// ACL (SASL/SSL) source support. Both keys are omitted for plaintext
+	// firehoses, which keeps their rendered chart values unchanged.
+	if len(conf.ACLMounts) > 0 {
+		aclMounts := make([]map[string]any, 0, len(conf.ACLMounts))
+		for _, m := range conf.ACLMounts {
+			aclMounts = append(aclMounts, map[string]any{
+				"name":       m.Name,
+				"mountPath":  m.MountPath,
+				"secretName": m.SecretName,
+				"type":       m.Type,
+			})
+		}
+		rc.Values["acl_mounts"] = aclMounts
+	}
+
+	if conf.ServiceAccount != "" {
+		rc.Values["service_account"] = conf.ServiceAccount
 	}
 
 	if conf.Autoscaler != nil {
