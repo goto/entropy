@@ -405,19 +405,29 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		"mountSecrets": mountSecrets,
 	}
 
-	// ACL (SASL/SSL) source support. Both keys are omitted for plaintext
-	// firehoses, which keeps their rendered chart values unchanged.
-	if len(conf.ACLMounts) > 0 {
-		aclMounts := make([]map[string]any, 0, len(conf.ACLMounts))
-		for _, m := range conf.ACLMounts {
-			aclMounts = append(aclMounts, map[string]any{
-				"name":       m.Name,
-				"mountPath":  m.MountPath,
-				"secretName": m.SecretName,
-				"type":       m.Type,
-			})
+	// ACL (SASL/SSL) source support, mirroring odin's firehose manifest: the
+	// chart mounts the referenced secrets and renders the truststore password as
+	// a secretKeyRef. Both keys are omitted for plaintext firehoses, which keeps
+	// their rendered chart values unchanged.
+	if conf.ACL != nil {
+		aclValues := map[string]any{}
+		if conf.ACL.SSLConfigCredential != "" {
+			aclValues["ssl_config_credential"] = conf.ACL.SSLConfigCredential
+			aclValues["truststore_filename"] = conf.ACL.TruststoreFilename
 		}
-		rc.Values["acl_mounts"] = aclMounts
+		if conf.ACL.TruststorePassword != nil {
+			aclValues["truststore_password"] = map[string]any{
+				"secretName": conf.ACL.TruststorePassword.SecretName,
+				"key":        conf.ACL.TruststorePassword.Key,
+			}
+		}
+		if conf.ACL.JaasConfigCredential != "" {
+			aclValues["jaas_config_credential"] = conf.ACL.JaasConfigCredential
+		}
+		if conf.ACL.KafkaTokenEnabled {
+			aclValues["kafka_token_enabled"] = true
+		}
+		rc.Values["kafka_security"] = aclValues
 	}
 
 	if conf.ServiceAccount != "" {

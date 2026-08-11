@@ -88,24 +88,16 @@ type Config struct {
 	// stream name. References only — never inline secret values.
 	StreamSecurity map[string]*kafkamod.SecurityProfile `json:"stream_security,omitempty"`
 
-	// ACLMounts is the set of secret / projected-token volume mounts required by
-	// an ACL (SASL_SSL/OAUTHBEARER, SSL, PLAIN/SCRAM) source stream. It is
-	// computed by applyStreamSecurity from the resolved stream security profile.
-	ACLMounts []ACLMount `json:"acl_mounts,omitempty"`
+	// ACL describes the secret material an ACL (SASL_SSL/OAUTHBEARER, SSL,
+	// PLAIN/SCRAM) source stream needs mounted. It is computed by
+	// applyStreamSecurity from the resolved stream security profile and holds
+	// references only — never secret values.
+	ACL *ACLConfig `json:"acl,omitempty"`
 
 	// ServiceAccount, when set, becomes the pod's service account. It is the
 	// OAuth identity authorized for ACL streams. Empty preserves the chart's
 	// default service account.
 	ServiceAccount string `json:"service_account,omitempty"`
-}
-
-// ACLMount describes a single pod volume+mount for an ACL stream.
-// Type is either "secret" or "projected".
-type ACLMount struct {
-	Name       string `json:"name"`
-	MountPath  string `json:"mountPath"`
-	SecretName string `json:"secretName,omitempty"`
-	Type       string `json:"type"`
 }
 
 // streamName is the kafka resource name backing this firehose, if any.

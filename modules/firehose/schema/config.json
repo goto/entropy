@@ -6,6 +6,32 @@
     "replicas",
     "env_variables"
   ],
+  "anyOf": [
+    {
+      "properties": {
+        "env_variables": {
+          "required": [
+            "SOURCE_KAFKA_BROKERS"
+          ]
+        }
+      }
+    },
+    {
+      "$comment": "brokers may be omitted when the kafka stream is named: they are resolved from the stream's output during plan.",
+      "required": [
+        "stream_name"
+      ]
+    },
+    {
+      "properties": {
+        "env_variables": {
+          "required": [
+            "SOURCE_KAFKA_NAME"
+          ]
+        }
+      }
+    }
+  ],
   "properties": {
     "stop_time": {
       "type": "string",
@@ -71,7 +97,6 @@
       "required": [
         "SINK_TYPE",
         "INPUT_SCHEMA_PROTO_CLASS",
-        "SOURCE_KAFKA_BROKERS",
         "SOURCE_KAFKA_TOPIC"
       ],
       "properties": {

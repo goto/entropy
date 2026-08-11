@@ -1,0 +1,32 @@
+{
+    "kind": "firehose",
+    "name": "test-firehose-acl",
+    "project": "test-project-0",
+    "labels": {
+        "description": "test firehose consuming a SASL_SSL kafka stream"
+    },
+    "spec": {
+        "configs": {
+            "chart_values": {
+                "image_pull_policy": "IfNotPresent"
+            },
+            "env_variables": {
+                "SINK_TYPE": "LOG",
+                "INPUT_SCHEMA_PROTO_CLASS": "com.tests.TestMessage",
+                "SOURCE_KAFKA_TOPIC": "test-topic"
+            },
+            "replicas": 1,
+            "namespace": "default",
+            "team": "test-team",
+            "stream_name": "test-kafka-acl",
+            "stream_security_enabled": true,
+            "service_account": "aegis-kafka"
+        },
+        "dependencies": [
+            {
+                "key": "kube_cluster",
+                "value": "orn:entropy:kubernetes:test-project-0:test-kube"
+            }
+        ]
+    }
+}

@@ -49,23 +49,47 @@ this order:
    (or `SOURCE_KAFKA_SECURITY_ENABLED=true` is passed as an env variable — it is stripped
    before the config reaches the running firehose).
 
-From the resolved profile the module injects the `SOURCE_KAFKA_CONSUMER_CONFIG_*` env
-variables (security protocol, SASL mechanism, JAAS config, truststore location/password)
-and records the secret volumes in `acl_mounts`, which is rendered as the `acl_mounts`
-chart value alongside `service_account`. Credentials are never inlined: username, password
-and truststore password are referenced through the `literalfile` config provider pointing
-at the mounted secrets. Plaintext firehoses are untouched — no injected config, no mounts,
-no chart value changes.
+The wiring mirrors odin's firehose adapter, so a migrated firehose renders the same pod
+spec it does today. From the resolved profile the module injects the
+`SOURCE_KAFKA_CONSUMER_CONFIG_*` env variables — security protocol, SASL mechanism, SSL
+protocol, truststore type, and for a stream carrying certs a fixed
+`SSL_TRUSTSTORE_LOCATION` of `/etc/secret/truststore.p12` (`.jks` for JKS) plus the
+`SSL_TRUSTSTORE_FILENAME` the chart uses to select that key out of the secret. OAUTHBEARER
+additionally gets the `OAuthBearerLoginModule` JAAS string and the pod login callback
+handler class.
 
-The provider/callback classes and the default service account are deployment level
-settings under the module's driver config:
+No secret value ever passes through entropy. The material is described as references in the
+`acl` config, rendered as the `kafka_security` chart value alongside `service_account`:
+
+| field | what the chart does with it |
+| :--- | :--- |
+| `ssl_config_credential` + `truststore_filename` | mounts that existing secret at `/etc/secret`, selecting the filename as both key and path |
+| `truststore_password` (`secretName` + `key`) | renders `SOURCE_KAFKA_CONSUMER_CONFIG_SSL_TRUSTSTORE_PASSWORD` as a `secretKeyRef` env var |
+| `jaas_config_credential` | mounts the PLAIN/SCRAM `jaas.conf` secret at `/etc/secret/kafka` |
+| `kafka_token_enabled` | adds the projected service-account token (`audience: kafka`) at `/var/run/secrets/kafka/serviceaccount` |
+
+PLAIN/SCRAM streams never inline credentials or a JAAS string: they read a mounted
+`jaas.conf`, and the module appends
+`-Djava.security.auth.login.config=/etc/secret/kafka/jaas.conf` to `_JAVA_OPTIONS` (the
+rest of that variable is left alone). The secret is the profile's `acls[team].secretName`
+when set, otherwise odin's `<team>-<stream>-jaas` convention.
+
+Plaintext firehoses are untouched — no injected config, no `kafka_security` value, no
+chart value changes.
+
+The callback handler class and default service account are deployment level settings under
+the module's driver config:
 
 ```json
 {
   "kafka_security": {
-    "config_provider_class": "com.example.kafka.configproviders.LiteralFileConfigProvider",
-    "sasl_login_callback_handler_class": "com.example.kafka.security.PodLoginCallbackHandler",
+    "sasl_login_callback_handler_class": "io.gtflabs.kafka.security.oauthbearer.kubernetes.PodLoginCallbackHandler",
     "service_account": "aegis-kafka"
   }
 }
 ```
+
+> The published `firehose` chart (0.2.0) does not yet render any of this: its `mountSecrets`
+> builds a *new* secret from inline values, and it has no `serviceAccountName`, projected
+> volume or `secretKeyRef` support. Those four template blocks — ports of odin's
+> `manifests/firehose.yaml` — are needed before an ACL firehose can run.

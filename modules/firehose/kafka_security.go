@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -15,19 +14,32 @@ import (
 
 // SASL/SSL consumer config keys. Firehose passes every
 // SOURCE_KAFKA_CONSUMER_CONFIG_* env variable straight to the kafka consumer,
-// so unlike dagger — where these live inside the STREAMS json — they are flat
-// env variables here.
+// so they are flat env variables here. The key set and the values mirror odin's
+// firehose adapter (app/firehose/adapter.js on gtf-master), which is the
+// behaviour being migrated onto entropy.
 const (
-	keyConsumerSecurityProtocol            = "SOURCE_KAFKA_CONSUMER_CONFIG_SECURITY_PROTOCOL"
-	keyConsumerSaslMechanism               = "SOURCE_KAFKA_CONSUMER_CONFIG_SASL_MECHANISM"
-	keyConsumerSaslJaasConfig              = "SOURCE_KAFKA_CONSUMER_CONFIG_SASL_JAAS_CONFIG"
-	keyConsumerSaslLoginCallbackHandler    = "SOURCE_KAFKA_CONSUMER_CONFIG_SASL_LOGIN_CALLBACK_HANDLER_CLASS"
-	keyConsumerSSLProtocol                 = "SOURCE_KAFKA_CONSUMER_CONFIG_SSL_PROTOCOL"
-	keyConsumerSSLTruststoreType           = "SOURCE_KAFKA_CONSUMER_CONFIG_SSL_TRUSTSTORE_TYPE"
-	keyConsumerSSLTruststoreLocation       = "SOURCE_KAFKA_CONSUMER_CONFIG_SSL_TRUSTSTORE_LOCATION"
-	keyConsumerSSLTruststorePassword       = "SOURCE_KAFKA_CONSUMER_CONFIG_SSL_TRUSTSTORE_PASSWORD"
-	keyConsumerConfigProviders             = "SOURCE_KAFKA_CONSUMER_CONFIG_CONFIG_PROVIDERS"
-	keyConsumerConfigProvidersLiteralClass = "SOURCE_KAFKA_CONSUMER_CONFIG_CONFIG_PROVIDERS_LITERALFILE_CLASS"
+	keyConsumerSecurityProtocol         = "SOURCE_KAFKA_CONSUMER_CONFIG_SECURITY_PROTOCOL"
+	keyConsumerSaslMechanism            = "SOURCE_KAFKA_CONSUMER_CONFIG_SASL_MECHANISM"
+	keyConsumerSaslJaasConfig           = "SOURCE_KAFKA_CONSUMER_CONFIG_SASL_JAAS_CONFIG"
+	keyConsumerSaslLoginCallbackHandler = "SOURCE_KAFKA_CONSUMER_CONFIG_SASL_LOGIN_CALLBACK_HANDLER_CLASS"
+	keyConsumerSSLProtocol              = "SOURCE_KAFKA_CONSUMER_CONFIG_SSL_PROTOCOL"
+	keyConsumerSSLTruststoreType        = "SOURCE_KAFKA_CONSUMER_CONFIG_SSL_TRUSTSTORE_TYPE"
+	keyConsumerSSLTruststoreLocation    = "SOURCE_KAFKA_CONSUMER_CONFIG_SSL_TRUSTSTORE_LOCATION"
+	keyConsumerSSLTruststoreFilename    = "SOURCE_KAFKA_CONSUMER_CONFIG_SSL_TRUSTSTORE_FILENAME"
+
+	// keyJavaOptions carries the JAAS file location for SCRAM/PLAIN streams.
+	// It is user-owned, so only the JAAS option itself is added or removed.
+	keyJavaOptions = "_JAVA_OPTIONS"
+)
+
+// legacy keys from the config-provider approach. They are no longer emitted but
+// are still swept, so resources planned by an older build do not keep a
+// dangling provider reference.
+const (
+	keyConsumerSSLTruststorePassword     = "SOURCE_KAFKA_CONSUMER_CONFIG_SSL_TRUSTSTORE_PASSWORD"
+	keyConsumerConfigProviders           = "SOURCE_KAFKA_CONSUMER_CONFIG_CONFIG_PROVIDERS"
+	keyConsumerConfigProviderClassPrefix = "SOURCE_KAFKA_CONSUMER_CONFIG_CONFIG_PROVIDERS_"
+	keyConsumerConfigProviderClassSuffix = "_CLASS"
 )
 
 // transient inputs Dex may send as env variables. They describe the stream to
@@ -39,7 +51,7 @@ const (
 
 // managedSecurityKeys are owned by this module: they are wiped and rebuilt on
 // every plan of a firehose that names a kafka stream, so a stream that loses
-// its ACLs does not leave stale credentials behind.
+// its ACLs does not leave stale configuration behind.
 var managedSecurityKeys = []string{
 	keyConsumerSecurityProtocol,
 	keyConsumerSaslMechanism,
@@ -48,23 +60,18 @@ var managedSecurityKeys = []string{
 	keyConsumerSSLProtocol,
 	keyConsumerSSLTruststoreType,
 	keyConsumerSSLTruststoreLocation,
+	keyConsumerSSLTruststoreFilename,
 	keyConsumerSSLTruststorePassword,
 	keyConsumerConfigProviders,
-	keyConsumerConfigProvidersLiteralClass,
 }
 
-// GTF Kafka security constants, same values the dagger module injects.
 const (
-	oauthConsumerSaslJaasConfig   = "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required;"
-	scramLoginModule              = "org.apache.kafka.common.security.scram.ScramLoginModule"
-	plainLoginModule              = "org.apache.kafka.common.security.plain.PlainLoginModule"
-	literalFileConfigProviderName = "literalfile"
+	oauthConsumerSaslJaasConfig = "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required;"
 
-	// defaults for the classes shipped by the platform kafka-security library.
-	// Override per deployment via driver config `kafka_security` when the
-	// firehose image packages them under different names.
+	// the OAUTHBEARER login callback handler shipped by the platform kafka
+	// security library. Override per deployment when the firehose image
+	// packages it under a different name.
 	defaultOauthSaslLoginCallbackHandlerClass = "io.gtflabs.kafka.security.oauthbearer.kubernetes.PodLoginCallbackHandler"
-	defaultLiteralFileConfigProviderClass     = "com.gtf.dagger.kafka.configproviders.LiteralFileConfigProvider"
 )
 
 const (
@@ -77,24 +84,22 @@ const (
 	truststoreTypePKCS12          = "PKCS12"
 )
 
-// mount path templates, kept consistent between the injected consumer config
-// and the pod volume mounts, and identical to the dagger module's layout.
+// Mount layout, matching odin's firehose manifest. The chart mounts the stream's
+// cert secret at /etc/secret and the JAAS secret at /etc/secret/kafka; the
+// projected kafka service-account token lands at kafkaTokenMountPath.
 const (
-	kafkaTokenVolumeName    = "kafka-token"
-	kafkaTokenMountPath     = "/var/run/secrets/kafka/serviceaccount"
-	certsMountPathFmt       = "/var/secrets/%s/certs"
-	passwordsMountPathFmt   = "/var/secrets/%s/passwords"
-	credentialsMountPathFmt = "/var/secrets/%s/credentials"
-)
+	secretMountPath     = "/etc/secret"
+	jaasSecretMountPath = secretMountPath + "/kafka"
+	jaasConfigFileName  = "jaas.conf"
+	jaasConfigJavaOpt   = "-Djava.security.auth.login.config=" + jaasSecretMountPath + "/" + jaasConfigFileName
+	truststoreFileBase  = "truststore"
+	jaasSecretSuffix    = "jaas"
 
-var invalidVolumeNameChars = regexp.MustCompile(`[^a-zA-Z0-9]+`)
+	kafkaTokenMountPath = "/var/run/secrets/kafka/serviceaccount"
+)
 
 // KafkaSecurity carries the deployment level knobs for ACL streams.
 type KafkaSecurity struct {
-	// ConfigProviderClass reads secret material off the mounted volumes for the
-	// ${literalfile:...} references in the injected consumer config.
-	ConfigProviderClass string `json:"config_provider_class,omitempty"`
-
 	// SaslLoginCallbackHandlerClass is the OAUTHBEARER login callback handler
 	// that exchanges the projected service-account token for a kafka token.
 	SaslLoginCallbackHandlerClass string `json:"sasl_login_callback_handler_class,omitempty"`
@@ -106,9 +111,6 @@ type KafkaSecurity struct {
 }
 
 func (k KafkaSecurity) withDefaults() KafkaSecurity {
-	if k.ConfigProviderClass == "" {
-		k.ConfigProviderClass = defaultLiteralFileConfigProviderClass
-	}
 	if k.SaslLoginCallbackHandlerClass == "" {
 		k.SaslLoginCallbackHandlerClass = defaultOauthSaslLoginCallbackHandlerClass
 	}
@@ -132,8 +134,11 @@ func isPlainOrScramStream(sp *kafkamod.SecurityProfile) bool {
 	return protoOK && mechOK
 }
 
-func isTLSStream(sp *kafkamod.SecurityProfile) bool {
-	return sp != nil && sp.SecurityProtocol == securityProtocolSSL
+// usesSSLMaterial reports whether the stream presents a truststore. odin keys
+// this off the security protocol containing "SSL", covering both SSL and
+// SASL_SSL.
+func usesSSLMaterial(sp *kafkamod.SecurityProfile) bool {
+	return sp != nil && strings.Contains(sp.SecurityProtocol, securityProtocolSSL)
 }
 
 // hasSecurityProfile reports whether the profile requires any SASL/SSL wiring.
@@ -141,23 +146,23 @@ func hasSecurityProfile(sp *kafkamod.SecurityProfile) bool {
 	return sp != nil && sp.SecurityProtocol != "" && !strings.EqualFold(sp.SecurityProtocol, "PLAINTEXT")
 }
 
-func truststoreExtension(truststoreType string) string {
+// truststoreFileName is the file name the truststore is projected as, and also
+// the key it is read from inside the cert secret.
+func truststoreFileName(truststoreType string) string {
 	if strings.EqualFold(truststoreType, truststoreTypePKCS12) {
-		return "p12"
+		return truststoreFileBase + ".p12"
 	}
-	return "jks"
+	return truststoreFileBase + ".jks"
 }
 
 // buildSecurityConfigs builds the SOURCE_KAFKA_CONSUMER_CONFIG_* env variables
-// for the source stream, branching on its security profile. streamName is the
-// stable per-stream directory name used both here and in the volume mounts.
-// Returns nil for plaintext streams so env variables stay unchanged.
+// for the source stream. Returns nil for plaintext streams so env variables
+// stay unchanged.
 //
-// Unlike dagger, the mount descriptors (SSL_CERT_SECRET and
-// SSL_TRUSTSTORE_PASSWORD_DETAILS) are not injected: firehose hands these keys
-// to the kafka consumer verbatim, so the secret references travel through
-// Config.ACLMounts (the chart values) instead.
-func buildSecurityConfigs(streamName string, sp *kafkamod.SecurityProfile, team string, sec KafkaSecurity) map[string]string {
+// No secret value is ever placed here: the truststore password reaches the
+// container as a secretKeyRef env var and the SCRAM credentials as a mounted
+// jaas.conf, both described by the ACLConfig chart values.
+func buildSecurityConfigs(sp *kafkamod.SecurityProfile, sec KafkaSecurity) map[string]string {
 	if !hasSecurityProfile(sp) {
 		return nil
 	}
@@ -169,8 +174,7 @@ func buildSecurityConfigs(streamName string, sp *kafkamod.SecurityProfile, team 
 		cfg[keyConsumerSaslMechanism] = sp.SaslMechanism
 	}
 
-	// SSL material is shared by the TLS and OAUTHBEARER paths.
-	if isTLSStream(sp) || isOauthbearerStream(sp) {
+	if usesSSLMaterial(sp) {
 		if sp.SSLProtocol != "" {
 			cfg[keyConsumerSSLProtocol] = sp.SSLProtocol
 		}
@@ -178,136 +182,106 @@ func buildSecurityConfigs(streamName string, sp *kafkamod.SecurityProfile, team 
 			cfg[keyConsumerSSLTruststoreType] = sp.SSLTruststoreType
 		}
 		if sp.SSLCertSecret != "" {
-			cfg[keyConsumerSSLTruststoreLocation] = fmt.Sprintf(
-				"/var/secrets/%s/certs/truststore.%s", streamName, truststoreExtension(sp.SSLTruststoreType))
-		}
-		if sp.SSLTruststorePasswordDetails != nil {
-			cfg[keyConsumerSSLTruststorePassword] = fmt.Sprintf(
-				"${literalfile:/var/secrets/%s/passwords/%s:literal-value}",
-				streamName, sp.SSLTruststorePasswordDetails.Key)
-			cfg[keyConsumerConfigProviders] = literalFileConfigProviderName
-			cfg[keyConsumerConfigProvidersLiteralClass] = sec.ConfigProviderClass
+			fileName := truststoreFileName(sp.SSLTruststoreType)
+			cfg[keyConsumerSSLTruststoreLocation] = secretMountPath + "/" + fileName
+			// the chart selects this key out of the cert secret and projects it
+			// under the same name.
+			cfg[keyConsumerSSLTruststoreFilename] = fileName
 		}
 	}
 
-	if isOauthbearerStream(sp) {
-		cfg[keyConsumerSaslLoginCallbackHandler] = sec.SaslLoginCallbackHandlerClass
+	// OAUTHBEARER authenticates with the projected service-account token, so the
+	// JAAS config is a fixed module string rather than credentials.
+	if sp.SaslMechanism == saslMechanismOauthbearer {
 		cfg[keyConsumerSaslJaasConfig] = oauthConsumerSaslJaasConfig
-	}
-
-	if isPlainOrScramStream(sp) {
-		cfg[keyConsumerSaslJaasConfig] = buildSASLJaasConfig(streamName, sp, team)
-		// credentials are referenced via the literalfile provider (never inlined).
-		if _, ok := sp.ACLs[team]; ok {
-			cfg[keyConsumerConfigProviders] = literalFileConfigProviderName
-			cfg[keyConsumerConfigProvidersLiteralClass] = sec.ConfigProviderClass
-		}
+		cfg[keyConsumerSaslLoginCallbackHandler] = sec.SaslLoginCallbackHandlerClass
 	}
 
 	return cfg
 }
 
-// buildSASLJaasConfig builds the JAAS config string for PLAIN/SCRAM mechanisms.
-// Credentials are referenced through the literalfile config provider pointing
-// at the mounted secret, never inlined.
-func buildSASLJaasConfig(streamName string, sp *kafkamod.SecurityProfile, team string) string {
-	loginModule := scramLoginModule
-	if sp.SaslMechanism == saslMechanismPlain {
-		loginModule = plainLoginModule
-	}
+// ACLConfig is the chart-facing description of a stream's security material.
+// Every field is a reference to a secret that already exists in the target
+// namespace — no secret value passes through entropy.
+type ACLConfig struct {
+	// SSLConfigCredential is the secret holding the truststore. The chart mounts
+	// it at /etc/secret, selecting TruststoreFilename as both key and path.
+	SSLConfigCredential string `json:"ssl_config_credential,omitempty"`
+	TruststoreFilename  string `json:"truststore_filename,omitempty"`
 
-	cred, ok := sp.ACLs[team]
-	if !ok || cred.SecretName == "" {
-		return fmt.Sprintf("%s required;", loginModule)
-	}
+	// TruststorePassword is rendered by the chart as a secretKeyRef env var for
+	// SOURCE_KAFKA_CONSUMER_CONFIG_SSL_TRUSTSTORE_PASSWORD.
+	TruststorePassword *SecretKeyRef `json:"truststore_password,omitempty"`
 
-	userRef := fmt.Sprintf("${literalfile:/var/secrets/%s/credentials/%s:literal-value}", streamName, cred.UsernameKey)
-	passRef := fmt.Sprintf("${literalfile:/var/secrets/%s/credentials/%s:literal-value}", streamName, cred.PasswordKey)
-	return fmt.Sprintf("%s required username=%q password=%q;", loginModule, userRef, passRef)
+	// JaasConfigCredential is the secret holding jaas.conf for PLAIN/SCRAM
+	// streams, mounted at /etc/secret/kafka.
+	JaasConfigCredential string `json:"jaas_config_credential,omitempty"`
+
+	// KafkaTokenEnabled requests the projected kafka service-account token
+	// (audience "kafka") that OAUTHBEARER authenticates with.
+	KafkaTokenEnabled bool `json:"kafka_token_enabled,omitempty"`
 }
 
-// sanitizeVolumeName renders a k8s-safe (<=63 char, lowercase alnum/dash) volume name.
-func sanitizeVolumeName(name string) string {
-	sanitized := invalidVolumeNameChars.ReplaceAllString(name, "-")
-	sanitized = strings.ToLower(strings.Trim(sanitized, "-"))
-	if len(sanitized) > 63 {
-		sanitized = strings.Trim(sanitized[:63], "-")
-	}
-	return sanitized
+// SecretKeyRef references a single key inside an existing secret.
+type SecretKeyRef struct {
+	SecretName string `json:"secretName"`
+	Key        string `json:"key"`
 }
 
-// buildACLMounts derives the pod volume mounts required by the source stream's
-// security profile. Returns nil when the stream needs no ACL mounts so the pod
-// spec is unchanged for plaintext firehoses.
-func buildACLMounts(streamName string, sp *kafkamod.SecurityProfile, team string) []ACLMount {
+// buildACLConfig derives the chart values for the stream's security material.
+// Returns nil when the stream needs none, so the rendered release is unchanged
+// for plaintext firehoses.
+func buildACLConfig(streamName string, sp *kafkamod.SecurityProfile, team string) *ACLConfig {
 	if !hasSecurityProfile(sp) {
 		return nil
 	}
 
-	var mounts []ACLMount
+	acl := &ACLConfig{}
 
-	if isOauthbearerStream(sp) {
-		mounts = append(mounts, ACLMount{
-			Name:       sanitizeVolumeName(streamName + "-" + sp.SSLCertSecret),
-			MountPath:  fmt.Sprintf(certsMountPathFmt, streamName),
-			SecretName: sp.SSLCertSecret,
-			Type:       "secret",
-		})
-		mounts = append(mounts, ACLMount{
-			Name:       sanitizeVolumeName(streamName + "-" + sp.SSLTruststorePasswordDetails.SecretName),
-			MountPath:  fmt.Sprintf(passwordsMountPathFmt, streamName),
-			SecretName: sp.SSLTruststorePasswordDetails.SecretName,
-			Type:       "secret",
-		})
-	} else if isTLSStream(sp) && sp.SSLCertSecret != "" {
-		mounts = append(mounts, ACLMount{
-			Name:       sanitizeVolumeName(streamName + "-" + sp.SSLCertSecret),
-			MountPath:  fmt.Sprintf(certsMountPathFmt, streamName),
-			SecretName: sp.SSLCertSecret,
-			Type:       "secret",
-		})
+	if usesSSLMaterial(sp) && sp.SSLCertSecret != "" {
+		acl.SSLConfigCredential = sp.SSLCertSecret
+		acl.TruststoreFilename = truststoreFileName(sp.SSLTruststoreType)
 		if sp.SSLTruststorePasswordDetails != nil && sp.SSLTruststorePasswordDetails.SecretName != "" {
-			mounts = append(mounts, ACLMount{
-				Name:       sanitizeVolumeName(streamName + "-" + sp.SSLTruststorePasswordDetails.SecretName),
-				MountPath:  fmt.Sprintf(passwordsMountPathFmt, streamName),
+			acl.TruststorePassword = &SecretKeyRef{
 				SecretName: sp.SSLTruststorePasswordDetails.SecretName,
-				Type:       "secret",
-			})
+				Key:        sp.SSLTruststorePasswordDetails.Key,
+			}
 		}
 	}
 
-	// PLAIN/SCRAM: mount the team's referenced credential secret so the
-	// literalfile provider can read username/password without inlining them.
+	if sp.SaslMechanism == saslMechanismOauthbearer {
+		acl.KafkaTokenEnabled = true
+	}
+
+	// PLAIN/SCRAM read their credentials from a jaas.conf in a secret. The
+	// profile names it explicitly when known; otherwise fall back to odin's
+	// <team>-<stream>-jaas convention.
 	if isPlainOrScramStream(sp) {
-		if cred, ok := sp.ACLs[team]; ok && cred.SecretName != "" {
-			mounts = append(mounts, ACLMount{
-				Name:       sanitizeVolumeName(streamName + "-" + cred.SecretName),
-				MountPath:  fmt.Sprintf(credentialsMountPathFmt, streamName),
-				SecretName: cred.SecretName,
-				Type:       "secret",
-			})
+		if secretName := jaasSecretName(streamName, sp, team); secretName != "" {
+			acl.JaasConfigCredential = secretName
 		}
 	}
 
-	if len(mounts) == 0 {
+	if *acl == (ACLConfig{}) {
 		return nil
 	}
+	return acl
+}
 
-	// single shared projected kafka service-account token.
-	mounts = append(mounts, ACLMount{
-		Name:      kafkaTokenVolumeName,
-		MountPath: kafkaTokenMountPath,
-		Type:      "projected",
-	})
-
-	return mounts
+func jaasSecretName(streamName string, sp *kafkamod.SecurityProfile, team string) string {
+	if cred, ok := sp.ACLs[team]; ok && cred.SecretName != "" {
+		return cred.SecretName
+	}
+	if team == "" || streamName == "" {
+		return ""
+	}
+	return strings.ReplaceAll(strings.Join([]string{team, streamName, jaasSecretSuffix}, "-"), "_", "-")
 }
 
 // applyStreamSecurity resolves the source stream's kafka security profile,
-// injects the SASL/SSL consumer config into the env variables, and records the
-// pod ACL mounts on conf. It is a no-op (leaves conf untouched) for firehoses
-// that do not name a kafka stream, and clears the wiring for streams that no
-// longer carry a security profile.
+// injects the consumer config into the env variables, and records the chart's
+// ACL values on conf. It is a no-op for firehoses that do not name a kafka
+// stream, and clears the wiring for streams that no longer carry a profile.
 func (fd *firehoseDriver) applyStreamSecurity(ctx context.Context, exr module.ExpandedResource, conf *Config) error {
 	// the flag may arrive as an env variable (Dex); it is transient and must
 	// never reach the running firehose.
@@ -328,13 +302,8 @@ func (fd *firehoseDriver) applyStreamSecurity(ctx context.Context, exr module.Ex
 	if conf.EnvVariables == nil {
 		conf.EnvVariables = map[string]string{}
 	}
-
-	// this module owns the SASL/SSL keys for a stream-backed firehose: drop
-	// whatever a previous plan injected before re-resolving.
-	for _, key := range managedSecurityKeys {
-		delete(conf.EnvVariables, key)
-	}
-	conf.ACLMounts = nil
+	clearManagedSecurityConfigs(conf.EnvVariables)
+	conf.ACL = nil
 
 	security, err := fd.resolveStreamSecurity(ctx, exr, conf, streamName)
 	if err != nil {
@@ -344,16 +313,65 @@ func (fd *firehoseDriver) applyStreamSecurity(ctx context.Context, exr module.Ex
 		return nil
 	}
 
-	for key, val := range buildSecurityConfigs(streamName, security, conf.Team, fd.conf.KafkaSecurity) {
+	for key, val := range buildSecurityConfigs(security, fd.conf.KafkaSecurity) {
 		conf.EnvVariables[key] = val
 	}
-	conf.ACLMounts = buildACLMounts(streamName, security, conf.Team)
+	conf.ACL = buildACLConfig(streamName, security, conf.Team)
+
+	// PLAIN/SCRAM point the JVM at the mounted jaas.conf.
+	if conf.ACL != nil && conf.ACL.JaasConfigCredential != "" {
+		conf.EnvVariables[keyJavaOptions] = withJaasJavaOption(conf.EnvVariables[keyJavaOptions])
+	}
 
 	if conf.ServiceAccount == "" {
 		conf.ServiceAccount = fd.conf.KafkaSecurity.ServiceAccount
 	}
 
 	return nil
+}
+
+// clearManagedSecurityConfigs drops everything a previous plan injected: this
+// module owns the SASL/SSL keys for a stream-backed firehose.
+func clearManagedSecurityConfigs(env map[string]string) {
+	for _, key := range managedSecurityKeys {
+		delete(env, key)
+	}
+	// provider class keys are named after the provider, so sweep by shape.
+	for key := range env {
+		if strings.HasPrefix(key, keyConsumerConfigProviderClassPrefix) &&
+			strings.HasSuffix(key, keyConsumerConfigProviderClassSuffix) {
+			delete(env, key)
+		}
+	}
+	if opts := withoutJaasJavaOption(env[keyJavaOptions]); opts != "" {
+		env[keyJavaOptions] = opts
+	} else if _, ok := env[keyJavaOptions]; ok {
+		env[keyJavaOptions] = ""
+	}
+}
+
+// withJaasJavaOption appends the JAAS location option, keeping the rest of the
+// user's _JAVA_OPTIONS and never duplicating the option.
+func withJaasJavaOption(opts string) string {
+	opts = withoutJaasJavaOption(opts)
+	if opts == "" {
+		return jaasConfigJavaOpt
+	}
+	return opts + " " + jaasConfigJavaOpt
+}
+
+func withoutJaasJavaOption(opts string) string {
+	if !strings.Contains(opts, jaasConfigJavaOpt) {
+		return opts
+	}
+	fields := strings.Fields(opts)
+	kept := fields[:0]
+	for _, f := range fields {
+		if f != jaasConfigJavaOpt {
+			kept = append(kept, f)
+		}
+	}
+	return strings.Join(kept, " ")
 }
 
 // resolveStreamSecurity resolves the source stream's kafka security profile.
