@@ -72,8 +72,6 @@ func StartServer(ctx context.Context, cfg Config, migrate, spawnWorker bool) err
 	}
 
 	store := setupStorage(cfg.PGConnStr, cfg.Syncer, cfg.Service)
-	resourceService := core.New(store, moduleService, time.Now, cfg.Syncer.SyncBackoffInterval, cfg.Syncer.MaxRetries, cfg.Telemetry.ServiceName)
-	
 	moduleService := module.NewService(setupRegistry(store), store)
 
 	// TODO: Securely load this value from an environment variable or secrets
