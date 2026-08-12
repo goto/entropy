@@ -88,7 +88,11 @@ const (
 // cert secret at /etc/secret and the JAAS secret at /etc/secret/kafka; the
 // projected kafka service-account token lands at kafkaTokenMountPath.
 const (
-	secretMountPath     = "/etc/secret"
+	secretMountPath = "/etc/secret"
+	// the cert secret gets its own subdirectory rather than odin's bare
+	// /etc/secret: the firehose chart already mounts its own secret there for
+	// sink credentials, and two volumes cannot share a mount path.
+	certMountPath       = secretMountPath + "/kafka-cert"
 	jaasSecretMountPath = secretMountPath + "/kafka"
 	jaasConfigFileName  = "jaas.conf"
 	jaasConfigJavaOpt   = "-Djava.security.auth.login.config=" + jaasSecretMountPath + "/" + jaasConfigFileName
@@ -183,7 +187,7 @@ func buildSecurityConfigs(sp *kafkamod.SecurityProfile, sec KafkaSecurity) map[s
 		}
 		if sp.SSLCertSecret != "" {
 			fileName := truststoreFileName(sp.SSLTruststoreType)
-			cfg[keyConsumerSSLTruststoreLocation] = secretMountPath + "/" + fileName
+			cfg[keyConsumerSSLTruststoreLocation] = certMountPath + "/" + fileName
 			// the chart selects this key out of the cert secret and projects it
 			// under the same name.
 			cfg[keyConsumerSSLTruststoreFilename] = fileName

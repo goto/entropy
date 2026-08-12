@@ -53,8 +53,10 @@ The wiring mirrors odin's firehose adapter, so a migrated firehose renders the s
 spec it does today. From the resolved profile the module injects the
 `SOURCE_KAFKA_CONSUMER_CONFIG_*` env variables — security protocol, SASL mechanism, SSL
 protocol, truststore type, and for a stream carrying certs a fixed
-`SSL_TRUSTSTORE_LOCATION` of `/etc/secret/truststore.p12` (`.jks` for JKS) plus the
-`SSL_TRUSTSTORE_FILENAME` the chart uses to select that key out of the secret. OAUTHBEARER
+`SSL_TRUSTSTORE_LOCATION` of `/etc/secret/kafka-cert/truststore.p12` (`.jks` for JKS) plus
+the `SSL_TRUSTSTORE_FILENAME` the chart uses to select that key out of the secret. The cert
+gets its own subdirectory rather than odin's bare `/etc/secret`, because the chart already
+mounts its sink-credential secret there. OAUTHBEARER
 additionally gets the `OAuthBearerLoginModule` JAAS string and the pod login callback
 handler class.
 
@@ -63,7 +65,7 @@ No secret value ever passes through entropy. The material is described as refere
 
 | field | what the chart does with it |
 | :--- | :--- |
-| `ssl_config_credential` + `truststore_filename` | mounts that existing secret at `/etc/secret`, selecting the filename as both key and path |
+| `ssl_config_credential` + `truststore_filename` | mounts that existing secret at `/etc/secret/kafka-cert`, selecting the filename as both key and path |
 | `truststore_password` (`secretName` + `key`) | renders `SOURCE_KAFKA_CONSUMER_CONFIG_SSL_TRUSTSTORE_PASSWORD` as a `secretKeyRef` env var |
 | `jaas_config_credential` | mounts the PLAIN/SCRAM `jaas.conf` secret at `/etc/secret/kafka` |
 | `kafka_token_enabled` | adds the projected service-account token (`audience: kafka`) at `/var/run/secrets/kafka/serviceaccount` |
@@ -89,7 +91,6 @@ the module's driver config:
 }
 ```
 
-> The published `firehose` chart (0.2.0) does not yet render any of this: its `mountSecrets`
-> builds a *new* secret from inline values, and it has no `serviceAccountName`, projected
-> volume or `secretKeyRef` support. Those four template blocks — ports of odin's
-> `manifests/firehose.yaml` — are needed before an ACL firehose can run.
+> Requires firehose chart `0.2.1` or later (`goto/charts`, `stable/firehose`). Chart `0.2.0`
+> renders none of this — it has no `serviceAccountName`, projected volume or `secretKeyRef`
+> support — so an ACL firehose on it starts without its secrets and fails to authenticate.

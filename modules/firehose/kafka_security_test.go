@@ -42,7 +42,7 @@ func TestBuildSecurityConfigs_OAUTHBEARER_MatchesOdin(t *testing.T) {
 		"SOURCE_KAFKA_CONSUMER_CONFIG_SASL_LOGIN_CALLBACK_HANDLER_CLASS": defaultOauthSaslLoginCallbackHandlerClass,
 		"SOURCE_KAFKA_CONSUMER_CONFIG_SSL_PROTOCOL":                      "SSL",
 		"SOURCE_KAFKA_CONSUMER_CONFIG_SSL_TRUSTSTORE_TYPE":               "PKCS12",
-		"SOURCE_KAFKA_CONSUMER_CONFIG_SSL_TRUSTSTORE_LOCATION":           "/etc/secret/truststore.p12",
+		"SOURCE_KAFKA_CONSUMER_CONFIG_SSL_TRUSTSTORE_LOCATION":           "/etc/secret/kafka-cert/truststore.p12",
 		"SOURCE_KAFKA_CONSUMER_CONFIG_SSL_TRUSTSTORE_FILENAME":           "truststore.p12",
 	}
 
@@ -66,7 +66,7 @@ func TestBuildSecurityConfigs_JKSTruststore(t *testing.T) {
 
 	got := buildSecurityConfigs(sp, KafkaSecurity{})
 
-	assert.Equal(t, "/etc/secret/truststore.jks", got[keyConsumerSSLTruststoreLocation])
+	assert.Equal(t, "/etc/secret/kafka-cert/truststore.jks", got[keyConsumerSSLTruststoreLocation])
 	assert.Equal(t, "truststore.jks", got[keyConsumerSSLTruststoreFilename])
 }
 
