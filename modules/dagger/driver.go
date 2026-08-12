@@ -69,7 +69,10 @@ type daggerDriver struct {
 	kubeGetCRD       kubeGetCRDFn
 	consumerReset    consumerResetFn
 	kubeProxyService kubeProxyServiceFn
+	getResource      ResourceGetter
 }
+
+type ResourceGetter func(ctx context.Context, urn string) (*resource.Resource, error)
 
 type (
 	kubeDeployFn       func(ctx context.Context, isCreate bool, conf kube.Config, hc helm.ReleaseConfig) error
@@ -255,6 +258,16 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 	requiredDuringSchedulingIgnoredDuringExecutionInterface := kubernetes.PreferenceSliceToInterfaceSlice(requiredDuringSchedulingIgnoredDuringExecution)
 	preferredDuringSchedulingIgnoredDuringExecutionInterface := kubernetes.WeightedPreferencesToInterfaceSlice(preferredDuringSchedulingIgnoredDuringExecution)
 
+	aclMounts := make([]map[string]any, 0, len(conf.ACLMounts))
+	for _, m := range conf.ACLMounts {
+		aclMounts = append(aclMounts, map[string]any{
+			"name":       m.Name,
+			"mountPath":  m.MountPath,
+			"secretName": m.SecretName,
+			"type":       m.Type,
+		})
+	}
+
 	rc.Values = map[string]any{
 		labelsConfKey:   modules.CloneAndMergeMaps(deploymentLabels, entropyLabels),
 		"image":         imageRepository,
@@ -292,6 +305,10 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 			"requiredDuringSchedulingIgnoredDuringExecution":  requiredDuringSchedulingIgnoredDuringExecutionInterface,
 			"preferredDuringSchedulingIgnoredDuringExecution": preferredDuringSchedulingIgnoredDuringExecutionInterface,
 		},
+		// ACL (SASL/SSL) source support. Empty for plaintext daggers, which keeps
+		// the rendered FlinkDeployment byte-for-byte identical to before.
+		"acl_mounts":                             aclMounts,
+		"kubernetes_taskmanager_service_account": conf.TaskManagerServiceAccount,
 	}
 
 	return rc, nil

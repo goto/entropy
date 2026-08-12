@@ -24,27 +24,33 @@ const (
 	KeySchemaRegistryStencilURLs             = "SCHEMA_REGISTRY_STENCIL_URLS"
 )
 
-func (dd *daggerDriver) Plan(_ context.Context, exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
+func (dd *daggerDriver) Plan(ctx context.Context, exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
 	switch act.Name {
 	case module.CreateAction:
-		return dd.planCreate(exr, act)
+		return dd.planCreate(ctx, exr, act)
 
 	case ResetAction:
-		return dd.planReset(exr, act)
+		return dd.planReset(ctx, exr, act)
 
 	default:
-		return dd.planChange(exr, act)
+		return dd.planChange(ctx, exr, act)
 	}
 }
 
-func (dd *daggerDriver) planCreate(exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
+func (dd *daggerDriver) planCreate(ctx context.Context, exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
 	conf, err := readConfig(exr, act.Params, dd.conf)
 	if err != nil {
 		return nil, err
 	}
 
+	// resolve ACL source streams (SASL/SSL consumer config + podTemplate mounts).
+	// No-op for plaintext sources.
+	if err := dd.applyStreamSecurity(ctx, exr, conf); err != nil {
+		return nil, errors.ErrInvalid.WithMsgf("failed to resolve source streams").WithCausef("%s", err.Error())
+	}
+
 	//transformation #12
-	conf.EnvVariables[keyStreams] = string(mustMarshalJSON(conf.Source))
+	conf.EnvVariables[keyStreams] = streamsJSON(conf.Source)
 	conf.EnvVariables[keyFlinkParallelism] = fmt.Sprint(conf.Replicas)
 
 	chartVals := mergeChartValues(&dd.conf.ChartValues, conf.ChartValues)
@@ -83,7 +89,7 @@ func (dd *daggerDriver) planCreate(exr module.ExpandedResource, act module.Actio
 	return &exr.Resource, nil
 }
 
-func (dd *daggerDriver) planChange(exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
+func (dd *daggerDriver) planChange(ctx context.Context, exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
 	curConf, err := readConfig(exr, exr.Resource.Spec.Configs, dd.conf)
 	if err != nil {
 		return nil, err
@@ -97,7 +103,10 @@ func (dd *daggerDriver) planChange(exr module.ExpandedResource, act module.Actio
 		}
 
 		newConf.Source = mergeConsumerGroupId(curConf.Source, newConf.Source)
-		newConf.EnvVariables[keyStreams] = string(mustMarshalJSON(newConf.Source))
+		if err := dd.applyStreamSecurity(ctx, exr, newConf); err != nil {
+			return nil, errors.ErrInvalid.WithMsgf("failed to resolve source streams").WithCausef("%s", err.Error())
+		}
+		newConf.EnvVariables[keyStreams] = streamsJSON(newConf.Source)
 		newConf.EnvVariables[keyFlinkParallelism] = fmt.Sprint(newConf.Replicas)
 
 		//we want to update these irrespective of the user input
@@ -164,7 +173,7 @@ func (dd *daggerDriver) planChange(exr module.ExpandedResource, act module.Actio
 	return &exr.Resource, nil
 }
 
-func (dd *daggerDriver) planReset(exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
+func (dd *daggerDriver) planReset(ctx context.Context, exr module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
 	resetValue, err := kafka.ParseResetV2Params(act.Params)
 	if err != nil {
 		return nil, err
@@ -185,7 +194,10 @@ func (dd *daggerDriver) planReset(exr module.ExpandedResource, act module.Action
 	curConf.ResetOffset = resetValue
 
 	curConf.Source = dd.consumerReset(context.Background(), *curConf, resetValue)
-	curConf.EnvVariables[keyStreams] = string(mustMarshalJSON(curConf.Source))
+	if err := dd.applyStreamSecurity(ctx, exr, curConf); err != nil {
+		return nil, errors.ErrInvalid.WithMsgf("failed to resolve source streams").WithCausef("%s", err.Error())
+	}
+	curConf.EnvVariables[keyStreams] = streamsJSON(curConf.Source)
 
 	curConf.ChartValues = &dd.conf.ChartValues
 	curConf.JarURI = dd.conf.JarURI
