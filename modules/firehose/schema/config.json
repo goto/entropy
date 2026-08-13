@@ -21,15 +21,6 @@
       "required": [
         "stream_name"
       ]
-    },
-    {
-      "properties": {
-        "env_variables": {
-          "required": [
-            "SOURCE_KAFKA_NAME"
-          ]
-        }
-      }
     }
   ],
   "properties": {

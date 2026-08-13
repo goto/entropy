@@ -38,16 +38,19 @@ Detailed JSONSchema for config can be referenced [here](https://github.com/goto/
 
 ## Kafka ACL (SASL/SSL) source streams
 
-A firehose reading from a secured stream names its kafka resource through `stream_name`
-(or the `SOURCE_KAFKA_NAME` env variable). The stream's security profile — the same
-`security` block the kafka module exposes on its output — is resolved during Plan, in
-this order:
+A firehose names its kafka resource through `stream_name`, and flags a secured one with
+`stream_security_enabled`. The stream's security profile — the same `security` block the
+kafka module exposes on its output — is then resolved during Plan, in this order:
 
 1. an inline `stream_security` entry (prefetched by Dex),
 2. a declared kafka dependency keyed by the stream name,
-3. the kafka resource fetched internally by URN, when `stream_security_enabled` is set
-   (or `SOURCE_KAFKA_SECURITY_ENABLED=true` is passed as an env variable — it is stripped
-   before the config reaches the running firehose).
+3. the kafka resource fetched internally by URN
+   (`orn:entropy:kafka:<project>:<stream_name>`), with no dependency declared.
+
+The flag exists so plaintext firehoses cost no lookup: the caller already knows whether a
+profile exists, because Dex reads the same resource for the broker address. `stream_name`
+is sent for plaintext streams too, so a stream that *loses* its ACLs gets the wiring a
+previous plan left behind cleared.
 
 The wiring mirrors odin's firehose adapter, so a migrated firehose renders the same pod
 spec it does today. From the resolved profile the module injects the
@@ -78,6 +81,12 @@ when set, otherwise odin's `<team>-<stream>-jaas` convention.
 
 Plaintext firehoses are untouched — no injected config, no `kafka_security` value, no
 chart value changes.
+
+Naming a stream also relaxes the schema's `SOURCE_KAFKA_BROKERS` requirement: when the
+stream is resolved, brokers are filled from its `url` unless the payload set them. Plan
+fails if neither supplied them, rather than deploying a firehose with no brokers — note
+that a stream named without the flag resolves nothing, so brokers must be explicit. Dex
+sends the address itself in every case, so its value always wins.
 
 The callback handler class and default service account are deployment level settings under
 the module's driver config:

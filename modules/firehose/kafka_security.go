@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/goto/entropy/core/module"
@@ -40,13 +39,6 @@ const (
 	keyConsumerConfigProviders           = "SOURCE_KAFKA_CONSUMER_CONFIG_CONFIG_PROVIDERS"
 	keyConsumerConfigProviderClassPrefix = "SOURCE_KAFKA_CONSUMER_CONFIG_CONFIG_PROVIDERS_"
 	keyConsumerConfigProviderClassSuffix = "_CLASS"
-)
-
-// transient inputs Dex may send as env variables. They describe the stream to
-// resolve and are never forwarded to the running firehose.
-const (
-	keySourceKafkaName            = "SOURCE_KAFKA_NAME"
-	keySourceKafkaSecurityEnabled = "SOURCE_KAFKA_SECURITY_ENABLED"
 )
 
 // managedSecurityKeys are owned by this module: they are wiped and rebuilt on
@@ -287,18 +279,7 @@ func jaasSecretName(streamName string, sp *kafkamod.SecurityProfile, team string
 // ACL values on conf. It is a no-op for firehoses that do not name a kafka
 // stream, and clears the wiring for streams that no longer carry a profile.
 func (fd *firehoseDriver) applyStreamSecurity(ctx context.Context, exr module.ExpandedResource, conf *Config) error {
-	// the flag may arrive as an env variable (Dex); it is transient and must
-	// never reach the running firehose.
-	if val, ok := conf.EnvVariables[keySourceKafkaSecurityEnabled]; ok {
-		enabled, err := strconv.ParseBool(strings.TrimSpace(val))
-		if err != nil {
-			return fmt.Errorf("invalid %s value %q: %w", keySourceKafkaSecurityEnabled, val, err)
-		}
-		conf.StreamSecurityEnabled = conf.StreamSecurityEnabled || enabled
-		delete(conf.EnvVariables, keySourceKafkaSecurityEnabled)
-	}
-
-	streamName := conf.streamName()
+	streamName := conf.StreamName
 	if streamName == "" {
 		return nil
 	}
@@ -313,6 +294,17 @@ func (fd *firehoseDriver) applyStreamSecurity(ctx context.Context, exr module.Ex
 	if err != nil {
 		return err
 	}
+
+	// naming a stream relaxes the schema's SOURCE_KAFKA_BROKERS requirement,
+	// because the brokers are meant to come from the stream. If neither the
+	// payload nor the resolution supplied them, fail here rather than deploy a
+	// firehose that cannot reach any broker.
+	if conf.EnvVariables[confKeyKafkaBrokers] == "" {
+		return fmt.Errorf(
+			"%s is not set and kafka stream %q resolved to no url: set it explicitly",
+			confKeyKafkaBrokers, streamName)
+	}
+
 	if !hasSecurityProfile(security) {
 		return nil
 	}
@@ -382,9 +374,9 @@ func withoutJaasJavaOption(opts string) string {
 //
 // Resolution order: an inline conf.StreamSecurity entry, then a declared kafka
 // dependency (raw-Entropy path), then — when the resource carries the
-// stream_security_enabled flag (the Dex product path) — the kafka resource
-// fetched internally by URN via fd.getResource, with no dependency. Firehoses
-// with none of these (plaintext) are left untouched.
+// stream_security_enabled flag — the kafka resource fetched internally by URN
+// via fd.getResource, with no dependency declared. Streams with none of these
+// are plaintext.
 func (fd *firehoseDriver) resolveStreamSecurity(ctx context.Context, exr module.ExpandedResource,
 	conf *Config, streamName string,
 ) (*kafkamod.SecurityProfile, error) {
@@ -403,8 +395,9 @@ func (fd *firehoseDriver) resolveStreamSecurity(ctx context.Context, exr module.
 		return out.Security, nil
 	}
 
-	// 3. flag set (Dex product path): fetch the kafka resource internally by URN
-	// and read its security profile — no dependency declared.
+	// 3. the caller flagged a secured stream: fetch the kafka resource internally
+	// by URN and read its profile. Left unflagged the stream is plaintext, so
+	// nothing is fetched and the wiping above is all that happens.
 	if conf.StreamSecurityEnabled {
 		out, err := fd.fetchKafkaOutput(ctx, exr.Resource.Project, streamName)
 		if err != nil {

@@ -74,14 +74,15 @@ type Config struct {
 	Team string `json:"team,omitempty"`
 
 	// StreamName is the name of the kafka resource backing SOURCE_KAFKA_BROKERS.
-	// It is the key used to resolve the stream's security profile and the stable
-	// directory name of its mounted secrets. Falls back to the SOURCE_KAFKA_NAME
-	// env variable when unset.
+	// It is the key used to resolve the stream's security profile. Setting it
+	// also makes this module the owner of the SASL/SSL env variables, which are
+	// rebuilt from the stream on every plan.
 	StreamName string `json:"stream_name,omitempty"`
 
-	// StreamSecurityEnabled makes the driver resolve StreamName's kafka resource
-	// internally (by URN, without a declared dependency) to read its security
-	// profile.
+	// StreamSecurityEnabled says the named stream carries a security profile, so
+	// the driver resolves its kafka resource internally (by URN, without a
+	// declared dependency). The caller already knows this — Dex reads the same
+	// resource for the broker address — so a plaintext firehose costs no lookup.
 	StreamSecurityEnabled bool `json:"stream_security_enabled,omitempty"`
 
 	// StreamSecurity holds the kafka security profile fetched by Dex, keyed by
@@ -98,14 +99,6 @@ type Config struct {
 	// OAuth identity authorized for ACL streams. Empty preserves the chart's
 	// default service account.
 	ServiceAccount string `json:"service_account,omitempty"`
-}
-
-// streamName is the kafka resource name backing this firehose, if any.
-func (cfg *Config) streamName() string {
-	if cfg.StreamName != "" {
-		return cfg.StreamName
-	}
-	return cfg.EnvVariables[keySourceKafkaName]
 }
 
 type Telegraf struct {

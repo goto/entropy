@@ -121,9 +121,10 @@ func TestApplyStreamSecurity_PopulatesBrokersAndConfig(t *testing.T) {
 // with NO kafka dependency present, and the ACL wiring still fires.
 func TestApplyStreamSecurity_InlineProfile_NoDependency(t *testing.T) {
 	conf := &Config{
-		Team:         "team-x",
-		StreamName:   pocStream,
-		EnvVariables: map[string]string{},
+		Team:       "team-x",
+		StreamName: pocStream,
+		// an inline profile carries no url, so brokers come from the payload.
+		EnvVariables: map[string]string{confKeyKafkaBrokers: "broker-1:9098"},
 		StreamSecurity: map[string]*kafkamod.SecurityProfile{
 			pocStream: oauthbearerProfile(),
 		},
@@ -137,8 +138,8 @@ func TestApplyStreamSecurity_InlineProfile_NoDependency(t *testing.T) {
 	assert.Equal(t, "kafka-central-cert", conf.ACL.SSLConfigCredential)
 }
 
-// the flag (sent as an env variable by Dex) makes the driver fetch the kafka
-// resource by URN, and is stripped from the env variables afterwards.
+// the flag makes the driver fetch the kafka resource by URN, with no dependency
+// declared — the Dex product path.
 func TestApplyStreamSecurity_FlagFetchesInternally(t *testing.T) {
 	out := kafkamod.Output{URL: "127.0.0.1:9098", Security: oauthbearerProfile()}
 	outJSON, err := json.Marshal(out)
@@ -155,11 +156,10 @@ func TestApplyStreamSecurity_FlagFetchesInternally(t *testing.T) {
 
 	exr := module.ExpandedResource{Resource: resource.Resource{Project: "al-dp-id-s"}}
 	conf := &Config{
-		Team: "team-x",
-		EnvVariables: map[string]string{
-			keySourceKafkaName:            pocStream,
-			keySourceKafkaSecurityEnabled: "true",
-		},
+		Team:                  "team-x",
+		StreamName:            pocStream,
+		StreamSecurityEnabled: true,
+		EnvVariables:          map[string]string{},
 	}
 
 	require.NoError(t, fd.applyStreamSecurity(context.Background(), exr, conf))
@@ -168,9 +168,6 @@ func TestApplyStreamSecurity_FlagFetchesInternally(t *testing.T) {
 	assert.Equal(t, "127.0.0.1:9098", conf.EnvVariables[confKeyKafkaBrokers])
 	assert.Equal(t, "SASL_SSL", conf.EnvVariables[keyConsumerSecurityProtocol])
 	assert.Equal(t, "aegis-kafka", conf.ServiceAccount)
-
-	// the transient flag must never reach the running firehose.
-	assert.NotContains(t, conf.EnvVariables, keySourceKafkaSecurityEnabled)
 }
 
 // a plaintext firehose (no stream name, no stream_security, no dependency) is
@@ -192,6 +189,40 @@ func TestApplyStreamSecurity_PlaintextFirehose_NoWiring(t *testing.T) {
 	}, conf.EnvVariables)
 	assert.Nil(t, conf.ACL)
 	assert.Empty(t, conf.ServiceAccount)
+}
+
+// naming a stream relaxes the schema's brokers requirement, so a stream that
+// resolves to nothing must fail the plan rather than deploy without brokers.
+func TestApplyStreamSecurity_MissingBrokersFails(t *testing.T) {
+	// the stream resolves, but carries no url and the payload has no brokers.
+	outJSON, err := json.Marshal(kafkamod.Output{})
+	require.NoError(t, err)
+	fd := &firehoseDriver{
+		getResource: func(context.Context, string) (*resource.Resource, error) {
+			return &resource.Resource{State: resource.State{Output: outJSON}}, nil
+		},
+	}
+	conf := &Config{
+		StreamName:            pocStream,
+		StreamSecurityEnabled: true,
+		EnvVariables:          map[string]string{confKeyKafkaTopic: "foo-log"},
+	}
+
+	err = fd.applyStreamSecurity(context.Background(), module.ExpandedResource{}, conf)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), confKeyKafkaBrokers)
+
+	// same through a declared dependency whose output has no url.
+	depJSON, err := json.Marshal(kafkamod.Output{Security: oauthbearerProfile()})
+	require.NoError(t, err)
+	exr := module.ExpandedResource{
+		Dependencies: map[string]module.ResolvedDependency{
+			pocStream: {Kind: kafkamod.Module.Kind, Output: depJSON},
+		},
+	}
+	conf = &Config{StreamName: pocStream, EnvVariables: map[string]string{}}
+
+	require.Error(t, (&firehoseDriver{}).applyStreamSecurity(context.Background(), exr, conf))
 }
 
 // an explicit brokers value is not overwritten by the resolved stream URL.
@@ -219,23 +250,35 @@ func TestApplyStreamSecurity_KeepsExplicitBrokers(t *testing.T) {
 // the config-provider keys written by an older build.
 func TestApplyStreamSecurity_ClearsStaleWiring(t *testing.T) {
 	conf := &Config{
-		StreamName: pocStream,
+		StreamName:            pocStream,
+		StreamSecurityEnabled: true,
 		EnvVariables: map[string]string{
 			keyConsumerSecurityProtocol: "SASL_SSL",
 			keyConsumerSaslMechanism:    "SCRAM-SHA-512",
 			keyConsumerConfigProviders:  "literalfile",
 			"SOURCE_KAFKA_CONSUMER_CONFIG_CONFIG_PROVIDERS_LITERALFILE_CLASS": "com.gtf.dagger.kafka.configproviders.LiteralFileConfigProvider",
-			keyJavaOptions:    "-Xmx1250m " + jaasConfigJavaOpt,
-			confKeyKafkaTopic: "foo-log",
+			keyJavaOptions:      "-Xmx1250m " + jaasConfigJavaOpt,
+			confKeyKafkaTopic:   "foo-log",
+			confKeyKafkaBrokers: "broker-1:9092",
 		},
 		ACL: &ACLConfig{SSLConfigCredential: "stale"},
 	}
 
-	require.NoError(t, (&firehoseDriver{}).applyStreamSecurity(context.Background(), module.ExpandedResource{}, conf))
+	// the stream now resolves without a security profile.
+	outJSON, err := json.Marshal(kafkamod.Output{URL: "broker-1:9092"})
+	require.NoError(t, err)
+	fd := &firehoseDriver{
+		getResource: func(context.Context, string) (*resource.Resource, error) {
+			return &resource.Resource{State: resource.State{Output: outJSON}}, nil
+		},
+	}
+
+	require.NoError(t, fd.applyStreamSecurity(context.Background(), module.ExpandedResource{}, conf))
 
 	assert.Equal(t, map[string]string{
-		keyJavaOptions:    "-Xmx1250m",
-		confKeyKafkaTopic: "foo-log",
+		keyJavaOptions:      "-Xmx1250m",
+		confKeyKafkaTopic:   "foo-log",
+		confKeyKafkaBrokers: "broker-1:9092",
 	}, conf.EnvVariables)
 	assert.Nil(t, conf.ACL)
 }
@@ -251,9 +294,12 @@ func TestApplyStreamSecurity_ScramUsesJaasFile(t *testing.T) {
 		},
 	}
 	conf := &Config{
-		Team:           "team-x",
-		StreamName:     pocStream,
-		EnvVariables:   map[string]string{keyJavaOptions: "-Xmx1250m"},
+		Team:       "team-x",
+		StreamName: pocStream,
+		EnvVariables: map[string]string{
+			keyJavaOptions:      "-Xmx1250m",
+			confKeyKafkaBrokers: "broker-1:9092",
+		},
 		StreamSecurity: map[string]*kafkamod.SecurityProfile{pocStream: sp},
 	}
 
