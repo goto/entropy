@@ -592,6 +592,140 @@ func TestService_UpdateResource(t *testing.T) {
 	}
 }
 
+func TestService_UpdateResourceLabels(t *testing.T) {
+	t.Parallel()
+	testErr := errors.New("failed")
+	newTestResource := func() resource.Resource {
+		return resource.Resource{
+			URN:       "orn:entropy:mock:project:child",
+			Kind:      "mock",
+			Name:      "child",
+			Project:   "project",
+			State:     resource.State{Status: resource.StatusPending},
+			Labels:    map[string]string{"team": "old", "env": "prod"},
+			CreatedAt: frozenTime,
+		}
+	}
+
+	tests := []struct {
+		name    string
+		setup   func(t *testing.T) *core.Service
+		urn     string
+		labels  map[string]string
+		userID  string
+		want    *resource.Resource
+		wantErr error
+	}{
+		{
+			name: "ResourceNotFound",
+			setup: func(t *testing.T) *core.Service {
+				t.Helper()
+				resourceRepo := &mocks.ResourceStore{}
+				resourceRepo.EXPECT().
+					GetByURN(mock.Anything, "orn:entropy:mock:project:child").
+					Return(nil, errors.ErrNotFound).
+					Once()
+
+				return core.New(resourceRepo, nil, deadClock, defaultSyncBackoff, defaultMaxRetries, serviceName)
+			},
+			urn:     "orn:entropy:mock:project:child",
+			labels:  map[string]string{"team": "new"},
+			want:    nil,
+			wantErr: errors.ErrNotFound,
+		},
+		{
+			name: "UpdateLabelsFailure",
+			setup: func(t *testing.T) *core.Service {
+				t.Helper()
+				mod := &mocks.ModuleService{}
+				mod.EXPECT().
+					GetOutput(mock.Anything, mock.Anything).
+					Return(nil, nil).
+					Once()
+
+				resourceRepo := &mocks.ResourceStore{}
+				res := newTestResource()
+				resourceRepo.EXPECT().
+					GetByURN(mock.Anything, "orn:entropy:mock:project:child").
+					Return(&res, nil).
+					Once()
+
+				resourceRepo.EXPECT().
+					UpdateLabels(mock.Anything, mock.Anything, true, "patch:labels").
+					Return(testErr).
+					Once()
+
+				return core.New(resourceRepo, mod, deadClock, defaultSyncBackoff, defaultMaxRetries, serviceName)
+			},
+			urn:     "orn:entropy:mock:project:child",
+			labels:  map[string]string{"team": "new"},
+			want:    nil,
+			wantErr: errors.ErrInternal,
+		},
+		{
+			name: "Success",
+			setup: func(t *testing.T) *core.Service {
+				t.Helper()
+				mod := &mocks.ModuleService{}
+				mod.EXPECT().
+					GetOutput(mock.Anything, mock.Anything).
+					Return(nil, nil).
+					Once()
+
+				resourceRepo := &mocks.ResourceStore{}
+				res := newTestResource()
+				resourceRepo.EXPECT().
+					GetByURN(mock.Anything, "orn:entropy:mock:project:child").
+					Return(&res, nil).
+					Once()
+
+				resourceRepo.EXPECT().
+					UpdateLabels(mock.Anything, mock.Anything, true, "patch:labels").
+					Run(func(ctx context.Context, r resource.Resource, saveRevision bool, reason string, hooks ...resource.MutationHook) {
+						assert.Equal(t, map[string]string{"team": "new"}, r.Labels)
+						assert.Equal(t, "test_user", r.UpdatedBy)
+					}).
+					Return(nil).
+					Once()
+
+				return core.New(resourceRepo, mod, deadClock, defaultSyncBackoff, defaultMaxRetries, serviceName)
+			},
+			urn:    "orn:entropy:mock:project:child",
+			labels: map[string]string{"team": "new", "env": ""},
+			userID: "test_user",
+			want: &resource.Resource{
+				URN:       "orn:entropy:mock:project:child",
+				Kind:      "mock",
+				Name:      "child",
+				Project:   "project",
+				State:     resource.State{Status: resource.StatusPending},
+				Labels:    map[string]string{"team": "new"},
+				CreatedAt: frozenTime,
+				UpdatedAt: frozenTime,
+				UpdatedBy: "test_user",
+			},
+			wantErr: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			svc := tt.setup(t)
+
+			got, err := svc.UpdateResourceLabels(context.Background(), tt.urn, tt.labels, tt.userID)
+			if tt.wantErr != nil {
+				assert.Error(t, err)
+				assert.True(t, errors.Is(err, tt.wantErr))
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestService_DeleteResource(t *testing.T) {
 	t.Parallel()
 

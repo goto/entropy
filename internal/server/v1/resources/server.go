@@ -18,6 +18,7 @@ type ResourceService interface {
 	ListResources(ctx context.Context, filter resource.Filter, withSpecConfigs bool) (resource.PagedResource, error)
 	CreateResource(ctx context.Context, res resource.Resource, resourceOpts ...core.Options) (*resource.Resource, error)
 	UpdateResource(ctx context.Context, urn string, req resource.UpdateRequest, resourceOpts ...core.Options) (*resource.Resource, error)
+	UpdateResourceLabels(ctx context.Context, urn string, labels map[string]string, userID string) (*resource.Resource, error)
 	DeleteResource(ctx context.Context, urn string) error
 
 	ApplyAction(ctx context.Context, urn string, action module.ActionRequest, resourceOpts ...core.Options) (*resource.Resource, error)
@@ -102,6 +103,27 @@ func (server APIServer) UpdateResource(ctx context.Context, request *entropyv1be
 	}
 
 	return &entropyv1beta1.UpdateResourceResponse{
+		Resource: responseResource,
+	}, nil
+}
+
+func (server APIServer) UpdateResourceLabels(ctx context.Context, request *entropyv1beta1.UpdateResourceLabelsRequest) (*entropyv1beta1.UpdateResourceLabelsResponse, error) {
+	userIdentifier, err := serverutils.GetUserIdentifier(ctx)
+	if err != nil {
+		return nil, serverutils.ToRPCError(err)
+	}
+
+	res, err := server.resourceSvc.UpdateResourceLabels(ctx, request.GetUrn(), request.GetLabels(), userIdentifier)
+	if err != nil {
+		return nil, serverutils.ToRPCError(err)
+	}
+
+	responseResource, err := resourceToProto(*res)
+	if err != nil {
+		return nil, serverutils.ToRPCError(err)
+	}
+
+	return &entropyv1beta1.UpdateResourceLabelsResponse{
 		Resource: responseResource,
 	}, nil
 }

@@ -268,6 +268,61 @@ func (st *Store) Update(ctx context.Context, r resource.Resource, saveRevision b
 	return nil
 }
 
+func (st *Store) UpdateLabels(ctx context.Context, r resource.Resource, saveRevision bool, reason string, hooks ...resource.MutationHook) error {
+	updateLabels := func(ctx context.Context, tx *sqlx.Tx) error {
+		id, err := translateURNToID(ctx, tx, r.URN)
+		if err != nil {
+			return err
+		}
+
+		updateResource := sq.Update(tableResources).
+			Where(sq.Eq{"id": id}).
+			SetMap(map[string]interface{}{
+				"updated_at": sq.Expr("current_timestamp"),
+				"updated_by": r.UpdatedBy,
+			}).
+			PlaceholderFormat(sq.Dollar)
+
+		if _, err := updateResource.RunWith(tx).ExecContext(ctx); err != nil {
+			return err
+		}
+
+		if err := setResourceTags(ctx, tx, id, r.Labels); err != nil {
+			return err
+		}
+
+		if saveRevision {
+			rev := resource.Revision{
+				URN:       r.URN,
+				Spec:      r.Spec,
+				Labels:    r.Labels,
+				Reason:    reason,
+				CreatedBy: r.UpdatedBy,
+			}
+
+			if err := insertRevision(ctx, tx, id, rev); err != nil {
+				return translateErr(err)
+			}
+		}
+
+		return runAllHooks(ctx, hooks)
+	}
+
+	ctx = otelsql.WithCustomAttributes(
+		ctx,
+		[]attribute.KeyValue{
+			attribute.String("db.repository.method", "UpdateLabels"),
+			attribute.String(string(semconv.DBSQLTableKey), tableResources),
+		}...,
+	)
+
+	txErr := withinTx(ctx, st.db, false, updateLabels)
+	if txErr != nil {
+		return txErr
+	}
+	return nil
+}
+
 func (st *Store) Delete(ctx context.Context, urn string, hooks ...resource.MutationHook) error {
 	deleteFn := func(ctx context.Context, tx *sqlx.Tx) error {
 		id, err := translateURNToID(ctx, tx, urn)

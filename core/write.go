@@ -58,6 +58,29 @@ func (svc *Service) UpdateResource(ctx context.Context, urn string, req resource
 	}, resourceOpts...)
 }
 
+// UpdateResourceLabels patches a resource's labels only. Unlike UpdateResource,
+// it deliberately bypasses the module planner and sync cycle: no PlanAction call,
+// no pending counter increment, no state change.
+func (svc *Service) UpdateResourceLabels(ctx context.Context, urn string, labels map[string]string, userID string) (*resource.Resource, error) {
+	res, err := svc.GetResource(ctx, urn)
+	if err != nil {
+		return nil, err
+	}
+
+	res.Labels = mergeLabels(res.Labels, labels)
+	res.UpdatedBy = userID
+	res.UpdatedAt = svc.clock()
+
+	if err := svc.store.UpdateLabels(ctx, *res, true, "patch:labels"); err != nil {
+		if errors.Is(err, errors.ErrNotFound) {
+			return nil, errors.ErrNotFound.WithMsgf("resource with urn '%s' does not exist", res.URN)
+		}
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
+	}
+
+	return res, nil
+}
+
 func (svc *Service) DeleteResource(ctx context.Context, urn string) error {
 	_, actionErr := svc.ApplyAction(ctx, urn, module.ActionRequest{
 		Name: module.DeleteAction,

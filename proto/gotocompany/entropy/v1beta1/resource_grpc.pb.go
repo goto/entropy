@@ -27,6 +27,7 @@ const (
 	ResourceService_ApplyAction_FullMethodName          = "/gotocompany.entropy.v1beta1.ResourceService/ApplyAction"
 	ResourceService_GetLog_FullMethodName               = "/gotocompany.entropy.v1beta1.ResourceService/GetLog"
 	ResourceService_GetResourceRevisions_FullMethodName = "/gotocompany.entropy.v1beta1.ResourceService/GetResourceRevisions"
+	ResourceService_UpdateResourceLabels_FullMethodName = "/gotocompany.entropy.v1beta1.ResourceService/UpdateResourceLabels"
 )
 
 // ResourceServiceClient is the client API for ResourceService service.
@@ -41,6 +42,7 @@ type ResourceServiceClient interface {
 	ApplyAction(ctx context.Context, in *ApplyActionRequest, opts ...grpc.CallOption) (*ApplyActionResponse, error)
 	GetLog(ctx context.Context, in *GetLogRequest, opts ...grpc.CallOption) (ResourceService_GetLogClient, error)
 	GetResourceRevisions(ctx context.Context, in *GetResourceRevisionsRequest, opts ...grpc.CallOption) (*GetResourceRevisionsResponse, error)
+	UpdateResourceLabels(ctx context.Context, in *UpdateResourceLabelsRequest, opts ...grpc.CallOption) (*UpdateResourceLabelsResponse, error)
 }
 
 type resourceServiceClient struct {
@@ -146,6 +148,15 @@ func (c *resourceServiceClient) GetResourceRevisions(ctx context.Context, in *Ge
 	return out, nil
 }
 
+func (c *resourceServiceClient) UpdateResourceLabels(ctx context.Context, in *UpdateResourceLabelsRequest, opts ...grpc.CallOption) (*UpdateResourceLabelsResponse, error) {
+	out := new(UpdateResourceLabelsResponse)
+	err := c.cc.Invoke(ctx, ResourceService_UpdateResourceLabels_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ResourceServiceServer is the server API for ResourceService service.
 // All implementations must embed UnimplementedResourceServiceServer
 // for forward compatibility
@@ -158,6 +169,7 @@ type ResourceServiceServer interface {
 	ApplyAction(context.Context, *ApplyActionRequest) (*ApplyActionResponse, error)
 	GetLog(*GetLogRequest, ResourceService_GetLogServer) error
 	GetResourceRevisions(context.Context, *GetResourceRevisionsRequest) (*GetResourceRevisionsResponse, error)
+	UpdateResourceLabels(context.Context, *UpdateResourceLabelsRequest) (*UpdateResourceLabelsResponse, error)
 	mustEmbedUnimplementedResourceServiceServer()
 }
 
@@ -188,6 +200,9 @@ func (UnimplementedResourceServiceServer) GetLog(*GetLogRequest, ResourceService
 }
 func (UnimplementedResourceServiceServer) GetResourceRevisions(context.Context, *GetResourceRevisionsRequest) (*GetResourceRevisionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetResourceRevisions not implemented")
+}
+func (UnimplementedResourceServiceServer) UpdateResourceLabels(context.Context, *UpdateResourceLabelsRequest) (*UpdateResourceLabelsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateResourceLabels not implemented")
 }
 func (UnimplementedResourceServiceServer) mustEmbedUnimplementedResourceServiceServer() {}
 
@@ -349,6 +364,24 @@ func _ResourceService_GetResourceRevisions_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ResourceService_UpdateResourceLabels_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateResourceLabelsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResourceServiceServer).UpdateResourceLabels(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ResourceService_UpdateResourceLabels_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResourceServiceServer).UpdateResourceLabels(ctx, req.(*UpdateResourceLabelsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ResourceService_ServiceDesc is the grpc.ServiceDesc for ResourceService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -383,6 +416,10 @@ var ResourceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetResourceRevisions",
 			Handler:    _ResourceService_GetResourceRevisions_Handler,
+		},
+		{
+			MethodName: "UpdateResourceLabels",
+			Handler:    _ResourceService_UpdateResourceLabels_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
