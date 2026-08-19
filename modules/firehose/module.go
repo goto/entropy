@@ -33,100 +33,106 @@ const (
 
 var mu sync.Mutex
 
-var Module = module.Descriptor{
-	Kind: "firehose",
-	Dependencies: map[string]string{
-		keyKubeDependency: kubernetes.Module.Kind,
-	},
-	Actions: []module.ActionDesc{
-		{
-			Name:        module.CreateAction,
-			Description: "Creates a new firehose",
+// Module builds the firehose module descriptor. getResource lets the driver
+// fetch a referenced kafka stream's resource internally (by URN) to resolve its
+// security profile, without declaring it as a dependency.
+func Module(getResource ResourceGetter) module.Descriptor {
+	return module.Descriptor{
+		Kind: "firehose",
+		Dependencies: map[string]string{
+			keyKubeDependency: kubernetes.Module.Kind,
 		},
-		{
-			Name:        module.UpdateAction,
-			Description: "Update all configurations of firehose",
+		Actions: []module.ActionDesc{
+			{
+				Name:        module.CreateAction,
+				Description: "Creates a new firehose",
+			},
+			{
+				Name:        module.UpdateAction,
+				Description: "Update all configurations of firehose",
+			},
+			{
+				Name:        ResetAction,
+				Description: "Stop firehose, reset consumer group, restart",
+			},
+			{
+				Name:        ResetV2Action,
+				Description: "Stop firehose, reset consumer group, restart with datetime option",
+			},
+			{
+				Name:        StopAction,
+				Description: "Stop all replicas of this firehose.",
+			},
+			{
+				Name:        StartAction,
+				Description: "Start the firehose if it is currently stopped.",
+			},
+			{
+				Name:        ScaleAction,
+				Description: "Scale the number of replicas to given number.",
+			},
+			{
+				Name:        UpgradeAction,
+				Description: "Upgrade firehose version",
+			},
 		},
-		{
-			Name:        ResetAction,
-			Description: "Stop firehose, reset consumer group, restart",
-		},
-		{
-			Name:        ResetV2Action,
-			Description: "Stop firehose, reset consumer group, restart with datetime option",
-		},
-		{
-			Name:        StopAction,
-			Description: "Stop all replicas of this firehose.",
-		},
-		{
-			Name:        StartAction,
-			Description: "Start the firehose if it is currently stopped.",
-		},
-		{
-			Name:        ScaleAction,
-			Description: "Scale the number of replicas to given number.",
-		},
-		{
-			Name:        UpgradeAction,
-			Description: "Upgrade firehose version",
-		},
-	},
-	DriverFactory: func(confJSON json.RawMessage) (module.Driver, error) {
-		mu.Lock()
-		defer mu.Unlock()
+		DriverFactory: func(confJSON json.RawMessage) (module.Driver, error) {
+			mu.Lock()
+			defer mu.Unlock()
 
-		conf := defaultDriverConf // clone the default value
-		if err := json.Unmarshal(confJSON, &conf); err != nil {
-			return nil, err
-		} else if err := validator.TaggedStruct(conf); err != nil {
-			return nil, err
-		}
+			conf := defaultDriverConf // clone the default value
+			if err := json.Unmarshal(confJSON, &conf); err != nil {
+				return nil, err
+			} else if err := validator.TaggedStruct(conf); err != nil {
+				return nil, err
+			}
 
-		return &firehoseDriver{
-			conf:    conf,
-			timeNow: time.Now,
-			kubeDeploy: func(_ context.Context, isCreate bool, kubeConf kube.Config, hc helm.ReleaseConfig) error {
-				canUpdate := func(rel *release.Release) bool {
-					curLabels, ok := rel.Config[labelsConfKey].(map[string]any)
-					if !ok {
-						return false
+			return &firehoseDriver{
+				conf:    conf,
+				timeNow: time.Now,
+				kubeDeploy: func(_ context.Context, isCreate bool, kubeConf kube.Config, hc helm.ReleaseConfig) error {
+					canUpdate := func(rel *release.Release) bool {
+						curLabels, ok := rel.Config[labelsConfKey].(map[string]any)
+						if !ok {
+							return false
+						}
+						newLabels, ok := hc.Values[labelsConfKey].(map[string]string)
+						if !ok {
+							return false
+						}
+
+						isManagedByEntropy := curLabels[labelOrchestrator] == orchestratorLabelValue
+						isSameDeployment := curLabels[labelDeployment] == newLabels[labelDeployment]
+
+						return isManagedByEntropy && isSameDeployment
 					}
-					newLabels, ok := hc.Values[labelsConfKey].(map[string]string)
-					if !ok {
-						return false
+
+					helmCl := helm.NewClient(&helm.Config{Kubernetes: kubeConf})
+					_, errHelm := helmCl.Upsert(&hc, canUpdate)
+					return errHelm
+				},
+				kubeGetPod: func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error) {
+					kubeCl, err := kube.NewClient(ctx, conf)
+					if err != nil {
+						return nil, errors.ErrInternal.WithMsgf("failed to create new kube client on firehose driver kube get pod").WithCausef("%s", err.Error())
 					}
-
-					isManagedByEntropy := curLabels[labelOrchestrator] == orchestratorLabelValue
-					isSameDeployment := curLabels[labelDeployment] == newLabels[labelDeployment]
-
-					return isManagedByEntropy && isSameDeployment
-				}
-
-				helmCl := helm.NewClient(&helm.Config{Kubernetes: kubeConf})
-				_, errHelm := helmCl.Upsert(&hc, canUpdate)
-				return errHelm
-			},
-			kubeGetPod: func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error) {
-				kubeCl, err := kube.NewClient(ctx, conf)
-				if err != nil {
-					return nil, errors.ErrInternal.WithMsgf("failed to create new kube client on firehose driver kube get pod").WithCausef("%s", err.Error())
-				}
-				return kubeCl.GetPodDetails(ctx, ns, labels, func(pod v1.Pod) bool {
-					// allow pods that are in running state and are not marked for deletion
-					return pod.Status.Phase == v1.PodRunning && pod.DeletionTimestamp == nil
-				})
-			},
-			kubeGetDeployment: func(ctx context.Context, conf kube.Config, ns, name string) (kube.Deployment, error) {
-				kubeCl, err := kube.NewClient(ctx, conf)
-				if err != nil {
-					return kube.Deployment{}, errors.ErrInternal.WithMsgf("failed to create new kube client on firehose driver kube get deployment").WithCausef("%s", err.Error())
-				}
-				return kubeCl.GetDeploymentDetails(ctx, ns, name)
-			},
-			consumerReset: consumerReset,
-		}, nil
-	},
+					return kubeCl.GetPodDetails(ctx, ns, labels, func(pod v1.Pod) bool {
+						// allow pods that are in running state and are not marked for deletion
+						return pod.Status.Phase == v1.PodRunning && pod.DeletionTimestamp == nil
+					})
+				},
+				kubeGetDeployment: func(ctx context.Context, conf kube.Config, ns, name string) (kube.Deployment, error) {
+					kubeCl, err := kube.NewClient(ctx, conf)
+					if err != nil {
+						return kube.Deployment{}, errors.ErrInternal.WithMsgf("failed to create new kube client on firehose driver kube get deployment").WithCausef("%s", err.Error())
+					}
+					return kubeCl.GetDeploymentDetails(ctx, ns, name)
+				},
+				consumerReset: consumerReset,
+				getResource:   getResource,
+			}, nil
+		},
+	}
 }
 
 func consumerReset(ctx context.Context, conf Config, out kubernetes.Output, resetTo string, offsetResetDelaySeconds int) error {

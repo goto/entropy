@@ -90,7 +90,12 @@ type firehoseDriver struct {
 	kubeGetPod        kubeGetPodFn
 	kubeGetDeployment kubeGetDeploymentFn
 	consumerReset     consumerResetFn
+	getResource       ResourceGetter
 }
+
+// ResourceGetter fetches a resource by URN. It lets the driver resolve an ACL
+// kafka stream internally, without declaring it as a dependency.
+type ResourceGetter func(ctx context.Context, urn string) (*resource.Resource, error)
 
 type (
 	kubeDeployFn        func(ctx context.Context, isCreate bool, conf kube.Config, hc helm.ReleaseConfig) error
@@ -147,6 +152,10 @@ type driverConf struct {
 	KubeDeployTimeout int `json:"kube_deploy_timeout_seconds"`
 
 	Autoscaler FirehoseAutoscaler `json:"autoscaler,omitempty"`
+
+	// KafkaSecurity holds the deployment level settings used when wiring an ACL
+	// (SASL/SSL) source stream.
+	KafkaSecurity KafkaSecurity `json:"kafka_security,omitempty"`
 }
 
 type FirehoseAutoscaler struct {
@@ -394,6 +403,35 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		},
 		"telegraf": buildTelegrafValues(telegrafConf),
 		"mountSecrets": mountSecrets,
+	}
+
+	// ACL (SASL/SSL) source support, mirroring odin's firehose manifest: the
+	// chart mounts the referenced secrets and renders the truststore password as
+	// a secretKeyRef. Both keys are omitted for plaintext firehoses, which keeps
+	// their rendered chart values unchanged.
+	if conf.ACL != nil {
+		aclValues := map[string]any{}
+		if conf.ACL.SSLConfigCredential != "" {
+			aclValues["ssl_config_credential"] = conf.ACL.SSLConfigCredential
+			aclValues["truststore_filename"] = conf.ACL.TruststoreFilename
+		}
+		if conf.ACL.TruststorePassword != nil {
+			aclValues["truststore_password"] = map[string]any{
+				"secretName": conf.ACL.TruststorePassword.SecretName,
+				"key":        conf.ACL.TruststorePassword.Key,
+			}
+		}
+		if conf.ACL.JaasConfigCredential != "" {
+			aclValues["jaas_config_credential"] = conf.ACL.JaasConfigCredential
+		}
+		if conf.ACL.KafkaTokenEnabled {
+			aclValues["kafka_token_enabled"] = true
+		}
+		rc.Values["kafka_security"] = aclValues
+	}
+
+	if conf.ServiceAccount != "" {
+		rc.Values["service_account"] = conf.ServiceAccount
 	}
 
 	if conf.Autoscaler != nil {

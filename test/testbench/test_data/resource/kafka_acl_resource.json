@@ -1,0 +1,36 @@
+{
+    "kind": "kafka",
+    "name": "test-kafka-acl",
+    "project": "test-project-0",
+    "labels": {
+        "description": "test kafka stream secured with SASL_SSL / OAUTHBEARER"
+    },
+    "spec": {
+        "configs": {
+            "advertise_mode": {
+                "host": "9098",
+                "address": "9098"
+            },
+            "brokers": [
+                {
+                    "name": "test-project-test-kafka-acl-01",
+                    "host": "test-project-test-kafka-acl-01",
+                    "address": "127.0.0.1"
+                }
+            ],
+            "type": "source",
+            "security": {
+                "security_protocol": "SASL_SSL",
+                "sasl_mechanism": "OAUTHBEARER",
+                "ssl_protocol": "SSL",
+                "ssl_truststore_type": "PKCS12",
+                "ssl_cert_secret": "kafka-central-cert",
+                "ssl_truststore_password_details": {
+                    "secretName": "scp-kafka-ssl-secrets",
+                    "key": "truststore_password"
+                }
+            }
+        },
+        "dependencies": []
+    }
+}

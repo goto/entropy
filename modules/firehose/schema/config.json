@@ -6,6 +6,23 @@
     "replicas",
     "env_variables"
   ],
+  "anyOf": [
+    {
+      "properties": {
+        "env_variables": {
+          "required": [
+            "SOURCE_KAFKA_BROKERS"
+          ]
+        }
+      }
+    },
+    {
+      "$comment": "brokers may be omitted when the kafka stream is named: they are resolved from the stream's output during plan.",
+      "required": [
+        "stream_name"
+      ]
+    }
+  ],
   "properties": {
     "stop_time": {
       "type": "string",
@@ -19,13 +36,58 @@
     "deployment_id": {
       "type": "string"
     },
+    "team": {
+      "type": "string"
+    },
+    "stream_name": {
+      "type": "string"
+    },
+    "stream_security_enabled": {
+      "type": "boolean"
+    },
+    "service_account": {
+      "type": "string"
+    },
+    "stream_security": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "security_protocol": { "type": "string" },
+          "sasl_mechanism": { "type": "string" },
+          "ssl_protocol": { "type": "string" },
+          "ssl_truststore_type": { "type": "string" },
+          "ssl_cert_secret": { "type": "string" },
+          "ssl_truststore_password_details": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "secretName": { "type": "string" },
+              "key": { "type": "string" }
+            }
+          },
+          "acls": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "secretName": { "type": "string" },
+                "usernameKey": { "type": "string" },
+                "passwordKey": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
     "env_variables": {
       "type": "object",
       "additionalProperties": true,
       "required": [
         "SINK_TYPE",
         "INPUT_SCHEMA_PROTO_CLASS",
-        "SOURCE_KAFKA_BROKERS",
         "SOURCE_KAFKA_TOPIC"
       ],
       "properties": {

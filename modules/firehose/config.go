@@ -8,6 +8,7 @@ import (
 
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/modules"
+	kafkamod "github.com/goto/entropy/modules/kafka"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/validator"
 )
@@ -78,6 +79,37 @@ type Config struct {
 	ChartValues   *ChartValues  `json:"chart_values,omitempty"`
 	InitContainer InitContainer `json:"init_container,omitempty"`
 	Autoscaler    *Autoscaler   `json:"autoscaler,omitempty"`
+
+	// Team owns the firehose. It selects the credential reference from a
+	// stream's PLAIN/SCRAM ACL list.
+	Team string `json:"team,omitempty"`
+
+	// StreamName is the name of the kafka resource backing SOURCE_KAFKA_BROKERS.
+	// It is the key used to resolve the stream's security profile. Setting it
+	// also makes this module the owner of the SASL/SSL env variables, which are
+	// rebuilt from the stream on every plan.
+	StreamName string `json:"stream_name,omitempty"`
+
+	// StreamSecurityEnabled says the named stream carries a security profile, so
+	// the driver resolves its kafka resource internally (by URN, without a
+	// declared dependency). The caller already knows this — Dex reads the same
+	// resource for the broker address — so a plaintext firehose costs no lookup.
+	StreamSecurityEnabled bool `json:"stream_security_enabled,omitempty"`
+
+	// StreamSecurity holds the kafka security profile fetched by Dex, keyed by
+	// stream name. References only — never inline secret values.
+	StreamSecurity map[string]*kafkamod.SecurityProfile `json:"stream_security,omitempty"`
+
+	// ACL describes the secret material an ACL (SASL_SSL/OAUTHBEARER, SSL,
+	// PLAIN/SCRAM) source stream needs mounted. It is computed by
+	// applyStreamSecurity from the resolved stream security profile and holds
+	// references only — never secret values.
+	ACL *ACLConfig `json:"acl,omitempty"`
+
+	// ServiceAccount, when set, becomes the pod's service account. It is the
+	// OAuth identity authorized for ACL streams. Empty preserves the chart's
+	// default service account.
+	ServiceAccount string `json:"service_account,omitempty"`
 }
 
 type Telegraf struct {
