@@ -27,7 +27,6 @@ const (
 	confSinkKafkaStream        = "SINK_KAFKA_STREAM"
 	confSinkKafkaTopic         = "SINK_KAFKA_TOPIC"
 	confSinkKafkaProtoMessage  = "SINK_KAFKA_PROTO_MESSAGE"
-	confSinkKafkaProtoKey      = "SINK_KAFKA_PROTO_KEY"
 	confSinkKafkaProtoMapping  = "SINK_KAFKA_PROTO_MAPPING"
 )
 
@@ -202,7 +201,6 @@ func validateKafkaSinkEnvVars(envVars map[string]string) error {
 		confSinkKafkaBrokers,
 		confSinkKafkaTopic,
 		confSinkKafkaProtoMessage,
-		confSinkKafkaProtoKey,
 		confSinkKafkaProtoMapping,
 	}
 	for _, key := range required {
