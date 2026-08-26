@@ -201,7 +201,6 @@ func validateKafkaSinkEnvVars(envVars map[string]string) error {
 		confSinkKafkaBrokers,
 		confSinkKafkaTopic,
 		confSinkKafkaProtoMessage,
-		confSinkKafkaProtoKey,
 		confSinkKafkaProtoMapping,
 	}
 	for _, key := range required {
