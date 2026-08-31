@@ -1,4 +1,0 @@
-ignore:
-    - "features/**/*"
-    - "internal/**/*"
-    - "tests/**/*"
