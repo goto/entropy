@@ -3,6 +3,7 @@ package dagger
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
@@ -10,6 +11,7 @@ import (
 	"github.com/goto/entropy/modules/flink"
 	"github.com/goto/entropy/modules/kubernetes"
 	"github.com/goto/entropy/pkg/errors"
+	"github.com/goto/entropy/pkg/kube"
 )
 
 func (dd *daggerDriver) Sync(ctx context.Context, exr module.ExpandedResource) (*resource.State, error) {
@@ -77,10 +79,19 @@ func (dd *daggerDriver) Sync(ctx context.Context, exr module.ExpandedResource) (
 	}
 	finalState.Output = finalOut
 
-	finalState.Status = resource.StatusCompleted
+	var parsedOut Output
+	if err := json.Unmarshal(finalOut, &parsedOut); err != nil {
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
+	}
+
+	if errPod := kube.FirstPodError(parsedOut.Pods); errPod != nil {
+		finalState.Status = resource.StatusError
+		finalState.SyncResult.LastError = fmt.Sprintf("pod %s is in error: %s", errPod.Name, errPod.Reason)
+	} else {
+		finalState.Status = resource.StatusCompleted
+	}
 	finalState.ModuleData = nil
 	return &finalState, nil
-
 }
 
 func (dd *daggerDriver) releaseSync(ctx context.Context, r resource.Resource,
