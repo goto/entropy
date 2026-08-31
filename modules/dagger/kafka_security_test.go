@@ -99,6 +99,40 @@ func TestPlaintextSource_NoSecurityWiring(t *testing.T) {
 	assert.Nil(t, buildACLMounts(sources, map[string]*kafkamod.SecurityProfile{}, "team-x"))
 }
 
+// Regression: two sources referencing the same SOURCE_KAFKA_NAME (e.g. a
+// multi-stream dagger reading two topics off one kafka cluster) must produce
+// a single cert/passwords mount pair, not one per source. Duplicate volume
+// names/mountPaths are rejected by the Kubernetes API, which previously left
+// the FlinkDeployment stuck unable to create its JobManager pod.
+func TestBuildACLMounts_DedupesByKafkaClusterName(t *testing.T) {
+	sources := []Source{
+		{SourceKafka: SourceKafka{SourceKafkaName: pocStream}},
+		{SourceKafka: SourceKafka{SourceKafkaName: pocStream}},
+	}
+	profiles := map[string]*kafkamod.SecurityProfile{pocStream: oauthbearerProfile()}
+
+	mounts := buildACLMounts(sources, profiles, "team-x")
+
+	require.Len(t, mounts, 3)
+	assert.Equal(t, ACLMount{
+		Name:       "al-gp-id-s-central-kf-kafka-central-cert",
+		MountPath:  "/var/secrets/al-gp-id-s-central-kf/certs",
+		SecretName: "kafka-central-cert",
+		Type:       "secret",
+	}, mounts[0])
+	assert.Equal(t, ACLMount{
+		Name:       "al-gp-id-s-central-kf-scp-kafka-ssl-secrets",
+		MountPath:  "/var/secrets/al-gp-id-s-central-kf/passwords",
+		SecretName: "scp-kafka-ssl-secrets",
+		Type:       "secret",
+	}, mounts[1])
+	assert.Equal(t, ACLMount{
+		Name:      "kafka-token",
+		MountPath: "/var/run/secrets/kafka/serviceaccount",
+		Type:      "projected",
+	}, mounts[2])
+}
+
 // R2: bootstrap servers are populated from the resolved stream URL when not set,
 // and the additional configuration is attached to the source.
 func TestResolveSourceStreams_PopulatesBootstrapAndConfig(t *testing.T) {
