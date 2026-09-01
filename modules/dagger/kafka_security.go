@@ -189,13 +189,18 @@ func sanitizeVolumeName(name string) string {
 // podTemplate is unchanged for plaintext daggers.
 func buildACLMounts(sources []Source, profiles map[string]*kafkamod.SecurityProfile, team string) []ACLMount {
 	var mounts []ACLMount
+	seen := make(map[string]bool)
 
 	for _, src := range sources {
 		streamName := src.SourceKafkaName
+		if seen[streamName] {
+			continue
+		}
 		sp := profiles[streamName]
 		if !hasSecurityProfile(sp) {
 			continue
 		}
+		seen[streamName] = true
 
 		if isOauthbearerStream(sp) {
 			mounts = append(mounts, ACLMount{
