@@ -4,6 +4,9 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/goto/entropy/core/resource"
@@ -18,16 +21,22 @@ const (
 	confKeyConsumerID   = "SOURCE_KAFKA_CONSUMER_GROUP_ID"
 	confKeyKafkaBrokers = "SOURCE_KAFKA_BROKERS"
 	confKeyKafkaTopic   = "SOURCE_KAFKA_TOPIC"
+
+	confDLQSinkEnable       = "DLQ_SINK_ENABLE"
+	confDLQWriterType       = "DLQ_WRITER_TYPE"
+	confDLQKafkaTopic       = "DLQ_KAFKA_TOPIC"
+	dlqWriterTypeKafka      = "KAFKA"
+	kafkaTopicNameMaxLength = 249
 )
 
 // Kafka sink env variable keys
 const (
-	sinkTypeKafka              = "KAFKA"
-	confSinkKafkaBrokers       = "SINK_KAFKA_BROKERS"
-	confSinkKafkaStream        = "SINK_KAFKA_STREAM"
-	confSinkKafkaTopic         = "SINK_KAFKA_TOPIC"
-	confSinkKafkaProtoMessage  = "SINK_KAFKA_PROTO_MESSAGE"
-	confSinkKafkaProtoMapping  = "SINK_KAFKA_PROTO_MAPPING"
+	sinkTypeKafka             = "KAFKA"
+	confSinkKafkaBrokers      = "SINK_KAFKA_BROKERS"
+	confSinkKafkaStream       = "SINK_KAFKA_STREAM"
+	confSinkKafkaTopic        = "SINK_KAFKA_TOPIC"
+	confSinkKafkaProtoMessage = "SINK_KAFKA_PROTO_MESSAGE"
+	confSinkKafkaProtoMapping = "SINK_KAFKA_PROTO_MAPPING"
 )
 
 const helmReleaseNameMaxLength = 53
@@ -183,6 +192,10 @@ func readConfig(r resource.Resource, confJSON json.RawMessage, dc driverConf) (*
 		}
 	}
 
+	if err := validateKafkaDLQEnvVars(cfg.EnvVariables); err != nil {
+		return nil, err
+	}
+
 	if cfg.Autoscaler != nil && cfg.Autoscaler.Enabled {
 		if err := cfg.Autoscaler.Spec.ReadConfig(cfg, dc); err != nil {
 			return nil, err
@@ -207,6 +220,31 @@ func validateKafkaSinkEnvVars(envVars map[string]string) error {
 		if envVars[key] == "" {
 			return errors.ErrInvalid.WithMsgf("env variable '%s' is required when SINK_TYPE=KAFKA", key)
 		}
+	}
+	return nil
+}
+
+var kafkaTopicNamePattern = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
+
+func validateKafkaDLQEnvVars(envVars map[string]string) error {
+	enabled, _ := strconv.ParseBool(envVars[confDLQSinkEnable])
+	if !enabled || !strings.EqualFold(strings.TrimSpace(envVars[confDLQWriterType]), dlqWriterTypeKafka) {
+		return nil
+	}
+
+	topic := strings.TrimSpace(envVars[confDLQKafkaTopic])
+	if topic == "" {
+		return errors.ErrInvalid.WithMsgf("env variable '%s' is required when %s=true and %s=%s", confDLQKafkaTopic, confDLQSinkEnable, confDLQWriterType, dlqWriterTypeKafka)
+	}
+	// Module defaults may still be a Go template until helm render.
+	if strings.Contains(topic, "{{") {
+		return nil
+	}
+	if len(topic) > kafkaTopicNameMaxLength {
+		return errors.ErrInvalid.WithMsgf("env variable '%s' exceeds kafka topic name limit of %d characters", confDLQKafkaTopic, kafkaTopicNameMaxLength)
+	}
+	if !kafkaTopicNamePattern.MatchString(topic) {
+		return errors.ErrInvalid.WithMsgf("env variable '%s' contains characters that are not allowed in a kafka topic name", confDLQKafkaTopic)
 	}
 	return nil
 }

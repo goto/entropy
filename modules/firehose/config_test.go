@@ -46,3 +46,27 @@ func Test_safeReleaseName(t *testing.T) {
 		})
 	}
 }
+
+func Test_validateKafkaDLQEnvVars(t *testing.T) {
+	t.Parallel()
+
+	assert.Error(t, validateKafkaDLQEnvVars(map[string]string{
+		confDLQSinkEnable: "true",
+		confDLQWriterType: dlqWriterTypeKafka,
+	}))
+	assert.NoError(t, validateKafkaDLQEnvVars(map[string]string{
+		confDLQSinkEnable: "true",
+		confDLQWriterType: dlqWriterTypeKafka,
+		confDLQKafkaTopic: "app-firehose-dlq",
+	}))
+	assert.NoError(t, validateKafkaDLQEnvVars(map[string]string{
+		confDLQSinkEnable: "true",
+		confDLQWriterType: dlqWriterTypeKafka,
+		confDLQKafkaTopic: "{{ .name }}-firehose-dlq",
+	}))
+	assert.Error(t, validateKafkaDLQEnvVars(map[string]string{
+		confDLQSinkEnable: "true",
+		confDLQWriterType: dlqWriterTypeKafka,
+		confDLQKafkaTopic: "bad topic!",
+	}))
+}

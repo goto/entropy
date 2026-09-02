@@ -220,14 +220,13 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		return nil, err
 	}
 
+	mergedLabelsAndEnvVariablesMap := modules.CloneAndMergeMaps(modules.CloneAndMergeMaps(conf.EnvVariables, modules.CloneAndMergeMaps(deploymentLabels, modules.CloneAndMergeMaps(res.Labels, entropyLabels))), otherLabels)
+	conf.EnvVariables, err = renderTpl(conf.EnvVariables, mergedLabelsAndEnvVariablesMap)
+	if err != nil {
+		return nil, err
+	}
+
 	if conf.Telegraf != nil && conf.Telegraf.Enabled {
-		mergedLabelsAndEnvVariablesMap := modules.CloneAndMergeMaps(modules.CloneAndMergeMaps(conf.EnvVariables, modules.CloneAndMergeMaps(deploymentLabels, modules.CloneAndMergeMaps(res.Labels, entropyLabels))), otherLabels)
-
-		conf.EnvVariables, err = renderTpl(conf.EnvVariables, mergedLabelsAndEnvVariablesMap)
-		if err != nil {
-			return nil, err
-		}
-
 		telegrafTags, err := renderTpl(conf.Telegraf.Config.AdditionalGlobalTags, mergedLabelsAndEnvVariablesMap)
 		if err != nil {
 			return nil, err
@@ -401,7 +400,7 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 			"command": fd.conf.InitContainer.Command,
 			"args":    fd.conf.InitContainer.Args,
 		},
-		"telegraf": buildTelegrafValues(telegrafConf),
+		"telegraf":     buildTelegrafValues(telegrafConf),
 		"mountSecrets": mountSecrets,
 	}
 
