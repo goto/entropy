@@ -147,6 +147,19 @@ func TestReplaceLegacySharedDLQTopic(t *testing.T) {
 		fd.replaceLegacySharedDLQTopic(conf, false)
 		assert.Equal(t, "legacy-custom-dlq", conf.EnvVariables[confDLQKafkaTopic])
 	})
+
+	t.Run("leaves shared retry topic when module default is not a template", func(t *testing.T) {
+		nonODS := &firehoseDriver{conf: driverConf{EnvVariables: map[string]string{
+			confDLQKafkaTopic: legacySharedDLQKafkaTopic,
+		}}}
+		conf := &Config{EnvVariables: map[string]string{
+			confDLQSinkEnable: "true",
+			confDLQWriterType: dlqWriterTypeKafka,
+			confDLQKafkaTopic: legacySharedDLQKafkaTopic,
+		}}
+		nonODS.replaceLegacySharedDLQTopic(conf, false)
+		assert.Equal(t, legacySharedDLQKafkaTopic, conf.EnvVariables[confDLQKafkaTopic])
+	})
 }
 
 func TestDropRemovedKafkaDLQEnv(t *testing.T) {
