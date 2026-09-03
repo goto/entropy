@@ -103,37 +103,3 @@ the module's driver config:
 > Requires firehose chart `0.2.1` or later (`goto/charts`, `stable/firehose`). Chart `0.2.0`
 > renders none of this — it has no `serviceAccountName`, projected volume or `secretKeyRef`
 > support — so an ACL firehose on it starts without its secrets and fails to authenticate.
-
-## Kafka DLQ defaults (self-serve ODS)
-
-Env variables on the firehose **module** are merged under resource env vars. Render
-templates against resource labels (`name`, `urn`, `namespace`, …) even when Telegraf is
-disabled, so `DLQ_KAFKA_TOPIC={{ .name }}-firehose-dlq` works.
-
-Set these on the ODS firehose modules (`gjk-p-acc`, `gjk-i-acc`, `al-oddp-id-p`,
-`al-gtdp-id-p`, `al-oddp-id-s`, `al-gtdp-id-s`):
-
-| key | value |
-| :--- | :--- |
-| `DLQ_KAFKA_TOPIC_CREATE` | `true` |
-| `DLQ_KAFKA_TOPIC` | `{{ .name }}-firehose-dlq` |
-| `DLQ_KAFKA_TOPIC_RETENTION` | `604800` |
-| `DLQ_KAFKA_RETRIES` | `5` |
-| `DLQ_RETRY_MAX_ATTEMPTS` | `5` on `gjk-p-acc` and `gjk-i-acc` |
-
-`ERROR_TYPES_FOR_DLQ` default `DEFAULT_ERROR,SINK_RETRYABLE_ERROR` on Tencent modules
-(`gjk-p-acc`, `gjk-i-acc`). Alicloud modules should leave it unset so blob DLQ keeps the
-existing module defaults; Dex sets it when Kafka DLQ is first enabled.
-
-When Kafka DLQ is enabled and `DLQ_KAFKA_BROKERS` is empty, plan fetches the project's
-dagstream kafka resource `orn:entropy:kafka:<project>:dagstream` and uses its output
-`url`. An explicit `DLQ_KAFKA_BROKERS` value is honoured.
-
-When `DLQ_SINK_ENABLE=true` and `DLQ_WRITER_TYPE=KAFKA`, plan rejects a missing or
-invalid `DLQ_KAFKA_TOPIC` (max 249 characters, `[a-zA-Z0-9._-]`). Values that still
-contain `{{` are skipped until helm render. `DLQ_KAFKA_TOPIC_RETENTION` must be
-between 86400 and 604800 seconds when set.
-
-Kafka Governance cannot set topic retention; Firehose uses `DLQ_KAFKA_TOPIC_CREATE`
-and `DLQ_KAFKA_TOPIC_RETENTION` on the cluster. Dex keeps an already-configured
-custom DLQ topic name instead of overwriting it with `{{ .name }}-firehose-dlq`.
