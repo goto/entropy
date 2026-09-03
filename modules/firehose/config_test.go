@@ -69,4 +69,16 @@ func Test_validateKafkaDLQEnvVars(t *testing.T) {
 		confDLQWriterType: dlqWriterTypeKafka,
 		confDLQKafkaTopic: "bad topic!",
 	}))
+	assert.Error(t, validateKafkaDLQEnvVars(map[string]string{
+		confDLQSinkEnable:          "true",
+		confDLQWriterType:          dlqWriterTypeKafka,
+		confDLQKafkaTopic:          "app-firehose-dlq",
+		confDLQKafkaTopicRetention: "60",
+	}))
+	assert.NoError(t, validateKafkaDLQEnvVars(map[string]string{
+		confDLQSinkEnable:          "true",
+		confDLQWriterType:          dlqWriterTypeKafka,
+		confDLQKafkaTopic:          "app-firehose-dlq",
+		confDLQKafkaTopicRetention: "604800",
+	}))
 }

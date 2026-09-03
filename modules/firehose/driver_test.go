@@ -699,3 +699,15 @@ func firehoseDriverConf() driverConf {
 		},
 	}
 }
+
+func TestRenderEnvTemplates(t *testing.T) {
+	t.Parallel()
+
+	got, err := renderEnvTemplates(map[string]string{
+		"PLAIN":           "keep-me",
+		"DLQ_KAFKA_TOPIC": "{{ .name }}-firehose-dlq",
+	}, map[string]string{"name": "orders"})
+	require.NoError(t, err)
+	assert.Equal(t, "keep-me", got["PLAIN"])
+	assert.Equal(t, "orders-firehose-dlq", got["DLQ_KAFKA_TOPIC"])
+}
