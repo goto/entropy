@@ -42,6 +42,7 @@ func (fd *firehoseDriver) planChange(ctx context.Context, exr module.ExpandedRes
 	if err != nil {
 		return nil, err
 	}
+	previouslyKafkaDLQ := isKafkaDLQEnabled(curConf)
 
 	switch act.Name {
 	case module.UpdateAction:
@@ -131,13 +132,9 @@ func (fd *firehoseDriver) planChange(ctx context.Context, exr module.ExpandedRes
 
 	immediately := fd.timeNow()
 
-	if err := fd.applyKafkaDLQBrokers(ctx, exr, curConf); err != nil {
+	if err := fd.prepareKafkaDLQEnv(ctx, exr, curConf, previouslyKafkaDLQ); err != nil {
 		return nil, err
 	}
-	if err := resolveKafkaDLQTopic(exr.Resource, curConf); err != nil {
-		return nil, err
-	}
-	dropRemovedKafkaDLQEnv(curConf)
 
 	exr.Resource.Spec.Configs = modules.MustJSON(curConf)
 
@@ -169,9 +166,6 @@ func (fd *firehoseDriver) planCreate(ctx context.Context, exr module.ExpandedRes
 	if err := fd.applyStreamSecurity(ctx, exr, conf); err != nil {
 		return nil, errors.ErrInvalid.WithMsgf("failed to resolve source stream").WithCausef("%s", err.Error())
 	}
-	if err := fd.applyKafkaDLQBrokers(ctx, exr, conf); err != nil {
-		return nil, err
-	}
 
 	chartVals, err := mergeChartValues(&fd.conf.ChartValues, conf.ChartValues)
 	if err != nil {
@@ -194,10 +188,9 @@ func (fd *firehoseDriver) planCreate(ctx context.Context, exr module.ExpandedRes
 
 	immediately := fd.timeNow()
 
-	if err := resolveKafkaDLQTopic(exr.Resource, conf); err != nil {
+	if err := fd.prepareKafkaDLQEnv(ctx, exr, conf, false); err != nil {
 		return nil, err
 	}
-	dropRemovedKafkaDLQEnv(conf)
 
 	exr.Resource.Spec.Configs = modules.MustJSON(conf)
 
@@ -240,6 +233,7 @@ func (fd *firehoseDriver) planResetV2(ctx context.Context, exr module.ExpandedRe
 
 	curConf.ResetOffset = resetValue
 
+	dropRemovedKafkaDLQEnv(curConf)
 	exr.Resource.Spec.Configs = modules.MustJSON(curConf)
 	exr.Resource.State = resource.State{
 		Status:     resource.StatusPending,
@@ -295,6 +289,7 @@ func (fd *firehoseDriver) planReset(ctx context.Context, exr module.ExpandedReso
 		curConf.Autoscaler.Spec = kedaSpec
 	}
 
+	dropRemovedKafkaDLQEnv(curConf)
 	exr.Resource.Spec.Configs = modules.MustJSON(curConf)
 	exr.Resource.State = resource.State{
 		Status:     resource.StatusPending,

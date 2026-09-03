@@ -457,6 +457,45 @@ func (fd *firehoseDriver) applyKafkaDLQBrokers(ctx context.Context, exr module.E
 	return nil
 }
 
+func isKafkaDLQEnabled(conf *Config) bool {
+	if conf == nil || conf.EnvVariables == nil {
+		return false
+	}
+	enabled, _ := strconv.ParseBool(conf.EnvVariables[confDLQSinkEnable])
+	return enabled && strings.EqualFold(strings.TrimSpace(conf.EnvVariables[confDLQWriterType]), dlqWriterTypeKafka)
+}
+
+func (fd *firehoseDriver) prepareKafkaDLQEnv(ctx context.Context, exr module.ExpandedResource, conf *Config, previouslyKafkaDLQ bool) error {
+	if err := fd.applyKafkaDLQBrokers(ctx, exr, conf); err != nil {
+		return err
+	}
+	fd.replaceLegacySharedDLQTopic(conf, previouslyKafkaDLQ)
+	if err := resolveKafkaDLQTopic(exr.Resource, conf); err != nil {
+		return err
+	}
+	dropRemovedKafkaDLQEnv(conf)
+	return nil
+}
+
+// replaceLegacySharedDLQTopic swaps the old shared retry topic for the module
+// template on first Kafka DLQ enable, so ODS defaults like {{ .name }}-firehose-dlq
+// are stored instead of firehose-retry-topic copied from the previous module.
+func (fd *firehoseDriver) replaceLegacySharedDLQTopic(conf *Config, previouslyKafkaDLQ bool) {
+	if fd == nil || previouslyKafkaDLQ || !isKafkaDLQEnabled(conf) {
+		return
+	}
+	moduleTopic := ""
+	if fd.conf.EnvVariables != nil {
+		moduleTopic = strings.TrimSpace(fd.conf.EnvVariables[confDLQKafkaTopic])
+	}
+	if !strings.Contains(moduleTopic, "{{") {
+		return
+	}
+	if strings.TrimSpace(conf.EnvVariables[confDLQKafkaTopic]) == legacySharedDLQKafkaTopic {
+		conf.EnvVariables[confDLQKafkaTopic] = moduleTopic
+	}
+}
+
 // resolveKafkaDLQTopic renders module-default DLQ_KAFKA_TOPIC templates
 // (e.g. "{{ .name }}-firehose-dlq") into a concrete topic so the planned
 // firehose spec stores the resolved value. Explicit topics are left unchanged.

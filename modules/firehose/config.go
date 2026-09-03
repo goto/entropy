@@ -30,6 +30,7 @@ const (
 	confDLQKafkaTopicRetention = "DLQ_KAFKA_TOPIC_RETENTION"
 	dlqWriterTypeKafka         = "KAFKA"
 	dlqKafkaStreamName         = "dagstream"
+	legacySharedDLQKafkaTopic  = "firehose-retry-topic"
 	kafkaTopicNameMaxLength    = 249
 )
 
