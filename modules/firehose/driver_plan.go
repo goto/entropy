@@ -134,6 +134,9 @@ func (fd *firehoseDriver) planChange(ctx context.Context, exr module.ExpandedRes
 	if err := fd.applyKafkaDLQBrokers(ctx, exr, curConf); err != nil {
 		return nil, err
 	}
+	if err := resolveKafkaDLQTopic(exr.Resource, curConf); err != nil {
+		return nil, err
+	}
 
 	exr.Resource.Spec.Configs = modules.MustJSON(curConf)
 
@@ -189,6 +192,10 @@ func (fd *firehoseDriver) planCreate(ctx context.Context, exr module.ExpandedRes
 	}
 
 	immediately := fd.timeNow()
+
+	if err := resolveKafkaDLQTopic(exr.Resource, conf); err != nil {
+		return nil, err
+	}
 
 	exr.Resource.Spec.Configs = modules.MustJSON(conf)
 
