@@ -137,6 +137,7 @@ func (fd *firehoseDriver) planChange(ctx context.Context, exr module.ExpandedRes
 	if err := resolveKafkaDLQTopic(exr.Resource, curConf); err != nil {
 		return nil, err
 	}
+	dropRemovedKafkaDLQEnv(curConf)
 
 	exr.Resource.Spec.Configs = modules.MustJSON(curConf)
 
@@ -196,6 +197,7 @@ func (fd *firehoseDriver) planCreate(ctx context.Context, exr module.ExpandedRes
 	if err := resolveKafkaDLQTopic(exr.Resource, conf); err != nil {
 		return nil, err
 	}
+	dropRemovedKafkaDLQEnv(conf)
 
 	exr.Resource.Spec.Configs = modules.MustJSON(conf)
 

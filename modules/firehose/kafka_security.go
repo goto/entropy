@@ -493,6 +493,15 @@ func resolveKafkaDLQTopic(res resource.Resource, conf *Config) error {
 	return nil
 }
 
+func dropRemovedKafkaDLQEnv(conf *Config) {
+	if conf == nil || conf.EnvVariables == nil {
+		return
+	}
+	// Firehose always auto-creates a missing Kafka DLQ topic; these env keys are unused.
+	delete(conf.EnvVariables, confDLQKafkaTopicCreate)
+	delete(conf.EnvVariables, confDLQKafkaTopicRetention)
+}
+
 func dagstreamKafkaURN(project string) string {
 	return resource.GenerateURN(kafkamod.Module.Kind, project, dlqKafkaStreamName)
 }

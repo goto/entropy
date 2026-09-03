@@ -110,3 +110,19 @@ func TestResolveKafkaDLQTopic(t *testing.T) {
 		assert.Equal(t, "{{ .name }}-firehose-dlq", conf.EnvVariables[confDLQKafkaTopic])
 	})
 }
+
+func TestDropRemovedKafkaDLQEnv(t *testing.T) {
+	t.Parallel()
+
+	conf := &Config{EnvVariables: map[string]string{
+		confDLQKafkaTopicCreate:    "true",
+		confDLQKafkaTopicRetention: "604800",
+		confDLQKafkaTopic:          "orders-firehose-dlq",
+	}}
+	dropRemovedKafkaDLQEnv(conf)
+	_, hasCreate := conf.EnvVariables[confDLQKafkaTopicCreate]
+	_, hasRetention := conf.EnvVariables[confDLQKafkaTopicRetention]
+	assert.False(t, hasCreate)
+	assert.False(t, hasRetention)
+	assert.Equal(t, "orders-firehose-dlq", conf.EnvVariables[confDLQKafkaTopic])
+}
