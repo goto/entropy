@@ -125,14 +125,15 @@ Set these on the ODS firehose modules (`gjk-p-acc`, `gjk-i-acc`, `al-oddp-id-p`,
 (`gjk-p-acc`, `gjk-i-acc`). Alicloud modules should leave it unset so blob DLQ keeps the
 existing module defaults; Dex sets it when Kafka DLQ is first enabled.
 
-`DLQ_KAFKA_BROKERS` (dagstream only — auto topic create is enabled there):
-
-| project | broker |
-| :--- | :--- |
-| `gjk-i-acc` | `ods-kafka-products-dagstream.i.gojek.com:6668` |
-| `gjk-p-acc` | `ods-kafka-products-dagstream.p.gojek.com:6668` |
-| `al-oddp-id-p`, `al-gtdp-id-p` | `ods-kafka-data-dagstream.al-oddp-id-p.internal:6668` |
-| `al-oddp-id-s`, `al-gtdp-id-s` | `ods-kafka-data-dagstream.al-oddp-id-s.internal:6668` |
+When Kafka DLQ is enabled and `DLQ_KAFKA_BROKERS` is empty, plan fetches the project's
+dagstream kafka resource `orn:entropy:kafka:<project>:dagstream` and uses its output
+`url`. An explicit `DLQ_KAFKA_BROKERS` value is honoured.
 
 When `DLQ_SINK_ENABLE=true` and `DLQ_WRITER_TYPE=KAFKA`, plan rejects a missing or
-invalid `DLQ_KAFKA_TOPIC` (max 249 characters, `[a-zA-Z0-9._-]`).
+invalid `DLQ_KAFKA_TOPIC` (max 249 characters, `[a-zA-Z0-9._-]`). Values that still
+contain `{{` are skipped until helm render. `DLQ_KAFKA_TOPIC_RETENTION` must be
+between 86400 and 604800 seconds when set.
+
+Kafka Governance cannot set topic retention; Firehose uses `DLQ_KAFKA_TOPIC_CREATE`
+and `DLQ_KAFKA_TOPIC_RETENTION` on the cluster. Dex keeps an already-configured
+custom DLQ topic name instead of overwriting it with `{{ .name }}-firehose-dlq`.

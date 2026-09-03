@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	kafkamod "github.com/goto/entropy/modules/kafka"
+	"github.com/goto/entropy/pkg/errors"
 )
 
 // SASL/SSL consumer config keys. Firehose passes every
@@ -427,6 +429,36 @@ func (fd *firehoseDriver) fetchKafkaOutput(ctx context.Context, project, streamN
 		return out, fmt.Errorf("invalid kafka output for stream %q: %w", streamName, err)
 	}
 	return out, nil
+}
+
+// applyKafkaDLQBrokers fills DLQ_KAFKA_BROKERS from the project's dagstream
+// kafka resource (orn:entropy:kafka:<project>:dagstream) when Kafka DLQ is
+// enabled and brokers were not set explicitly.
+func (fd *firehoseDriver) applyKafkaDLQBrokers(ctx context.Context, exr module.ExpandedResource, conf *Config) error {
+	if conf == nil || conf.EnvVariables == nil {
+		return nil
+	}
+	enabled, _ := strconv.ParseBool(conf.EnvVariables[confDLQSinkEnable])
+	if !enabled || !strings.EqualFold(strings.TrimSpace(conf.EnvVariables[confDLQWriterType]), dlqWriterTypeKafka) {
+		return nil
+	}
+	if strings.TrimSpace(conf.EnvVariables[confDLQKafkaBrokers]) != "" {
+		return nil
+	}
+
+	out, err := fd.fetchKafkaOutput(ctx, exr.Resource.Project, dlqKafkaStreamName)
+	if err != nil {
+		return errors.ErrInvalid.WithMsgf("failed to resolve DLQ kafka brokers from %s", dagstreamKafkaURN(exr.Resource.Project)).WithCausef("%s", err.Error())
+	}
+	if strings.TrimSpace(out.URL) == "" {
+		return errors.ErrInvalid.WithMsgf("%s is required when Kafka DLQ is enabled; kafka resource %s has no url", confDLQKafkaBrokers, dagstreamKafkaURN(exr.Resource.Project))
+	}
+	conf.EnvVariables[confDLQKafkaBrokers] = out.URL
+	return nil
+}
+
+func dagstreamKafkaURN(project string) string {
+	return resource.GenerateURN(kafkamod.Module.Kind, project, dlqKafkaStreamName)
 }
 
 // setKafkaBrokers fills SOURCE_KAFKA_BROKERS from the resolved stream URL,

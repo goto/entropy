@@ -131,6 +131,10 @@ func (fd *firehoseDriver) planChange(ctx context.Context, exr module.ExpandedRes
 
 	immediately := fd.timeNow()
 
+	if err := fd.applyKafkaDLQBrokers(ctx, exr, curConf); err != nil {
+		return nil, err
+	}
+
 	exr.Resource.Spec.Configs = modules.MustJSON(curConf)
 
 	err = fd.validateHelmReleaseConfigs(exr, *curConf)
@@ -160,6 +164,9 @@ func (fd *firehoseDriver) planCreate(ctx context.Context, exr module.ExpandedRes
 	// No-op for plaintext sources.
 	if err := fd.applyStreamSecurity(ctx, exr, conf); err != nil {
 		return nil, errors.ErrInvalid.WithMsgf("failed to resolve source stream").WithCausef("%s", err.Error())
+	}
+	if err := fd.applyKafkaDLQBrokers(ctx, exr, conf); err != nil {
+		return nil, err
 	}
 
 	chartVals, err := mergeChartValues(&fd.conf.ChartValues, conf.ChartValues)

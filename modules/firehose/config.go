@@ -22,11 +22,16 @@ const (
 	confKeyKafkaBrokers = "SOURCE_KAFKA_BROKERS"
 	confKeyKafkaTopic   = "SOURCE_KAFKA_TOPIC"
 
-	confDLQSinkEnable       = "DLQ_SINK_ENABLE"
-	confDLQWriterType       = "DLQ_WRITER_TYPE"
-	confDLQKafkaTopic       = "DLQ_KAFKA_TOPIC"
-	dlqWriterTypeKafka      = "KAFKA"
-	kafkaTopicNameMaxLength = 249
+	confDLQSinkEnable          = "DLQ_SINK_ENABLE"
+	confDLQWriterType          = "DLQ_WRITER_TYPE"
+	confDLQKafkaTopic          = "DLQ_KAFKA_TOPIC"
+	confDLQKafkaBrokers        = "DLQ_KAFKA_BROKERS"
+	confDLQKafkaTopicRetention = "DLQ_KAFKA_TOPIC_RETENTION"
+	dlqWriterTypeKafka         = "KAFKA"
+	dlqKafkaStreamName         = "dagstream"
+	kafkaTopicNameMaxLength    = 249
+	minDLQTopicRetentionSec    = 86400
+	maxDLQTopicRetentionSec    = 604800
 )
 
 // Kafka sink env variable keys
@@ -245,6 +250,21 @@ func validateKafkaDLQEnvVars(envVars map[string]string) error {
 	}
 	if !kafkaTopicNamePattern.MatchString(topic) {
 		return errors.ErrInvalid.WithMsgf("env variable '%s' contains characters that are not allowed in a kafka topic name", confDLQKafkaTopic)
+	}
+	return validateDLQTopicRetention(envVars)
+}
+
+func validateDLQTopicRetention(envVars map[string]string) error {
+	raw := strings.TrimSpace(envVars[confDLQKafkaTopicRetention])
+	if raw == "" || strings.Contains(raw, "{{") {
+		return nil
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil {
+		return errors.ErrInvalid.WithMsgf("env variable '%s' must be an integer number of seconds", confDLQKafkaTopicRetention)
+	}
+	if n < minDLQTopicRetentionSec || n > maxDLQTopicRetentionSec {
+		return errors.ErrInvalid.WithMsgf("env variable '%s' must be between %d and %d seconds", confDLQKafkaTopicRetention, minDLQTopicRetentionSec, maxDLQTopicRetentionSec)
 	}
 	return nil
 }
