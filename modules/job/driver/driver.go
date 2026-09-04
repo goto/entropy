@@ -3,6 +3,7 @@ package driver
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/goto/entropy/core/module"
@@ -103,7 +104,17 @@ func (driver *Driver) Sync(ctx context.Context, exr module.ExpandedResource) (*r
 	}
 	finalState.Output = finalOut
 
-	finalState.Status = resource.StatusCompleted
+	var parsedOut Output
+	if err := json.Unmarshal(finalOut, &parsedOut); err != nil {
+		return nil, errors.ErrInternal.WithCausef("%s", err.Error())
+	}
+
+	if errPod := kube.FirstPodError(parsedOut.Pods); errPod != nil {
+		finalState.Status = resource.StatusError
+		finalState.SyncResult.LastError = fmt.Sprintf("pod %s is in error: %s", errPod.Name, errPod.Reason)
+	} else {
+		finalState.Status = resource.StatusCompleted
+	}
 	finalState.ModuleData = nil
 	return &finalState, nil
 }
