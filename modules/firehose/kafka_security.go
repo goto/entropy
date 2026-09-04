@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
 	kafkamod "github.com/goto/entropy/modules/kafka"
+	"github.com/goto/entropy/pkg/errors"
 )
 
 // SASL/SSL consumer config keys. Firehose passes every
@@ -427,6 +429,46 @@ func (fd *firehoseDriver) fetchKafkaOutput(ctx context.Context, project, streamN
 		return out, fmt.Errorf("invalid kafka output for stream %q: %w", streamName, err)
 	}
 	return out, nil
+}
+
+func (fd *firehoseDriver) prepareKafkaDLQEnv(exr module.ExpandedResource, conf *Config) error {
+	return resolveKafkaDLQTopic(exr.Resource, conf)
+}
+
+// resolveKafkaDLQTopic renders module-default DLQ_KAFKA_TOPIC templates
+// (e.g. "{{ .name }}-firehose-dlq") into a concrete topic so the planned
+// firehose spec stores the resolved value. Explicit topics are left unchanged.
+func resolveKafkaDLQTopic(res resource.Resource, conf *Config) error {
+	if conf == nil || conf.EnvVariables == nil {
+		return nil
+	}
+	enabled, _ := strconv.ParseBool(conf.EnvVariables[confDLQSinkEnable])
+	if !enabled || !strings.EqualFold(strings.TrimSpace(conf.EnvVariables[confDLQWriterType]), dlqWriterTypeKafka) {
+		return nil
+	}
+	topic := strings.TrimSpace(conf.EnvVariables[confDLQKafkaTopic])
+	if topic == "" || !strings.Contains(topic, "{{") {
+		if topic != "" {
+			conf.EnvVariables[confDLQKafkaTopic] = topic
+		}
+		return nil
+	}
+
+	rendered, err := renderTpl(map[string]string{confDLQKafkaTopic: topic}, map[string]string{
+		labelName:       res.Name,
+		labelURN:        res.URN,
+		labelNamespace:  conf.Namespace,
+		labelDeployment: conf.DeploymentID,
+	})
+	if err != nil {
+		return err
+	}
+	resolved := strings.TrimSpace(rendered[confDLQKafkaTopic])
+	if resolved == "" || strings.Contains(resolved, "{{") {
+		return errors.ErrInvalid.WithMsgf("env variable '%s' could not be resolved from module default", confDLQKafkaTopic)
+	}
+	conf.EnvVariables[confDLQKafkaTopic] = resolved
+	return nil
 }
 
 // setKafkaBrokers fills SOURCE_KAFKA_BROKERS from the resolved stream URL,

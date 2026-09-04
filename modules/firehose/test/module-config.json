@@ -28,7 +28,7 @@
         "DLQ_KAFKA_KEY_SERIALIZER": "dummy_serializer",
         "DLQ_KAFKA_LINGER_MS": "1",
         "DLQ_KAFKA_RETRIES": "5",
-        "DLQ_KAFKA_TOPIC": "dummy_topic",
+        "DLQ_KAFKA_TOPIC": "{{ .name }}-firehose-dlq",
         "DLQ_KAFKA_VALUE_SERIALIZER": "dummy_serializer",
         "DLQ_OSS_ACCESS_ID": "dummy_access_id",
         "DLQ_OSS_ACCESS_KEY": "dummy_access_key",

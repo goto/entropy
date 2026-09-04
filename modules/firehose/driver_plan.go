@@ -131,6 +131,10 @@ func (fd *firehoseDriver) planChange(ctx context.Context, exr module.ExpandedRes
 
 	immediately := fd.timeNow()
 
+	if err := fd.prepareKafkaDLQEnv(exr, curConf); err != nil {
+		return nil, err
+	}
+
 	exr.Resource.Spec.Configs = modules.MustJSON(curConf)
 
 	err = fd.validateHelmReleaseConfigs(exr, *curConf)
@@ -182,6 +186,10 @@ func (fd *firehoseDriver) planCreate(ctx context.Context, exr module.ExpandedRes
 	}
 
 	immediately := fd.timeNow()
+
+	if err := fd.prepareKafkaDLQEnv(exr, conf); err != nil {
+		return nil, err
+	}
 
 	exr.Resource.Spec.Configs = modules.MustJSON(conf)
 

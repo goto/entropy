@@ -220,14 +220,18 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		return nil, err
 	}
 
+	mergedLabelsAndEnvVariablesMap := modules.CloneAndMergeMaps(modules.CloneAndMergeMaps(conf.EnvVariables, modules.CloneAndMergeMaps(deploymentLabels, modules.CloneAndMergeMaps(res.Labels, entropyLabels))), otherLabels)
+	conf.EnvVariables, err = renderEnvTemplates(conf.EnvVariables, mergedLabelsAndEnvVariablesMap)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateKafkaDLQEnvVars(conf.EnvVariables); err != nil {
+		recordFirehoseDLQValidation(res.URN, "invalid")
+		return nil, err
+	}
+	recordFirehoseDLQValidationIfEnabled(res.URN, conf.EnvVariables)
+
 	if conf.Telegraf != nil && conf.Telegraf.Enabled {
-		mergedLabelsAndEnvVariablesMap := modules.CloneAndMergeMaps(modules.CloneAndMergeMaps(conf.EnvVariables, modules.CloneAndMergeMaps(deploymentLabels, modules.CloneAndMergeMaps(res.Labels, entropyLabels))), otherLabels)
-
-		conf.EnvVariables, err = renderTpl(conf.EnvVariables, mergedLabelsAndEnvVariablesMap)
-		if err != nil {
-			return nil, err
-		}
-
 		telegrafTags, err := renderTpl(conf.Telegraf.Config.AdditionalGlobalTags, mergedLabelsAndEnvVariablesMap)
 		if err != nil {
 			return nil, err
@@ -401,7 +405,7 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 			"command": fd.conf.InitContainer.Command,
 			"args":    fd.conf.InitContainer.Args,
 		},
-		"telegraf": buildTelegrafValues(telegrafConf),
+		"telegraf":     buildTelegrafValues(telegrafConf),
 		"mountSecrets": mountSecrets,
 	}
 
@@ -442,6 +446,27 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 	}
 
 	return rc, nil
+}
+
+// renderEnvTemplates renders only env values that still contain a Go template.
+func renderEnvTemplates(env, values map[string]string) (map[string]string, error) {
+	if env == nil {
+		return env, nil
+	}
+	templates := map[string]string{}
+	for k, v := range env {
+		if strings.Contains(v, "{{") {
+			templates[k] = v
+		}
+	}
+	if len(templates) == 0 {
+		return env, nil
+	}
+	rendered, err := renderTpl(templates, values)
+	if err != nil {
+		return nil, err
+	}
+	return modules.CloneAndMergeMaps(env, rendered), nil
 }
 
 func renderTpl(labelsTpl map[string]string, labelsValues map[string]string) (map[string]string, error) {
