@@ -449,7 +449,7 @@ func (fd *firehoseDriver) prepareKafkaDLQEnv(exr module.ExpandedResource, conf *
 }
 
 // replaceLegacySharedDLQTopic swaps the old shared retry topic for the module
-// template on first Kafka DLQ enable, so ODS defaults like {{ .name }}-firehose-dlq
+// template on first Kafka DLQ enable, so defaults like {{ .name }}-firehose-dlq
 // are stored instead of firehose-retry-topic copied from the previous module.
 func (fd *firehoseDriver) replaceLegacySharedDLQTopic(conf *Config, previouslyKafkaDLQ bool) {
 	if fd == nil || previouslyKafkaDLQ || !isKafkaDLQEnabled(conf) {

@@ -18,7 +18,7 @@ func TestResolveKafkaDLQTopic(t *testing.T) {
 			confDLQWriterType: dlqWriterTypeKafka,
 			confDLQKafkaTopic: "{{ .name }}-firehose-dlq",
 		}}
-		res := resource.Resource{Name: "orders", URN: "orn:entropy:firehose:gjk-p-acc:orders"}
+		res := resource.Resource{Name: "orders", URN: "orn:entropy:firehose:test-project:orders"}
 
 		require.NoError(t, resolveKafkaDLQTopic(res, conf))
 		assert.Equal(t, "orders-firehose-dlq", conf.EnvVariables[confDLQKafkaTopic])
@@ -84,7 +84,7 @@ func TestReplaceLegacySharedDLQTopic(t *testing.T) {
 	})
 
 	t.Run("leaves shared retry topic when module default is not a template", func(t *testing.T) {
-		nonODS := &firehoseDriver{conf: driverConf{EnvVariables: map[string]string{
+		withoutTemplate := &firehoseDriver{conf: driverConf{EnvVariables: map[string]string{
 			confDLQKafkaTopic: legacySharedDLQKafkaTopic,
 		}}}
 		conf := &Config{EnvVariables: map[string]string{
@@ -92,7 +92,7 @@ func TestReplaceLegacySharedDLQTopic(t *testing.T) {
 			confDLQWriterType: dlqWriterTypeKafka,
 			confDLQKafkaTopic: legacySharedDLQKafkaTopic,
 		}}
-		nonODS.replaceLegacySharedDLQTopic(conf, false)
+		withoutTemplate.replaceLegacySharedDLQTopic(conf, false)
 		assert.Equal(t, legacySharedDLQKafkaTopic, conf.EnvVariables[confDLQKafkaTopic])
 	})
 }
