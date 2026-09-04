@@ -22,13 +22,11 @@ const (
 	confKeyKafkaBrokers = "SOURCE_KAFKA_BROKERS"
 	confKeyKafkaTopic   = "SOURCE_KAFKA_TOPIC"
 
-	confDLQSinkEnable          = "DLQ_SINK_ENABLE"
-	confDLQWriterType          = "DLQ_WRITER_TYPE"
-	confDLQKafkaTopic          = "DLQ_KAFKA_TOPIC"
-	confDLQKafkaTopicCreate    = "DLQ_KAFKA_TOPIC_CREATE"
-	confDLQKafkaTopicRetention = "DLQ_KAFKA_TOPIC_RETENTION"
-	dlqWriterTypeKafka         = "KAFKA"
-	kafkaTopicNameMaxLength    = 249
+	confDLQSinkEnable       = "DLQ_SINK_ENABLE"
+	confDLQWriterType       = "DLQ_WRITER_TYPE"
+	confDLQKafkaTopic       = "DLQ_KAFKA_TOPIC"
+	dlqWriterTypeKafka      = "KAFKA"
+	kafkaTopicNameMaxLength = 249
 )
 
 // Kafka sink env variable keys

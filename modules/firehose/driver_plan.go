@@ -232,7 +232,6 @@ func (fd *firehoseDriver) planResetV2(ctx context.Context, exr module.ExpandedRe
 
 	curConf.ResetOffset = resetValue
 
-	dropRemovedKafkaDLQEnv(curConf)
 	exr.Resource.Spec.Configs = modules.MustJSON(curConf)
 	exr.Resource.State = resource.State{
 		Status:     resource.StatusPending,
@@ -288,7 +287,6 @@ func (fd *firehoseDriver) planReset(ctx context.Context, exr module.ExpandedReso
 		curConf.Autoscaler.Spec = kedaSpec
 	}
 
-	dropRemovedKafkaDLQEnv(curConf)
 	exr.Resource.Spec.Configs = modules.MustJSON(curConf)
 	exr.Resource.State = resource.State{
 		Status:     resource.StatusPending,

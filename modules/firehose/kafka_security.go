@@ -432,11 +432,7 @@ func (fd *firehoseDriver) fetchKafkaOutput(ctx context.Context, project, streamN
 }
 
 func (fd *firehoseDriver) prepareKafkaDLQEnv(exr module.ExpandedResource, conf *Config) error {
-	if err := resolveKafkaDLQTopic(exr.Resource, conf); err != nil {
-		return err
-	}
-	dropRemovedKafkaDLQEnv(conf)
-	return nil
+	return resolveKafkaDLQTopic(exr.Resource, conf)
 }
 
 // resolveKafkaDLQTopic renders module-default DLQ_KAFKA_TOPIC templates
@@ -473,15 +469,6 @@ func resolveKafkaDLQTopic(res resource.Resource, conf *Config) error {
 	}
 	conf.EnvVariables[confDLQKafkaTopic] = resolved
 	return nil
-}
-
-func dropRemovedKafkaDLQEnv(conf *Config) {
-	if conf == nil || conf.EnvVariables == nil {
-		return
-	}
-	// Firehose always auto-creates a missing Kafka DLQ topic; these env keys are unused.
-	delete(conf.EnvVariables, confDLQKafkaTopicCreate)
-	delete(conf.EnvVariables, confDLQKafkaTopicRetention)
 }
 
 // setKafkaBrokers fills SOURCE_KAFKA_BROKERS from the resolved stream URL,
