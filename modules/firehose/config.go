@@ -28,7 +28,6 @@ const (
 	confDLQKafkaTopicCreate    = "DLQ_KAFKA_TOPIC_CREATE"
 	confDLQKafkaTopicRetention = "DLQ_KAFKA_TOPIC_RETENTION"
 	dlqWriterTypeKafka         = "KAFKA"
-	legacySharedDLQKafkaTopic  = "firehose-retry-topic"
 	kafkaTopicNameMaxLength    = 249
 )
 

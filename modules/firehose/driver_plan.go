@@ -42,7 +42,6 @@ func (fd *firehoseDriver) planChange(ctx context.Context, exr module.ExpandedRes
 	if err != nil {
 		return nil, err
 	}
-	previouslyKafkaDLQ := isKafkaDLQEnabled(curConf)
 
 	switch act.Name {
 	case module.UpdateAction:
@@ -132,7 +131,7 @@ func (fd *firehoseDriver) planChange(ctx context.Context, exr module.ExpandedRes
 
 	immediately := fd.timeNow()
 
-	if err := fd.prepareKafkaDLQEnv(exr, curConf, previouslyKafkaDLQ); err != nil {
+	if err := fd.prepareKafkaDLQEnv(exr, curConf); err != nil {
 		return nil, err
 	}
 
@@ -188,7 +187,7 @@ func (fd *firehoseDriver) planCreate(ctx context.Context, exr module.ExpandedRes
 
 	immediately := fd.timeNow()
 
-	if err := fd.prepareKafkaDLQEnv(exr, conf, false); err != nil {
+	if err := fd.prepareKafkaDLQEnv(exr, conf); err != nil {
 		return nil, err
 	}
 
