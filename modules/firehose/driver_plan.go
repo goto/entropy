@@ -132,7 +132,7 @@ func (fd *firehoseDriver) planChange(ctx context.Context, exr module.ExpandedRes
 
 	immediately := fd.timeNow()
 
-	if err := fd.prepareKafkaDLQEnv(ctx, exr, curConf, previouslyKafkaDLQ); err != nil {
+	if err := fd.prepareKafkaDLQEnv(exr, curConf, previouslyKafkaDLQ); err != nil {
 		return nil, err
 	}
 
@@ -188,7 +188,7 @@ func (fd *firehoseDriver) planCreate(ctx context.Context, exr module.ExpandedRes
 
 	immediately := fd.timeNow()
 
-	if err := fd.prepareKafkaDLQEnv(ctx, exr, conf, false); err != nil {
+	if err := fd.prepareKafkaDLQEnv(exr, conf, false); err != nil {
 		return nil, err
 	}
 

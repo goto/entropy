@@ -25,11 +25,9 @@ const (
 	confDLQSinkEnable          = "DLQ_SINK_ENABLE"
 	confDLQWriterType          = "DLQ_WRITER_TYPE"
 	confDLQKafkaTopic          = "DLQ_KAFKA_TOPIC"
-	confDLQKafkaBrokers        = "DLQ_KAFKA_BROKERS"
 	confDLQKafkaTopicCreate    = "DLQ_KAFKA_TOPIC_CREATE"
 	confDLQKafkaTopicRetention = "DLQ_KAFKA_TOPIC_RETENTION"
 	dlqWriterTypeKafka         = "KAFKA"
-	dlqKafkaStreamName         = "dagstream"
 	legacySharedDLQKafkaTopic  = "firehose-retry-topic"
 	kafkaTopicNameMaxLength    = 249
 )
