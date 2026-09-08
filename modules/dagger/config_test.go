@@ -51,7 +51,9 @@ func TestReadConfigCSVSink(t *testing.T) {
 		keySinkCsvWriteMode: "OVERWRITE",
 	}
 
-	cfg, err := readConfig(csvExpandedResource(), csvConfigJSON(t, sink), driverConf{})
+	cfg, err := readConfig(csvExpandedResource(), csvConfigJSON(t, sink), driverConf{
+		EnvVariables: sink,
+	})
 	if err != nil {
 		t.Fatalf("readConfig returned error: %v", err)
 	}

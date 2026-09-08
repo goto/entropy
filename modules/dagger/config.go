@@ -416,9 +416,14 @@ func readConfig(r module.ExpandedResource, confJSON json.RawMessage, dc driverCo
 		cfg.EnvVariables[keySinkErrorTypesForFailure] = cfg.Sink.SinkBigquery.SinkErrorTypesForFailure
 		cfg.EnvVariables[keySinkConnectorSchemaProtoMessageClass] = cfg.Sink.SinkBigquery.SinkConnectorSchemaProtoMessageClass
 	} else if cfg.SinkType == SinkTypeCSV {
-		if cfg.Sink.SinkCSV.SinkCsvBasePath == "" {
+		if dc.EnvVariables[keySinkCsvBasePath] == "" {
 			return nil, errors.ErrInvalid.WithMsgf("SINK_CSV_BASE_PATH is required for csv sink")
 		}
+
+		if cfg.Sink.SinkCSV.SinkCsvBasePath == "" {
+			cfg.Sink.SinkCSV.SinkCsvBasePath = dc.EnvVariables[keySinkCsvBasePath]
+		}
+
 		cfg.EnvVariables[keySinkCsvBasePath] = cfg.Sink.SinkCSV.SinkCsvBasePath
 
 		// optional keys: emit only when provided so the Dagger app's own defaults apply otherwise
