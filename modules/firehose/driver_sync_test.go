@@ -134,6 +134,55 @@ func TestFirehoseDriver_Sync(t *testing.T) {
 			},
 		},
 		{
+			title: "NoPendingStep_PodError",
+			exr: sampleResourceWithState(resource.State{
+				Status: resource.StatusPending,
+				Output: modules.MustJSON(Output{}),
+				ModuleData: modules.MustJSON(transientData{
+					PendingSteps: nil,
+				}),
+			}, "LOG", "firehose"),
+			kubeGetPod: func(t *testing.T) kubeGetPodFn {
+				t.Helper()
+				return func(ctx context.Context, conf kube.Config, ns string, labels map[string]string) ([]kube.Pod, error) {
+					return []kube.Pod{
+						{
+							Name:       "foo-1",
+							Containers: []string{"firehose"},
+							Status:     "Running",
+							Reason:     "CrashLoopBackOff",
+						},
+					}, nil
+				}
+			},
+			kubeGetDeployment: func(t *testing.T) kubeGetDeploymentFn {
+				t.Helper()
+				return func(ctx context.Context, conf kube.Config, ns string, name string) (kube.Deployment, error) {
+					return kube.Deployment{Name: "foo-1"}, nil
+				}
+			},
+			want: &resource.State{
+				Status: resource.StatusError,
+				Output: modules.MustJSON(Output{
+					Namespace: "firehose",
+					Pods: []kube.Pod{
+						{
+							Name:       "foo-1",
+							Containers: []string{"firehose"},
+							Status:     "Running",
+							Reason:     "CrashLoopBackOff",
+						},
+					},
+					Deployment:    &kube.Deployment{Name: "foo-1"},
+					DesiredStatus: "RUNNING",
+				}),
+				SyncResult: resource.SyncResult{
+					LastError: "pod foo-1 is in error: CrashLoopBackOff",
+				},
+				ModuleData: nil,
+			},
+		},
+		{
 			title: "Sync_refresh_output_failure",
 			exr: sampleResourceWithState(resource.State{
 				Status: resource.StatusCompleted,

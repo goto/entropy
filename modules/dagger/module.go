@@ -98,8 +98,19 @@ func Module(getResource ResourceGetter) module.Descriptor {
 						return nil, errors.ErrInternal.WithMsgf("failed to create new kube client on firehose driver kube get pod").WithCausef("%s", err.Error())
 					}
 					return kubeCl.GetPodDetails(ctx, ns, labels, func(pod v1.Pod) bool {
-						// allow pods that are in running state and are not marked for deletion
-						return pod.Status.Phase == v1.PodRunning && pod.DeletionTimestamp == nil
+						// allow running/failed pods and pods with a container error, excluding ones marked for deletion
+						if pod.DeletionTimestamp != nil {
+							return false
+						}
+						if pod.Status.Phase == v1.PodRunning || pod.Status.Phase == v1.PodFailed {
+							return true
+						}
+						for _, cs := range pod.Status.ContainerStatuses {
+							if cs.State.Waiting != nil {
+								return true
+							}
+						}
+						return false
 					})
 				},
 				kubeGetCRD: func(ctx context.Context, conf kube.Config, ns string, name string) (kube.FlinkDeploymentStatus, error) {
