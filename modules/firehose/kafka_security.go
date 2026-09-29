@@ -83,10 +83,7 @@ const (
 // projected kafka service-account token lands at kafkaTokenMountPath.
 const (
 	secretMountPath = "/etc/secret"
-	// the cert secret gets its own subdirectory rather than odin's bare
-	// /etc/secret: the firehose chart already mounts its own secret there for
-	// sink credentials, and two volumes cannot share a mount path.
-	certMountPath       = secretMountPath + "/kafka-cert"
+	certMountPath       = secretMountPath
 	jaasSecretMountPath = secretMountPath + "/kafka"
 	jaasConfigFileName  = "jaas.conf"
 	jaasConfigJavaOpt   = "-Djava.security.auth.login.config=" + jaasSecretMountPath + "/" + jaasConfigFileName
