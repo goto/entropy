@@ -89,7 +89,7 @@ func (fd *firehoseDriver) planChange(ctx context.Context, exr module.ExpandedRes
 		if err := fd.applyStreamSecurity(ctx, exr, newConf); err != nil {
 			return nil, errors.ErrInvalid.WithMsgf("failed to resolve source stream").WithCausef("%s", err.Error())
 		}
-		if err := refreshAutoscalerKafkaTriggerMetadata(newConf, exr.Resource.URN); err != nil {
+		if err := refreshAutoscalerKafkaTriggerMetadata(newConf); err != nil {
 			return nil, err
 		}
 
@@ -168,7 +168,7 @@ func (fd *firehoseDriver) planCreate(ctx context.Context, exr module.ExpandedRes
 	if err := fd.applyStreamSecurity(ctx, exr, conf); err != nil {
 		return nil, errors.ErrInvalid.WithMsgf("failed to resolve source stream").WithCausef("%s", err.Error())
 	}
-	if err := refreshAutoscalerKafkaTriggerMetadata(conf, exr.Resource.URN); err != nil {
+	if err := refreshAutoscalerKafkaTriggerMetadata(conf); err != nil {
 		return nil, err
 	}
 
@@ -279,7 +279,7 @@ func (fd *firehoseDriver) planReset(ctx context.Context, exr module.ExpandedReso
 		return nil, err
 	}
 
-	if err := refreshAutoscalerKafkaTriggerMetadata(curConf, exr.Resource.URN); err != nil {
+	if err := refreshAutoscalerKafkaTriggerMetadata(curConf); err != nil {
 		return nil, err
 	}
 
