@@ -7,6 +7,7 @@ import (
 
 	"github.com/goto/entropy/modules"
 	"github.com/goto/entropy/pkg/errors"
+	"go.uber.org/zap"
 )
 
 type Scaler string
@@ -297,18 +298,32 @@ func kedaKafkaScalerAuthentication(cfg Config) (string, bool) {
 
 // refreshAutoscalerKafkaTriggerMetadata re-applies kafka trigger fields after ACL
 // resolution (applyStreamSecurity runs after readConfig on create).
-func refreshAutoscalerKafkaTriggerMetadata(conf *Config) error {
+func refreshAutoscalerKafkaTriggerMetadata(conf *Config, resourceURN string) error {
 	if conf == nil || conf.Autoscaler == nil || !conf.Autoscaler.Enabled {
+		observeKedaTriggerRefreshSkipped(resourceURN, "autoscaler_disabled")
 		return nil
 	}
 	if conf.Autoscaler.Type != KEDA {
+		observeKedaTriggerRefreshSkipped(resourceURN, "not_keda")
 		return nil
 	}
 	kedaSpec, ok := conf.Autoscaler.Spec.(*Keda)
 	if !ok {
+		zap.L().Warn("firehose keda trigger refresh skipped: invalid autoscaler spec",
+			zap.String("resource", resourceURN),
+			zap.String("autoscaler_type", string(conf.Autoscaler.Type)),
+		)
 		return nil
 	}
-	return kedaSpec.updateTriggersMetadata(*conf)
+	if err := kedaSpec.updateTriggersMetadata(*conf); err != nil {
+		zap.L().Error("firehose keda kafka trigger metadata refresh failed",
+			zap.String("resource", resourceURN),
+			zap.Error(err),
+		)
+		return err
+	}
+	observeKedaKafkaTriggersRefreshed(resourceURN, kedaSpec, *conf)
+	return nil
 }
 
 func (keda *Keda) Validate() error {
