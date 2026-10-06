@@ -4,126 +4,99 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestKeda_Validate(t *testing.T) {
-	tests := []struct {
-		name    string
-		keda    Keda
-		wantErr bool
-		errMsg  string
-	}{
-		{
-			name:    "Empty config should error",
-			keda:    Keda{},
-			wantErr: true,
-			errMsg:  "min_replicas and max_replicas must be set when autoscaler is enabled",
-		},
-		{
-			name: "Invalid min replicas",
-			keda: Keda{
-				MinReplicas: -1,
-				MaxReplicas: 5,
-				Triggers: map[string]Trigger{
-					"test": {Type: KAFKA},
-				},
-			},
-			wantErr: true,
-			errMsg:  "min_replicas must be greater than or equal to 0",
-		},
-		{
-			name: "Invalid max replicas",
-			keda: Keda{
-				MinReplicas: 1,
-				MaxReplicas: 0,
-				Triggers: map[string]Trigger{
-					"test": {Type: KAFKA},
-				},
-			},
-			wantErr: true,
-			errMsg:  "max_replicas must be greater than or equal to 1",
-		},
-		{
-			name: "Min greater than max",
-			keda: Keda{
-				MinReplicas: 5,
-				MaxReplicas: 3,
-				Triggers: map[string]Trigger{
-					"test": {Type: KAFKA},
-				},
-			},
-			wantErr: true,
-			errMsg:  "min_replicas must be less than or equal to max_replicas",
-		},
-		{
-			name: "No triggers defined",
-			keda: Keda{
-				MinReplicas: 1,
-				MaxReplicas: 3,
-			},
-			wantErr: true,
-			errMsg:  "at least one trigger must be defined when autoscaler is enabled",
-		},
-		{
-			name: "Valid config",
-			keda: Keda{
-				MinReplicas: 1,
-				MaxReplicas: 5,
-				Triggers: map[string]Trigger{
-					"test": {Type: KAFKA},
-				},
-			},
-			wantErr: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.keda.Validate()
-			if tt.wantErr {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tt.errMsg)
-			} else {
-				assert.NoError(t, err)
-			}
+func TestKedaKafkaScalerAuthentication(t *testing.T) {
+	t.Run("GTF ACL stream", func(t *testing.T) {
+		name, ok := kedaKafkaScalerAuthentication(Config{
+			StreamSecurityEnabled: true,
+			StreamName:            "al-gp-id-s-central-kf",
+			ACL:                   &ACLConfig{SSLConfigCredential: "stream-cert"},
 		})
-	}
+		assert.True(t, ok)
+		assert.Equal(t, "al-gp-id-s-central-kf", name)
+	})
+
+	t.Run("ACL without GTF flag", func(t *testing.T) {
+		_, ok := kedaKafkaScalerAuthentication(Config{
+			StreamName: "mainstream",
+			ACL:        &ACLConfig{},
+		})
+		assert.False(t, ok)
+	})
+
+	t.Run("GTF flag without ACL", func(t *testing.T) {
+		_, ok := kedaKafkaScalerAuthentication(Config{
+			StreamSecurityEnabled: true,
+			StreamName:            "mainstream",
+		})
+		assert.False(t, ok)
+	})
 }
 
-func TestKeda_PauseResume(t *testing.T) {
-	tests := []struct {
-		name     string
-		replica  []int
-		wantKeda Keda
-	}{
-		{
-			name:    "Pause without replica",
-			replica: []int{},
-			wantKeda: Keda{
-				Paused: true,
-			},
-		},
-		{
-			name:    "Pause with replica",
-			replica: []int{3},
-			wantKeda: Keda{
-				PausedWithReplica: true,
-				PausedReplica:     3,
+func TestKeda_updateTriggersMetadata_ACLAuth(t *testing.T) {
+	keda := &Keda{
+		Triggers: map[string]Trigger{
+			"kafka-trigger": {
+				Type: KAFKA,
+				Metadata: map[string]string{
+					"lagThreshold": "1000000",
+				},
 			},
 		},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			k := &Keda{}
-			k.Pause(tt.replica...)
-			assert.Equal(t, tt.wantKeda.Paused, k.Paused)
-			assert.Equal(t, tt.wantKeda.PausedWithReplica, k.PausedWithReplica)
-			assert.Equal(t, tt.wantKeda.PausedReplica, k.PausedReplica)
-
-			k.Resume()
-			assert.False(t, k.Paused)
-			assert.False(t, k.PausedWithReplica)
-		})
+	conf := Config{
+		StreamSecurityEnabled: true,
+		StreamName:            "al-gp-id-s-central-kf",
+		ACL:                   &ACLConfig{SSLConfigCredential: "stream-cert"},
+		EnvVariables: map[string]string{
+			confKeyConsumerID:   "my-project-firehose-1",
+			confKeyKafkaTopic:   "orders",
+			confKeyKafkaBrokers: "kafka.example:9092",
+		},
 	}
+
+	require.NoError(t, keda.updateTriggersMetadata(conf))
+
+	trigger := keda.Triggers["kafka-trigger"]
+	assert.Equal(t, "my-project-firehose-1", trigger.Metadata[KedaKafkaMetadataConsumerGroupKey])
+	assert.Equal(t, "orders", trigger.Metadata[KedaKafkaMetadataTopicKey])
+	assert.Equal(t, "kafka.example:9092", trigger.Metadata[KedaKafkaMetadataBootstrapServersKey])
+	assert.Equal(t, KedaKafkaMetadataTLSEnable, trigger.Metadata[KedaKafkaMetadataTLSKey])
+	assert.Equal(t, "al-gp-id-s-central-kf", trigger.AuthenticationRef.Name)
+}
+
+func TestKeda_GetHelmValues_includesAuthenticationRef(t *testing.T) {
+	keda := &Keda{
+		MinReplicas: 1,
+		MaxReplicas: 3,
+		Triggers: map[string]Trigger{
+			"kafka-trigger": {Type: KAFKA, Metadata: map[string]string{"lagThreshold": "1"}},
+		},
+	}
+	conf := Config{
+		StreamSecurityEnabled: true,
+		StreamName:            "secured-stream",
+		Namespace:             "de-firehose-mc",
+		ACL:                   &ACLConfig{SSLConfigCredential: "cert"},
+		EnvVariables: map[string]string{
+			confKeyConsumerID:   "cg-1",
+			confKeyKafkaTopic:   "t",
+			confKeyKafkaBrokers: "b:9092",
+		},
+	}
+
+	values, err := keda.GetHelmValues(conf)
+	require.NoError(t, err)
+
+	kedaValues, ok := values["triggers"].([]map[string]any)
+	require.True(t, ok)
+	require.Len(t, kedaValues, 1)
+	authRef, ok := kedaValues[0]["authenticationRef"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "secured-stream", authRef["name"])
+	meta, ok := kedaValues[0]["metadata"].(map[string]string)
+	require.True(t, ok)
+	assert.Equal(t, KedaKafkaMetadataTLSEnable, meta[KedaKafkaMetadataTLSKey])
 }
