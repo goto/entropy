@@ -11,6 +11,7 @@ import (
 	"github.com/goto/entropy/core/resource"
 	kafkamod "github.com/goto/entropy/modules/kafka"
 	"github.com/goto/entropy/pkg/errors"
+	"go.uber.org/zap"
 )
 
 // SASL/SSL consumer config keys. Firehose passes every
@@ -375,6 +376,7 @@ func (fd *firehoseDriver) applyStreamSecurity(ctx context.Context, exr module.Ex
 			if conf.ACL != nil && conf.ACL.JaasConfigCredential != "" {
 				conf.EnvVariables[keyJavaOptions] = withJaasJavaOption(conf.EnvVariables[keyJavaOptions])
 			}
+			observeKafkaSourceSecurityWired(exr.Resource.URN, streamName, sourceSecurity)
 		}
 	}
 
@@ -411,16 +413,25 @@ func (fd *firehoseDriver) wireKafkaDLQSecurity(ctx context.Context, exr module.E
 		profile *kafkamod.SecurityProfile
 		aclName string
 		brokers string
+		mode    string
 	)
 
 	switch {
 	case sameStreamAsSource && hasSecurityProfile(sourceSecurity):
+		mode = dlqSecurityModeSameSource
 		profile = sourceSecurity
 		aclName = sourceStreamName
 		brokers = conf.EnvVariables[confKeyKafkaBrokers]
 	case dlqResourceName != "":
+		mode = dlqSecurityModeDLQStream
 		out, err := fd.fetchKafkaOutput(ctx, exr.Resource.Project, dlqResourceName)
 		if err != nil {
+			zap.L().Error("firehose kafka DLQ security: failed to resolve DLQ stream",
+				zap.String("resource", exr.Resource.URN),
+				zap.String("dlq_kafka_resource", dlqResourceName),
+				zap.String("dlq_stream_urn", dlqStreamURN),
+				zap.Error(err),
+			)
 			return err
 		}
 		profile = out.Security
@@ -431,10 +442,12 @@ func (fd *firehoseDriver) wireKafkaDLQSecurity(ctx context.Context, exr module.E
 			brokers = out.URL
 		}
 	default:
+		observeKafkaDLQSecurityWiring(exr.Resource.URN, dlqSecurityModeUnresolved, sourceStreamName, dlqStreamURN, dlqResourceName, nil, false)
 		return nil
 	}
 
 	if !hasSecurityProfile(profile) {
+		observeKafkaDLQSecurityWiring(exr.Resource.URN, dlqSecurityModePlaintext, sourceStreamName, dlqStreamURN, dlqResourceName, profile, false)
 		return nil
 	}
 
@@ -445,12 +458,16 @@ func (fd *firehoseDriver) wireKafkaDLQSecurity(ctx context.Context, exr module.E
 		conf.EnvVariables[keyDLQKafkaBrokers] = brokers
 	}
 
+	aclForDLQ := false
 	if conf.ACL == nil {
 		conf.ACL = buildACLConfig(aclName, profile, conf.Team)
+		aclForDLQ = conf.ACL != nil
 		if conf.ACL != nil && conf.ACL.JaasConfigCredential != "" {
 			conf.EnvVariables[keyJavaOptions] = withJaasJavaOption(conf.EnvVariables[keyJavaOptions])
 		}
 	}
+
+	observeKafkaDLQSecurityWiring(exr.Resource.URN, mode, sourceStreamName, dlqStreamURN, aclName, profile, aclForDLQ)
 
 	return nil
 }
