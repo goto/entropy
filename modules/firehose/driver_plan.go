@@ -89,6 +89,9 @@ func (fd *firehoseDriver) planChange(ctx context.Context, exr module.ExpandedRes
 		if err := fd.applyStreamSecurity(ctx, exr, newConf); err != nil {
 			return nil, errors.ErrInvalid.WithMsgf("failed to resolve source stream").WithCausef("%s", err.Error())
 		}
+		if err := refreshAutoscalerKafkaTriggerMetadata(newConf); err != nil {
+			return nil, err
+		}
 
 		curConf = newConf
 
@@ -164,6 +167,9 @@ func (fd *firehoseDriver) planCreate(ctx context.Context, exr module.ExpandedRes
 	// No-op for plaintext sources.
 	if err := fd.applyStreamSecurity(ctx, exr, conf); err != nil {
 		return nil, errors.ErrInvalid.WithMsgf("failed to resolve source stream").WithCausef("%s", err.Error())
+	}
+	if err := refreshAutoscalerKafkaTriggerMetadata(conf); err != nil {
+		return nil, err
 	}
 
 	chartVals, err := mergeChartValues(&fd.conf.ChartValues, conf.ChartValues)
@@ -273,18 +279,8 @@ func (fd *firehoseDriver) planReset(ctx context.Context, exr module.ExpandedReso
 		return nil, err
 	}
 
-	// if keda autoscaler enabled, update scaler metadata value
-	if curConf.Autoscaler != nil && curConf.Autoscaler.Type == KEDA {
-		kedaSpec, ok := curConf.Autoscaler.Spec.(*Keda)
-		if !ok {
-			return nil, err
-		}
-
-		err = kedaSpec.updateTriggersMetadata(curConf.EnvVariables)
-		if err != nil {
-			return nil, err
-		}
-		curConf.Autoscaler.Spec = kedaSpec
+	if err := refreshAutoscalerKafkaTriggerMetadata(curConf); err != nil {
+		return nil, err
 	}
 
 	exr.Resource.Spec.Configs = modules.MustJSON(curConf)

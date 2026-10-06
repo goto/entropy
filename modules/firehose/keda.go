@@ -23,6 +23,8 @@ const (
 	KedaKafkaMetadataBootstrapServersKey = "bootstrapServers"
 	KedaKafkaMetadataTopicKey            = "topic"
 	KedaKafkaMetadataConsumerGroupKey    = "consumerGroup"
+	KedaKafkaMetadataTLSKey              = "tls"
+	KedaKafkaMetadataTLSEnable           = "enable"
 
 	KafkaTopicDelimiter = "|"
 )
@@ -107,7 +109,7 @@ func (keda *Keda) ReadConfig(cfg Config, driverCfg driverConf) error {
 		}
 	}
 	kedaConfig.Triggers = mergedTriggers
-	kedaConfig.updateTriggersMetadata(cfg.EnvVariables)
+	kedaConfig.updateTriggersMetadata(cfg)
 
 	kedaConfig.MinReplicas = keda.MinReplicas
 	kedaConfig.MaxReplicas = keda.MaxReplicas
@@ -144,6 +146,12 @@ func (keda *Keda) Resume() {
 }
 
 func (keda *Keda) GetHelmValues(cfg Config) (map[string]any, error) {
+	// Brokers and ACL wiring are applied after readConfig during plan; refresh
+	// trigger metadata at render time so KEDA matches the deployed firehose.
+	if err := keda.updateTriggersMetadata(cfg); err != nil {
+		return nil, err
+	}
+
 	annotations := make(map[string]string)
 	if keda.Paused {
 		annotations[KedaPausedAnnotationKey] = "true"
@@ -250,23 +258,57 @@ func (keda *Keda) GetHelmValues(cfg Config) (map[string]any, error) {
 	}, nil
 }
 
-func (keda *Keda) updateTriggersMetadata(cfg map[string]string) error {
+func (keda *Keda) updateTriggersMetadata(cfg Config) error {
+	env := cfg.EnvVariables
 	for key, trigger := range keda.Triggers {
 		switch trigger.Type {
 		case KAFKA:
-			if _, ok := cfg[confKeyConsumerID]; ok {
-				trigger.Metadata[KedaKafkaMetadataConsumerGroupKey] = cfg[confKeyConsumerID]
+			if trigger.Metadata == nil {
+				trigger.Metadata = map[string]string{}
 			}
-			if _, ok := cfg[confKeyKafkaTopic]; ok {
-				trigger.Metadata[KedaKafkaMetadataTopicKey] = cfg[confKeyKafkaTopic]
+			if _, ok := env[confKeyConsumerID]; ok {
+				trigger.Metadata[KedaKafkaMetadataConsumerGroupKey] = env[confKeyConsumerID]
 			}
-			if _, ok := cfg[confKeyKafkaBrokers]; ok {
-				trigger.Metadata[KedaKafkaMetadataBootstrapServersKey] = cfg[confKeyKafkaBrokers]
+			if _, ok := env[confKeyKafkaTopic]; ok {
+				trigger.Metadata[KedaKafkaMetadataTopicKey] = env[confKeyKafkaTopic]
+			}
+			if _, ok := env[confKeyKafkaBrokers]; ok {
+				trigger.Metadata[KedaKafkaMetadataBootstrapServersKey] = env[confKeyKafkaBrokers]
+			}
+			if name, ok := kedaKafkaScalerAuthentication(cfg); ok {
+				trigger.Metadata[KedaKafkaMetadataTLSKey] = KedaKafkaMetadataTLSEnable
+				trigger.AuthenticationRef = AuthenticationRef{Name: name}
 			}
 		}
 		keda.Triggers[key] = trigger
 	}
 	return nil
+}
+
+// kedaKafkaScalerAuthentication mirrors odin firehose scaler behaviour for ACL
+// streams: tls + authenticationRef on the kafka trigger, named after the
+// source kafka resource (streamConfig.name in odin).
+func kedaKafkaScalerAuthentication(cfg Config) (string, bool) {
+	if cfg.ACL == nil || !cfg.StreamSecurityEnabled || cfg.StreamName == "" {
+		return "", false
+	}
+	return cfg.StreamName, true
+}
+
+// refreshAutoscalerKafkaTriggerMetadata re-applies kafka trigger fields after ACL
+// resolution (applyStreamSecurity runs after readConfig on create).
+func refreshAutoscalerKafkaTriggerMetadata(conf *Config) error {
+	if conf == nil || conf.Autoscaler == nil || !conf.Autoscaler.Enabled {
+		return nil
+	}
+	if conf.Autoscaler.Type != KEDA {
+		return nil
+	}
+	kedaSpec, ok := conf.Autoscaler.Spec.(*Keda)
+	if !ok {
+		return nil
+	}
+	return kedaSpec.updateTriggersMetadata(*conf)
 }
 
 func (keda *Keda) Validate() error {
