@@ -25,6 +25,8 @@ const (
 	confDLQSinkEnable       = "DLQ_SINK_ENABLE"
 	confDLQWriterType       = "DLQ_WRITER_TYPE"
 	confDLQKafkaTopic       = "DLQ_KAFKA_TOPIC"
+	confDLQKafkaBrokers     = "DLQ_KAFKA_BROKERS"
+	confDLQKafkaStream      = "DLQ_KAFKA_STREAM"
 	dlqWriterTypeKafka      = "KAFKA"
 	kafkaTopicNameMaxLength = 249
 )
