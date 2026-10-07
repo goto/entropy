@@ -107,7 +107,7 @@ const (
 // cert secret at /etc/secret and the JAAS secret at /etc/secret/kafka; the
 // projected kafka service-account token lands at kafkaTokenMountPath.
 const (
-	secretMountPath = "/etc/secret"
+	secretMountPath     = "/etc/secret"
 	certMountPath       = secretMountPath
 	jaasSecretMountPath = secretMountPath + "/kafka"
 	jaasConfigFileName  = "jaas.conf"
@@ -135,14 +135,6 @@ func (k KafkaSecurity) withDefaults() KafkaSecurity {
 		k.SaslLoginCallbackHandlerClass = defaultOauthSaslLoginCallbackHandlerClass
 	}
 	return k
-}
-
-func isOauthbearerStream(sp *kafkamod.SecurityProfile) bool {
-	return sp != nil &&
-		sp.SecurityProtocol == securityProtocolSASLSSL &&
-		sp.SaslMechanism == saslMechanismOauthbearer &&
-		sp.SSLCertSecret != "" &&
-		sp.SSLTruststorePasswordDetails != nil
 }
 
 func isPlainOrScramStream(sp *kafkamod.SecurityProfile) bool {
@@ -376,7 +368,11 @@ func (fd *firehoseDriver) applyStreamSecurity(ctx context.Context, exr module.Ex
 			if conf.ACL != nil && conf.ACL.JaasConfigCredential != "" {
 				conf.EnvVariables[keyJavaOptions] = withJaasJavaOption(conf.EnvVariables[keyJavaOptions])
 			}
-			observeKafkaSourceSecurityWired(exr.Resource.URN, streamName, sourceSecurity)
+			zap.L().Info("firehose kafka source security wired",
+				zap.String("resource", exr.Resource.URN),
+				zap.String("source_stream", streamName),
+				zap.String("security_protocol", sourceSecurity.SecurityProtocol),
+			)
 		}
 	}
 
@@ -413,23 +409,19 @@ func (fd *firehoseDriver) wireKafkaDLQSecurity(ctx context.Context, exr module.E
 		profile *kafkamod.SecurityProfile
 		aclName string
 		brokers string
-		mode    string
 	)
 
 	switch {
 	case sameStreamAsSource && hasSecurityProfile(sourceSecurity):
-		mode = dlqSecurityModeSameSource
 		profile = sourceSecurity
 		aclName = sourceStreamName
 		brokers = conf.EnvVariables[confKeyKafkaBrokers]
 	case dlqResourceName != "":
-		mode = dlqSecurityModeDLQStream
 		out, err := fd.fetchKafkaOutput(ctx, exr.Resource.Project, dlqResourceName)
 		if err != nil {
 			zap.L().Error("firehose kafka DLQ security: failed to resolve DLQ stream",
 				zap.String("resource", exr.Resource.URN),
 				zap.String("dlq_kafka_resource", dlqResourceName),
-				zap.String("dlq_stream_urn", dlqStreamURN),
 				zap.Error(err),
 			)
 			return err
@@ -442,12 +434,17 @@ func (fd *firehoseDriver) wireKafkaDLQSecurity(ctx context.Context, exr module.E
 			brokers = out.URL
 		}
 	default:
-		observeKafkaDLQSecurityWiring(exr.Resource.URN, dlqSecurityModeUnresolved, sourceStreamName, dlqStreamURN, dlqResourceName, nil, false)
+		zap.L().Debug("firehose kafka DLQ security skipped: DLQ stream unresolved",
+			zap.String("resource", exr.Resource.URN),
+		)
 		return nil
 	}
 
 	if !hasSecurityProfile(profile) {
-		observeKafkaDLQSecurityWiring(exr.Resource.URN, dlqSecurityModePlaintext, sourceStreamName, dlqStreamURN, dlqResourceName, profile, false)
+		zap.L().Debug("firehose kafka DLQ security skipped: DLQ stream is plaintext",
+			zap.String("resource", exr.Resource.URN),
+			zap.String("dlq_kafka_resource", aclName),
+		)
 		return nil
 	}
 
@@ -458,16 +455,18 @@ func (fd *firehoseDriver) wireKafkaDLQSecurity(ctx context.Context, exr module.E
 		conf.EnvVariables[keyDLQKafkaBrokers] = brokers
 	}
 
-	aclForDLQ := false
 	if conf.ACL == nil {
 		conf.ACL = buildACLConfig(aclName, profile, conf.Team)
-		aclForDLQ = conf.ACL != nil
 		if conf.ACL != nil && conf.ACL.JaasConfigCredential != "" {
 			conf.EnvVariables[keyJavaOptions] = withJaasJavaOption(conf.EnvVariables[keyJavaOptions])
 		}
 	}
 
-	observeKafkaDLQSecurityWiring(exr.Resource.URN, mode, sourceStreamName, dlqStreamURN, aclName, profile, aclForDLQ)
+	zap.L().Info("firehose kafka DLQ security wired",
+		zap.String("resource", exr.Resource.URN),
+		zap.String("dlq_kafka_resource", aclName),
+		zap.String("security_protocol", profile.SecurityProtocol),
+	)
 
 	return nil
 }
