@@ -116,6 +116,11 @@ type Config struct {
 	// references only — never secret values.
 	ACL *ACLConfig `json:"acl,omitempty"`
 
+	// DLQACL describes the Kafka DLQ stream's own security material, mounted by
+	// the chart separately from the source (dlq_kafka_security). Computed by
+	// applyStreamSecurity when DLQ_KAFKA_STREAM names an ACL stream.
+	DLQACL *ACLConfig `json:"dlq_acl,omitempty"`
+
 	// ServiceAccount, when set, becomes the pod's service account. It is the
 	// OAuth identity authorized for ACL streams. Empty preserves the chart's
 	// default service account.

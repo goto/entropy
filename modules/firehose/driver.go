@@ -434,6 +434,27 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		rc.Values["kafka_security"] = aclValues
 	}
 
+	// Kafka DLQ producer on an ACL stream, mirroring odin's dlq_kafka_mounts: the
+	// chart mounts the DLQ stream's own truststore at /etc/secret/dlq/certs and
+	// renders DLQ_KAFKA_SSL_TRUSTSTORE_PASSWORD from its secret.
+	if conf.DLQACL != nil {
+		dlqValues := map[string]any{}
+		if conf.DLQACL.SSLConfigCredential != "" {
+			dlqValues["ssl_config_credential"] = conf.DLQACL.SSLConfigCredential
+			dlqValues["truststore_filename"] = conf.DLQACL.TruststoreFilename
+		}
+		if conf.DLQACL.TruststorePassword != nil {
+			dlqValues["truststore_password"] = map[string]any{
+				"secretName": conf.DLQACL.TruststorePassword.SecretName,
+				"key":        conf.DLQACL.TruststorePassword.Key,
+			}
+		}
+		if conf.DLQACL.KafkaTokenEnabled {
+			dlqValues["kafka_token_enabled"] = true
+		}
+		rc.Values["dlq_kafka_security"] = dlqValues
+	}
+
 	if conf.ServiceAccount != "" {
 		rc.Values["service_account"] = conf.ServiceAccount
 	}

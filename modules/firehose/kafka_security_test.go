@@ -81,15 +81,43 @@ func TestBuildDLQSecurityConfigs_OAUTHBEARER(t *testing.T) {
 		"DLQ_KAFKA_SASL_LOGIN_CALLBACK_HANDLER_CLASS": defaultOauthSaslLoginCallbackHandlerClass,
 		"DLQ_KAFKA_SSL_PROTOCOL":                      "SSL",
 		"DLQ_KAFKA_SSL_TRUSTSTORE_TYPE":               "PKCS12",
-		"DLQ_KAFKA_SSL_TRUSTSTORE_LOCATION":           "/etc/secret/truststore.p12",
+		"DLQ_KAFKA_SSL_TRUSTSTORE_LOCATION":           "/etc/secret/dlq/certs/truststore.p12",
 	}
 
 	assert.Equal(t, want, got)
 }
 
-func TestBuildDLQSecurityConfigs_PlaintextNil(t *testing.T) {
+// only odin's ACL streams get DLQ producer security: plaintext and SSL-only
+// streams do not.
+func TestBuildDLQSecurityConfigs_NonACLNil(t *testing.T) {
 	assert.Nil(t, buildDLQSecurityConfigs(nil, KafkaSecurity{}))
 	assert.Nil(t, buildDLQSecurityConfigs(&kafkamod.SecurityProfile{SecurityProtocol: "PLAINTEXT"}, KafkaSecurity{}))
+	assert.Nil(t, buildDLQSecurityConfigs(&kafkamod.SecurityProfile{SecurityProtocol: "SSL", SSLCertSecret: "cert"}, KafkaSecurity{}))
+}
+
+// PLAIN/SCRAM DLQ streams do not get the OAUTHBEARER JAAS config odin sets.
+func TestBuildDLQSecurityConfigs_ScramNoOauthJaas(t *testing.T) {
+	sp := &kafkamod.SecurityProfile{SecurityProtocol: "SASL_PLAINTEXT", SaslMechanism: "SCRAM-SHA-512"}
+
+	got := buildDLQSecurityConfigs(sp, KafkaSecurity{})
+
+	assert.Equal(t, map[string]string{
+		"DLQ_KAFKA_SECURITY_PROTOCOL": "SASL_PLAINTEXT",
+		"DLQ_KAFKA_SASL_MECHANISM":    "SCRAM-SHA-512",
+	}, got)
+}
+
+func TestBuildDLQACLConfig_OAUTHBEARER(t *testing.T) {
+	acl := buildDLQACLConfig(oauthbearerProfile())
+
+	require.NotNil(t, acl)
+	assert.Equal(t, &ACLConfig{
+		SSLConfigCredential: "kafka-central-cert",
+		TruststoreFilename:  "truststore.p12",
+		TruststorePassword:  &SecretKeyRef{SecretName: "scp-kafka-ssl-secrets", Key: "truststore_password"},
+		KafkaTokenEnabled:   true,
+	}, acl)
+	assert.Nil(t, buildDLQACLConfig(&kafkamod.SecurityProfile{SecurityProtocol: "PLAINTEXT"}))
 }
 
 func TestBuildACLConfig_OAUTHBEARER(t *testing.T) {
@@ -145,83 +173,190 @@ func TestKafkaResourceNameFromStreamURN(t *testing.T) {
 	assert.Equal(t, "", kafkaResourceNameFromStreamURN("gjk-p-acc", ""))
 }
 
-func TestApplyStreamSecurity_KafkaDLQOnDagstreamPlaintextSource(t *testing.T) {
-	plainOut := kafkamod.Output{URL: "source:9092"}
-	plainJSON, err := json.Marshal(plainOut)
-	require.NoError(t, err)
-
-	dlqOut := kafkamod.Output{URL: "dagstream:9098", Security: oauthbearerProfile()}
-	dlqJSON, err := json.Marshal(dlqOut)
-	require.NoError(t, err)
-
-	fd := &firehoseDriver{
-		getResource: func(_ context.Context, urn string) (*resource.Resource, error) {
-			if urn == resource.GenerateURN(kafkamod.Module.Kind, "gjk-p-acc", "dagstream") {
-				return &resource.Resource{State: resource.State{Output: dlqJSON}}, nil
-			}
+// kafkaOutputGetter serves kafka resource outputs by URN and records lookups.
+func kafkaOutputGetter(t *testing.T, outputs map[string]kafkamod.Output, fetched *[]string) func(context.Context, string) (*resource.Resource, error) {
+	t.Helper()
+	return func(_ context.Context, urn string) (*resource.Resource, error) {
+		*fetched = append(*fetched, urn)
+		out, ok := outputs[urn]
+		if !ok {
 			return nil, fmt.Errorf("unexpected urn %s", urn)
-		},
-		conf: driverConf{KafkaSecurity: KafkaSecurity{ServiceAccount: "aegis-kafka"}},
+		}
+		outJSON, err := json.Marshal(out)
+		require.NoError(t, err)
+		return &resource.Resource{State: resource.State{Output: outJSON}}, nil
 	}
+}
 
+func kafkaDLQEnv(extra map[string]string) map[string]string {
+	env := map[string]string{
+		confDLQSinkEnable: "true",
+		confDLQWriterType: dlqWriterTypeKafka,
+		confDLQKafkaTopic: "app-firehose-dlq",
+	}
+	for k, v := range extra {
+		env[k] = v
+	}
+	return env
+}
+
+// odin parity: a secured DLQ stream on a plaintext source gets its own
+// truststore mount and brokers; the source wiring (ACL, KEDA) is untouched.
+func TestApplyStreamSecurity_KafkaDLQOnSecuredStreamPlaintextSource(t *testing.T) {
+	var fetched []string
+	fd := &firehoseDriver{
+		getResource: kafkaOutputGetter(t, map[string]kafkamod.Output{
+			resource.GenerateURN(kafkamod.Module.Kind, "proj-x", "dagstream"): {URL: "dagstream:9098", Security: oauthbearerProfile()},
+		}, &fetched),
+		conf: driverConf{KafkaSecurity: KafkaSecurity{ServiceAccount: "kafka-sa"}},
+	}
 	exr := module.ExpandedResource{
-		Resource: resource.Resource{Project: "gjk-p-acc"},
+		Resource: resource.Resource{Project: "proj-x"},
 		Dependencies: map[string]module.ResolvedDependency{
-			"central-kf": {Kind: kafkamod.Module.Kind, Output: plainJSON},
+			"source-kf": {Kind: kafkamod.Module.Kind, Output: mustJSON(t, kafkamod.Output{URL: "source:9092"})},
 		},
 	}
 	conf := &Config{
 		Team:       "team-x",
-		StreamName: "central-kf",
-		EnvVariables: map[string]string{
+		StreamName: "source-kf",
+		EnvVariables: kafkaDLQEnv(map[string]string{
 			confKeyKafkaBrokers: "source:9092",
-			confDLQSinkEnable:   "true",
-			confDLQWriterType:   dlqWriterTypeKafka,
-			confDLQKafkaTopic:   "app-firehose-dlq",
-			confDLQKafkaStream:  "gjk-p-acc-dagstream",
-			confDLQKafkaBrokers: "dagstream:9098",
-		},
+			confDLQKafkaStream:  "proj-x-dagstream",
+			confDLQKafkaBrokers: "stale:9092",
+		}),
 	}
 
 	require.NoError(t, fd.applyStreamSecurity(context.Background(), exr, conf))
 
-	assert.Empty(t, conf.EnvVariables[keyConsumerSecurityProtocol])
+	assert.Equal(t, "dagstream:9098", conf.EnvVariables[confDLQKafkaBrokers])
 	assert.Equal(t, "SASL_SSL", conf.EnvVariables[keyDLQSecurityProtocol])
-	assert.Equal(t, "dagstream:9098", conf.EnvVariables[keyDLQKafkaBrokers])
-	require.NotNil(t, conf.ACL)
-	assert.True(t, conf.ACL.KafkaTokenEnabled)
-	assert.Equal(t, "aegis-kafka", conf.ServiceAccount)
+	assert.Equal(t, "/etc/secret/dlq/certs/truststore.p12", conf.EnvVariables[keyDLQSSLTruststoreLocation])
+	assert.Empty(t, conf.EnvVariables[keyConsumerSecurityProtocol])
+	assert.NotContains(t, conf.EnvVariables[keyJavaOptions], jaasConfigJavaOpt)
+	assert.Nil(t, conf.ACL)
+	require.NotNil(t, conf.DLQACL)
+	assert.Equal(t, "kafka-central-cert", conf.DLQACL.SSLConfigCredential)
+	assert.True(t, conf.DLQACL.KafkaTokenEnabled)
+	assert.Equal(t, "kafka-sa", conf.ServiceAccount)
 }
 
-func TestApplyStreamSecurity_KafkaDLQWiresProducerSecurity(t *testing.T) {
-	out := kafkamod.Output{URL: "broker-1:9098,broker-2:9098", Security: oauthbearerProfile()}
-	outJSON, err := json.Marshal(out)
-	require.NoError(t, err)
+// a DLQ on the source stream reuses the source resolution instead of fetching.
+func TestApplyStreamSecurity_KafkaDLQOnSourceStream(t *testing.T) {
+	var fetched []string
+	fd := &firehoseDriver{getResource: kafkaOutputGetter(t, nil, &fetched)}
+	exr := module.ExpandedResource{
+		Resource: resource.Resource{Project: "proj-x"},
+		Dependencies: map[string]module.ResolvedDependency{
+			pocStream: {Kind: kafkamod.Module.Kind, Output: mustJSON(t, kafkamod.Output{URL: "broker-1:9098", Security: oauthbearerProfile()})},
+		},
+	}
+	conf := &Config{
+		Team:         "team-x",
+		StreamName:   pocStream,
+		EnvVariables: kafkaDLQEnv(map[string]string{confDLQKafkaStream: "proj-x-" + pocStream}),
+	}
 
+	require.NoError(t, fd.applyStreamSecurity(context.Background(), exr, conf))
+
+	assert.Empty(t, fetched)
+	assert.Equal(t, "broker-1:9098", conf.EnvVariables[confDLQKafkaBrokers])
+	assert.Equal(t, "SASL_SSL", conf.EnvVariables[keyConsumerSecurityProtocol])
+	assert.Equal(t, "SASL_SSL", conf.EnvVariables[keyDLQSecurityProtocol])
+	require.NotNil(t, conf.ACL)
+	require.NotNil(t, conf.DLQACL)
+}
+
+// a plaintext DLQ stream gets its brokers, and security wired by an earlier
+// plan is cleared.
+func TestApplyStreamSecurity_KafkaDLQPlaintextStreamClearsStaleSecurity(t *testing.T) {
+	var fetched []string
+	fd := &firehoseDriver{
+		getResource: kafkaOutputGetter(t, map[string]kafkamod.Output{
+			resource.GenerateURN(kafkamod.Module.Kind, "proj-x", "dagstream"): {URL: "dagstream:9092"},
+		}, &fetched),
+	}
+	conf := &Config{
+		EnvVariables: kafkaDLQEnv(map[string]string{
+			confDLQKafkaStream:     "proj-x-dagstream",
+			keyDLQSecurityProtocol: "SASL_SSL",
+			keyDLQSaslMechanism:    "OAUTHBEARER",
+		}),
+		DLQACL: &ACLConfig{KafkaTokenEnabled: true},
+	}
+
+	require.NoError(t, fd.applyStreamSecurity(context.Background(), module.ExpandedResource{Resource: resource.Resource{Project: "proj-x"}}, conf))
+
+	assert.Equal(t, "dagstream:9092", conf.EnvVariables[confDLQKafkaBrokers])
+	assert.NotContains(t, conf.EnvVariables, keyDLQSecurityProtocol)
+	assert.NotContains(t, conf.EnvVariables, keyDLQSaslMechanism)
+	assert.Nil(t, conf.DLQACL)
+	assert.Empty(t, conf.ServiceAccount)
+}
+
+// backward compatibility: without DLQ_KAFKA_STREAM the DLQ is not managed, so
+// hand-written DLQ_KAFKA_* security and brokers are kept and nothing is
+// fetched, even on an ACL source.
+func TestApplyStreamSecurity_KafkaDLQWithoutStreamKeepsConfig(t *testing.T) {
+	var fetched []string
+	fd := &firehoseDriver{getResource: kafkaOutputGetter(t, nil, &fetched)}
 	exr := module.ExpandedResource{
 		Dependencies: map[string]module.ResolvedDependency{
-			pocStream: {Kind: kafkamod.Module.Kind, Output: outJSON},
+			pocStream: {Kind: kafkamod.Module.Kind, Output: mustJSON(t, kafkamod.Output{URL: "broker-1:9098", Security: oauthbearerProfile()})},
 		},
 	}
 	conf := &Config{
 		Team:       "team-x",
 		StreamName: pocStream,
+		EnvVariables: kafkaDLQEnv(map[string]string{
+			confDLQKafkaBrokers:    "other-cluster:9092",
+			keyDLQSecurityProtocol: "SASL_PLAINTEXT",
+			keyDLQSaslMechanism:    "SCRAM-SHA-512",
+		}),
+	}
+
+	require.NoError(t, fd.applyStreamSecurity(context.Background(), exr, conf))
+
+	assert.Empty(t, fetched)
+	assert.Equal(t, "other-cluster:9092", conf.EnvVariables[confDLQKafkaBrokers])
+	assert.Equal(t, "SASL_PLAINTEXT", conf.EnvVariables[keyDLQSecurityProtocol])
+	assert.Equal(t, "SCRAM-SHA-512", conf.EnvVariables[keyDLQSaslMechanism])
+	assert.Nil(t, conf.DLQACL)
+}
+
+// backward compatibility: a firehose that names no stream keeps hand-written
+// source security config, as before DLQ wiring was added.
+func TestApplyStreamSecurity_NoStreamNameKeepsSourceSecurity(t *testing.T) {
+	conf := &Config{
 		EnvVariables: map[string]string{
-			confDLQSinkEnable: "true",
-			confDLQWriterType: dlqWriterTypeKafka,
-			confDLQKafkaTopic: "poc-firehose-dlq",
-			// Dex may have pointed DLQ at dagstream; ACL same-stream wiring overwrites.
-			keyDLQKafkaBrokers: "dagstream-broker:9092",
+			confKeyKafkaBrokers:         "localhost:9092",
+			keyConsumerSecurityProtocol: "SASL_SSL",
+			keyConsumerSaslMechanism:    "OAUTHBEARER",
 		},
 	}
 
-	require.NoError(t, (&firehoseDriver{}).applyStreamSecurity(context.Background(), exr, conf))
+	require.NoError(t, (&firehoseDriver{}).applyStreamSecurity(context.Background(), module.ExpandedResource{}, conf))
 
-	assert.Equal(t, "SASL_SSL", conf.EnvVariables[keyDLQSecurityProtocol])
-	assert.Equal(t, "OAUTHBEARER", conf.EnvVariables[keyDLQSaslMechanism])
-	assert.Equal(t, "/etc/secret/truststore.p12", conf.EnvVariables[keyDLQSSLTruststoreLocation])
-	assert.Equal(t, "broker-1:9098,broker-2:9098", conf.EnvVariables[keyDLQKafkaBrokers])
 	assert.Equal(t, "SASL_SSL", conf.EnvVariables[keyConsumerSecurityProtocol])
+	assert.Equal(t, "OAUTHBEARER", conf.EnvVariables[keyConsumerSaslMechanism])
+}
+
+// an unresolvable DLQ stream fails the plan rather than deploying a producer
+// with no brokers or credentials.
+func TestApplyStreamSecurity_KafkaDLQUnresolvedStreamFails(t *testing.T) {
+	var fetched []string
+	fd := &firehoseDriver{getResource: kafkaOutputGetter(t, nil, &fetched)}
+	conf := &Config{EnvVariables: kafkaDLQEnv(map[string]string{confDLQKafkaStream: "proj-x-missing"})}
+
+	err := fd.applyStreamSecurity(context.Background(), module.ExpandedResource{Resource: resource.Resource{Project: "proj-x"}}, conf)
+
+	require.Error(t, err)
+}
+
+func mustJSON(t *testing.T, v any) []byte {
+	t.Helper()
+	b, err := json.Marshal(v)
+	require.NoError(t, err)
+	return b
 }
 
 func TestApplyStreamSecurity_BlobDLQSkipsProducerSecurity(t *testing.T) {
@@ -247,7 +382,8 @@ func TestApplyStreamSecurity_BlobDLQSkipsProducerSecurity(t *testing.T) {
 
 	assert.Equal(t, "SASL_SSL", conf.EnvVariables[keyConsumerSecurityProtocol])
 	assert.Empty(t, conf.EnvVariables[keyDLQSecurityProtocol])
-	assert.Empty(t, conf.EnvVariables[keyDLQKafkaBrokers])
+	assert.Empty(t, conf.EnvVariables[confDLQKafkaBrokers])
+	assert.Nil(t, conf.DLQACL)
 }
 
 // product (Dex) path: the security profile is inlined on conf.StreamSecurity
