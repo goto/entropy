@@ -293,6 +293,67 @@ func TestApplyStreamSecurity_KafkaDLQPlaintextStreamClearsStaleSecurity(t *testi
 	assert.Empty(t, conf.ServiceAccount)
 }
 
+// an update that deactivates a managed Kafka DLQ drops the producer wiring
+// earlier plans injected, without fetching the DLQ stream.
+func TestApplyStreamSecurity_KafkaDLQDeactivatedClearsWiring(t *testing.T) {
+	for name, deactivate := range map[string]map[string]string{
+		"dlq sink disabled":   {confDLQSinkEnable: "false"},
+		"writer type changed": {confDLQWriterType: "BLOB_STORAGE"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var fetched []string
+			fd := &firehoseDriver{getResource: kafkaOutputGetter(t, nil, &fetched)}
+			env := kafkaDLQEnv(map[string]string{
+				confDLQKafkaStream:          "proj-x-dagstream",
+				confDLQKafkaBrokers:         "dagstream:9092",
+				keyDLQSecurityProtocol:      "SASL_SSL",
+				keyDLQSaslMechanism:         "OAUTHBEARER",
+				keyDLQSSLTruststoreLocation: dlqCertMountPath + "/truststore.p12",
+			})
+			for k, v := range deactivate {
+				env[k] = v
+			}
+			conf := &Config{EnvVariables: env, DLQACL: &ACLConfig{KafkaTokenEnabled: true}}
+
+			require.NoError(t, fd.applyStreamSecurity(context.Background(), module.ExpandedResource{Resource: resource.Resource{Project: "proj-x"}}, conf))
+
+			assert.Empty(t, fetched)
+			for _, key := range append([]string{confDLQKafkaBrokers}, dlqManagedSecurityKeys...) {
+				assert.NotContains(t, conf.EnvVariables, key)
+			}
+			assert.Nil(t, conf.DLQACL)
+			assert.Empty(t, conf.ServiceAccount)
+		})
+	}
+}
+
+// an update that moves the DLQ from an ACL stream to a plaintext one rewires
+// brokers and drops the security keys and chart mounts.
+func TestApplyStreamSecurity_KafkaDLQSwitchToPlaintextStream(t *testing.T) {
+	var fetched []string
+	fd := &firehoseDriver{
+		getResource: kafkaOutputGetter(t, map[string]kafkamod.Output{
+			resource.GenerateURN(kafkamod.Module.Kind, "proj-x", "secured"): {URL: "secured:9098", Security: oauthbearerProfile()},
+			resource.GenerateURN(kafkamod.Module.Kind, "proj-x", "plain"):   {URL: "plain:9092"},
+		}, &fetched),
+	}
+	exr := module.ExpandedResource{Resource: resource.Resource{Project: "proj-x"}}
+	conf := &Config{EnvVariables: kafkaDLQEnv(map[string]string{confDLQKafkaStream: "proj-x-secured"})}
+
+	require.NoError(t, fd.applyStreamSecurity(context.Background(), exr, conf))
+	require.NotNil(t, conf.DLQACL)
+	require.Equal(t, "SASL_SSL", conf.EnvVariables[keyDLQSecurityProtocol])
+
+	conf.EnvVariables[confDLQKafkaStream] = "proj-x-plain"
+	require.NoError(t, fd.applyStreamSecurity(context.Background(), exr, conf))
+
+	assert.Equal(t, "plain:9092", conf.EnvVariables[confDLQKafkaBrokers])
+	for _, key := range dlqManagedSecurityKeys {
+		assert.NotContains(t, conf.EnvVariables, key)
+	}
+	assert.Nil(t, conf.DLQACL)
+}
+
 // backward compatibility: without DLQ_KAFKA_STREAM the DLQ is not managed, so
 // hand-written DLQ_KAFKA_* security and brokers are kept and nothing is
 // fetched, even on an ACL source.
