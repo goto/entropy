@@ -9,6 +9,7 @@ import (
 
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/modules"
+	kafkamod "github.com/goto/entropy/modules/kafka"
 	"github.com/goto/entropy/modules/kubernetes"
 	"github.com/goto/entropy/pkg/errors"
 	"github.com/goto/entropy/pkg/helm"
@@ -710,4 +711,55 @@ func TestRenderEnvTemplates(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "keep-me", got["PLAIN"])
 	assert.Equal(t, "orders-firehose-dlq", got["DLQ_KAFKA_TOPIC"])
+}
+
+// the DLQ stream's security material is rendered as its own chart block, and
+// the source kafka_security block is left out when only the DLQ is secured.
+func TestFirehoseDriver_DLQKafkaSecurityChartValues(t *testing.T) {
+	res := resource.Resource{
+		URN:     "orn:entropy:firehose:project-1:resource-1-firehose",
+		Kind:    "firehose",
+		Name:    "resource-1",
+		Project: "project-1",
+		Spec: resource.Spec{
+			Configs: []byte(`{
+				"env_variables": {
+					"SINK_TYPE": "LOG",
+					"INPUT_SCHEMA_PROTO_CLASS": "com.foo.Bar",
+					"SOURCE_KAFKA_CONSUMER_GROUP_ID": "foo-bar-baz",
+					"SOURCE_KAFKA_BROKERS": "localhost:9092",
+					"SOURCE_KAFKA_TOPIC": "foo-log"
+				},
+				"replicas": 1
+			}`),
+		},
+	}
+	fd := &firehoseDriver{conf: firehoseDriverConf(), timeNow: func() time.Time { return frozenTime }}
+
+	conf, err := readConfig(res, res.Spec.Configs, fd.conf)
+	require.NoError(t, err)
+	conf.ChartValues, err = mergeChartValues(&fd.conf.ChartValues, conf.ChartValues)
+	require.NoError(t, err)
+	conf.Telegraf = fd.conf.Telegraf
+	conf.DLQACL = buildDLQACLConfig(&kafkamod.SecurityProfile{
+		SecurityProtocol:  "SASL_SSL",
+		SaslMechanism:     "OAUTHBEARER",
+		SSLTruststoreType: "JKS",
+		SSLCertSecret:     "dlq-cert",
+		SSLTruststorePasswordDetails: &kafkamod.SecretKeyRef{
+			SecretName: "dlq-ssl",
+			Key:        "truststore_password",
+		},
+	})
+
+	got, err := fd.getHelmRelease(res, *conf, kubernetes.Output{})
+	require.NoError(t, err)
+
+	assert.Equal(t, map[string]any{
+		"ssl_config_credential": "dlq-cert",
+		"truststore_filename":   "truststore.jks",
+		"truststore_password":   map[string]any{"secretName": "dlq-ssl", "key": "truststore_password"},
+		"kafka_token_enabled":   true,
+	}, got.Values["dlq_kafka_security"])
+	assert.NotContains(t, got.Values, "kafka_security")
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/goto/entropy/core/resource"
 	kafkamod "github.com/goto/entropy/modules/kafka"
 	"github.com/goto/entropy/pkg/errors"
+	"go.uber.org/zap"
 )
 
 // SASL/SSL consumer config keys. Firehose passes every
@@ -28,6 +29,18 @@ const (
 	keyConsumerSSLTruststoreLocation    = "SOURCE_KAFKA_CONSUMER_CONFIG_SSL_TRUSTSTORE_LOCATION"
 	keyConsumerSSLTruststoreFilename    = "SOURCE_KAFKA_CONSUMER_CONFIG_SSL_TRUSTSTORE_FILENAME"
 
+	// DLQ producer keys. Firehose maps every DLQ_KAFKA_* env variable onto the
+	// kafka producer the same way SOURCE_KAFKA_CONSUMER_CONFIG_* maps onto the
+	// consumer. They mirror odin's dlqWriterConfigs: the DLQ stream is named by
+	// DLQ_KAFKA_STREAM and brings its own truststore, mounted at dlqCertMountPath.
+	keyDLQSecurityProtocol         = "DLQ_KAFKA_SECURITY_PROTOCOL"
+	keyDLQSaslMechanism            = "DLQ_KAFKA_SASL_MECHANISM"
+	keyDLQSaslJaasConfig           = "DLQ_KAFKA_SASL_JAAS_CONFIG"
+	keyDLQSaslLoginCallbackHandler = "DLQ_KAFKA_SASL_LOGIN_CALLBACK_HANDLER_CLASS"
+	keyDLQSSLProtocol              = "DLQ_KAFKA_SSL_PROTOCOL"
+	keyDLQSSLTruststoreType        = "DLQ_KAFKA_SSL_TRUSTSTORE_TYPE"
+	keyDLQSSLTruststoreLocation    = "DLQ_KAFKA_SSL_TRUSTSTORE_LOCATION"
+
 	// keyJavaOptions carries the JAAS file location for SCRAM/PLAIN streams.
 	// It is user-owned, so only the JAAS option itself is added or removed.
 	keyJavaOptions = "_JAVA_OPTIONS"
@@ -38,6 +51,7 @@ const (
 // dangling provider reference.
 const (
 	keyConsumerSSLTruststorePassword     = "SOURCE_KAFKA_CONSUMER_CONFIG_SSL_TRUSTSTORE_PASSWORD"
+	keyDLQSSLTruststorePassword          = "DLQ_KAFKA_SSL_TRUSTSTORE_PASSWORD"
 	keyConsumerConfigProviders           = "SOURCE_KAFKA_CONSUMER_CONFIG_CONFIG_PROVIDERS"
 	keyConsumerConfigProviderClassPrefix = "SOURCE_KAFKA_CONSUMER_CONFIG_CONFIG_PROVIDERS_"
 	keyConsumerConfigProviderClassSuffix = "_CLASS"
@@ -57,6 +71,20 @@ var managedSecurityKeys = []string{
 	keyConsumerSSLTruststoreFilename,
 	keyConsumerSSLTruststorePassword,
 	keyConsumerConfigProviders,
+}
+
+// dlqManagedSecurityKeys are owned by this module only while it wires the DLQ
+// producer (Kafka DLQ enabled and DLQ_KAFKA_STREAM set). Other firehoses keep
+// whatever DLQ_KAFKA_* security they were configured with.
+var dlqManagedSecurityKeys = []string{
+	keyDLQSecurityProtocol,
+	keyDLQSaslMechanism,
+	keyDLQSaslJaasConfig,
+	keyDLQSaslLoginCallbackHandler,
+	keyDLQSSLProtocol,
+	keyDLQSSLTruststoreType,
+	keyDLQSSLTruststoreLocation,
+	keyDLQSSLTruststorePassword,
 }
 
 const (
@@ -82,9 +110,10 @@ const (
 // cert secret at /etc/secret and the JAAS secret at /etc/secret/kafka; the
 // projected kafka service-account token lands at kafkaTokenMountPath.
 const (
-	secretMountPath = "/etc/secret"
+	secretMountPath     = "/etc/secret"
 	certMountPath       = secretMountPath
 	jaasSecretMountPath = secretMountPath + "/kafka"
+	dlqCertMountPath    = secretMountPath + "/dlq/certs"
 	jaasConfigFileName  = "jaas.conf"
 	jaasConfigJavaOpt   = "-Djava.security.auth.login.config=" + jaasSecretMountPath + "/" + jaasConfigFileName
 	truststoreFileBase  = "truststore"
@@ -129,6 +158,11 @@ func isPlainOrScramStream(sp *kafkamod.SecurityProfile) bool {
 	return protoOK && mechOK
 }
 
+// isACLStream decides whether the DLQ producer gets SASL/SSL wiring.
+func isACLStream(sp *kafkamod.SecurityProfile) bool {
+	return isOauthbearerStream(sp) || isPlainOrScramStream(sp)
+}
+
 // usesSSLMaterial reports whether the stream presents a truststore. odin keys
 // this off the security protocol containing "SSL", covering both SSL and
 // SASL_SSL.
@@ -150,6 +184,48 @@ func truststoreFileName(truststoreType string) string {
 	return truststoreFileBase + ".jks"
 }
 
+// kafkaSecurityKeys names the env variables one kafka client (the source
+// consumer or the DLQ producer) reads its SASL/SSL config from, and where that
+// client's truststore is mounted.
+type kafkaSecurityKeys struct {
+	securityProtocol         string
+	saslMechanism            string
+	saslJaasConfig           string
+	saslLoginCallbackHandler string
+	sslProtocol              string
+	sslTruststoreType        string
+	sslTruststoreLocation    string
+	// sslTruststoreFilename is optional: only the consumer is told the file
+	// name the chart projects the truststore as.
+	sslTruststoreFilename string
+	certMountPath         string
+}
+
+var (
+	consumerSecurityKeys = kafkaSecurityKeys{
+		securityProtocol:         keyConsumerSecurityProtocol,
+		saslMechanism:            keyConsumerSaslMechanism,
+		saslJaasConfig:           keyConsumerSaslJaasConfig,
+		saslLoginCallbackHandler: keyConsumerSaslLoginCallbackHandler,
+		sslProtocol:              keyConsumerSSLProtocol,
+		sslTruststoreType:        keyConsumerSSLTruststoreType,
+		sslTruststoreLocation:    keyConsumerSSLTruststoreLocation,
+		sslTruststoreFilename:    keyConsumerSSLTruststoreFilename,
+		certMountPath:            certMountPath,
+	}
+
+	dlqSecurityKeys = kafkaSecurityKeys{
+		securityProtocol:         keyDLQSecurityProtocol,
+		saslMechanism:            keyDLQSaslMechanism,
+		saslJaasConfig:           keyDLQSaslJaasConfig,
+		saslLoginCallbackHandler: keyDLQSaslLoginCallbackHandler,
+		sslProtocol:              keyDLQSSLProtocol,
+		sslTruststoreType:        keyDLQSSLTruststoreType,
+		sslTruststoreLocation:    keyDLQSSLTruststoreLocation,
+		certMountPath:            dlqCertMountPath,
+	}
+)
+
 // buildSecurityConfigs builds the SOURCE_KAFKA_CONSUMER_CONFIG_* env variables
 // for the source stream. Returns nil for plaintext streams so env variables
 // stay unchanged.
@@ -161,38 +237,95 @@ func buildSecurityConfigs(sp *kafkamod.SecurityProfile, sec KafkaSecurity) map[s
 	if !hasSecurityProfile(sp) {
 		return nil
 	}
+	return buildKafkaSecurityConfigs(sp, sec, consumerSecurityKeys)
+}
+
+// buildDLQSecurityConfigs builds the DLQ_KAFKA_* env variables for a Kafka DLQ
+// producer on an ACL stream. The truststore is the DLQ stream's own, mounted at
+// dlqCertMountPath; the password is supplied by the chart as
+// DLQ_KAFKA_SSL_TRUSTSTORE_PASSWORD via secretKeyRef.
+func buildDLQSecurityConfigs(sp *kafkamod.SecurityProfile, sec KafkaSecurity) map[string]string {
+	if !isACLStream(sp) {
+		return nil
+	}
+	return buildKafkaSecurityConfigs(sp, sec, dlqSecurityKeys)
+}
+
+// buildKafkaSecurityConfigs renders the stream's security profile onto the env
+// variables named by keys. The OAUTHBEARER JAAS config and callback handler are
+// only set for OAUTHBEARER streams; setting them for PLAIN/SCRAM breaks login.
+func buildKafkaSecurityConfigs(sp *kafkamod.SecurityProfile, sec KafkaSecurity, keys kafkaSecurityKeys) map[string]string {
 	sec = sec.withDefaults()
 
 	cfg := map[string]string{}
-	cfg[keyConsumerSecurityProtocol] = sp.SecurityProtocol
+	cfg[keys.securityProtocol] = sp.SecurityProtocol
 	if sp.SaslMechanism != "" {
-		cfg[keyConsumerSaslMechanism] = sp.SaslMechanism
+		cfg[keys.saslMechanism] = sp.SaslMechanism
 	}
 
 	if usesSSLMaterial(sp) {
 		if sp.SSLProtocol != "" {
-			cfg[keyConsumerSSLProtocol] = sp.SSLProtocol
+			cfg[keys.sslProtocol] = sp.SSLProtocol
 		}
 		if sp.SSLTruststoreType != "" {
-			cfg[keyConsumerSSLTruststoreType] = sp.SSLTruststoreType
+			cfg[keys.sslTruststoreType] = sp.SSLTruststoreType
 		}
 		if sp.SSLCertSecret != "" {
 			fileName := truststoreFileName(sp.SSLTruststoreType)
-			cfg[keyConsumerSSLTruststoreLocation] = certMountPath + "/" + fileName
+			cfg[keys.sslTruststoreLocation] = keys.certMountPath + "/" + fileName
 			// the chart selects this key out of the cert secret and projects it
 			// under the same name.
-			cfg[keyConsumerSSLTruststoreFilename] = fileName
+			if keys.sslTruststoreFilename != "" {
+				cfg[keys.sslTruststoreFilename] = fileName
+			}
 		}
 	}
 
 	// OAUTHBEARER authenticates with the projected service-account token, so the
 	// JAAS config is a fixed module string rather than credentials.
 	if sp.SaslMechanism == saslMechanismOauthbearer {
-		cfg[keyConsumerSaslJaasConfig] = oauthConsumerSaslJaasConfig
-		cfg[keyConsumerSaslLoginCallbackHandler] = sec.SaslLoginCallbackHandlerClass
+		cfg[keys.saslJaasConfig] = oauthConsumerSaslJaasConfig
+		cfg[keys.saslLoginCallbackHandler] = sec.SaslLoginCallbackHandlerClass
 	}
 
 	return cfg
+}
+
+// buildDLQACLConfig is the chart-facing dlq_kafka_security description: the
+// DLQ stream's cert secret, truststore password and, for OAUTHBEARER, the
+// projected kafka token. PLAIN/SCRAM jaas.conf is not mounted for the DLQ.
+func buildDLQACLConfig(sp *kafkamod.SecurityProfile) *ACLConfig {
+	if !isACLStream(sp) {
+		return nil
+	}
+	return nonEmptyACL(baseACLConfig(sp))
+}
+
+// baseACLConfig describes the security material every ACL client needs: the
+// truststore and its password, and the kafka token for OAUTHBEARER.
+func baseACLConfig(sp *kafkamod.SecurityProfile) ACLConfig {
+	var acl ACLConfig
+	if usesSSLMaterial(sp) && sp.SSLCertSecret != "" {
+		acl.SSLConfigCredential = sp.SSLCertSecret
+		acl.TruststoreFilename = truststoreFileName(sp.SSLTruststoreType)
+		if sp.SSLTruststorePasswordDetails != nil && sp.SSLTruststorePasswordDetails.SecretName != "" {
+			acl.TruststorePassword = &SecretKeyRef{
+				SecretName: sp.SSLTruststorePasswordDetails.SecretName,
+				Key:        sp.SSLTruststorePasswordDetails.Key,
+			}
+		}
+	}
+	if sp.SaslMechanism == saslMechanismOauthbearer {
+		acl.KafkaTokenEnabled = true
+	}
+	return acl
+}
+
+func nonEmptyACL(acl ACLConfig) *ACLConfig {
+	if acl == (ACLConfig{}) {
+		return nil
+	}
+	return &acl
 }
 
 // ACLConfig is the chart-facing description of a stream's security material.
@@ -231,22 +364,7 @@ func buildACLConfig(streamName string, sp *kafkamod.SecurityProfile, team string
 		return nil
 	}
 
-	acl := &ACLConfig{}
-
-	if usesSSLMaterial(sp) && sp.SSLCertSecret != "" {
-		acl.SSLConfigCredential = sp.SSLCertSecret
-		acl.TruststoreFilename = truststoreFileName(sp.SSLTruststoreType)
-		if sp.SSLTruststorePasswordDetails != nil && sp.SSLTruststorePasswordDetails.SecretName != "" {
-			acl.TruststorePassword = &SecretKeyRef{
-				SecretName: sp.SSLTruststorePasswordDetails.SecretName,
-				Key:        sp.SSLTruststorePasswordDetails.Key,
-			}
-		}
-	}
-
-	if sp.SaslMechanism == saslMechanismOauthbearer {
-		acl.KafkaTokenEnabled = true
-	}
+	acl := baseACLConfig(sp)
 
 	// PLAIN/SCRAM read their credentials from a jaas.conf in a secret. The
 	// profile names it explicitly when known; otherwise fall back to odin's
@@ -257,10 +375,7 @@ func buildACLConfig(streamName string, sp *kafkamod.SecurityProfile, team string
 		}
 	}
 
-	if *acl == (ACLConfig{}) {
-		return nil
-	}
-	return acl
+	return nonEmptyACL(acl)
 }
 
 func jaasSecretName(streamName string, sp *kafkamod.SecurityProfile, team string) string {
@@ -274,55 +389,171 @@ func jaasSecretName(streamName string, sp *kafkamod.SecurityProfile, team string
 }
 
 // applyStreamSecurity resolves the source stream's kafka security profile,
-// injects the consumer config into the env variables, and records the chart's
-// ACL values on conf. It is a no-op for firehoses that do not name a kafka
-// stream, and clears the wiring for streams that no longer carry a profile.
+// injects the consumer config into the env variables, wires Kafka DLQ producer
+// security when DLQ_WRITER_TYPE=KAFKA, and records the chart's ACL values on
+// conf. Source wiring is skipped for firehoses that do not name a kafka stream,
+// and cleared for streams that no longer carry a profile.
 func (fd *firehoseDriver) applyStreamSecurity(ctx context.Context, exr module.ExpandedResource, conf *Config) error {
-	streamName := conf.StreamName
-	if streamName == "" {
-		return nil
-	}
-
 	if conf.EnvVariables == nil {
 		conf.EnvVariables = map[string]string{}
 	}
-	clearManagedSecurityConfigs(conf.EnvVariables)
-	conf.ACL = nil
 
-	security, err := fd.resolveStreamSecurity(ctx, exr, conf, streamName)
-	if err != nil {
+	streamName := conf.StreamName
+	var sourceSecurity *kafkamod.SecurityProfile
+
+	if streamName != "" {
+		clearManagedSecurityConfigs(conf.EnvVariables)
+		conf.ACL = nil
+
+		var err error
+		sourceSecurity, err = fd.resolveStreamSecurity(ctx, exr, conf, streamName)
+		if err != nil {
+			return err
+		}
+
+		// naming a stream relaxes the schema's SOURCE_KAFKA_BROKERS requirement,
+		// because the brokers are meant to come from the stream. If neither the
+		// payload nor the resolution supplied them, fail here rather than deploy a
+		// firehose that cannot reach any broker.
+		if conf.EnvVariables[confKeyKafkaBrokers] == "" {
+			return fmt.Errorf(
+				"%s is not set and kafka stream %q resolved to no url: set it explicitly",
+				confKeyKafkaBrokers, streamName)
+		}
+
+		if hasSecurityProfile(sourceSecurity) {
+			for key, val := range buildSecurityConfigs(sourceSecurity, fd.conf.KafkaSecurity) {
+				conf.EnvVariables[key] = val
+			}
+			conf.ACL = buildACLConfig(streamName, sourceSecurity, conf.Team)
+
+			// PLAIN/SCRAM point the JVM at the mounted jaas.conf.
+			if conf.ACL != nil && conf.ACL.JaasConfigCredential != "" {
+				conf.EnvVariables[keyJavaOptions] = withJaasJavaOption(conf.EnvVariables[keyJavaOptions])
+			}
+			zap.L().Info("firehose kafka source security wired",
+				zap.String("resource", exr.Resource.URN),
+				zap.String("source_stream", streamName),
+				zap.String("security_protocol", sourceSecurity.SecurityProtocol),
+			)
+		}
+	}
+
+	if err := fd.wireKafkaDLQSecurity(ctx, exr, conf, streamName, sourceSecurity); err != nil {
 		return err
 	}
 
-	// naming a stream relaxes the schema's SOURCE_KAFKA_BROKERS requirement,
-	// because the brokers are meant to come from the stream. If neither the
-	// payload nor the resolution supplied them, fail here rather than deploy a
-	// firehose that cannot reach any broker.
-	if conf.EnvVariables[confKeyKafkaBrokers] == "" {
-		return fmt.Errorf(
-			"%s is not set and kafka stream %q resolved to no url: set it explicitly",
-			confKeyKafkaBrokers, streamName)
-	}
-
-	if !hasSecurityProfile(security) {
-		return nil
-	}
-
-	for key, val := range buildSecurityConfigs(security, fd.conf.KafkaSecurity) {
-		conf.EnvVariables[key] = val
-	}
-	conf.ACL = buildACLConfig(streamName, security, conf.Team)
-
-	// PLAIN/SCRAM point the JVM at the mounted jaas.conf.
-	if conf.ACL != nil && conf.ACL.JaasConfigCredential != "" {
-		conf.EnvVariables[keyJavaOptions] = withJaasJavaOption(conf.EnvVariables[keyJavaOptions])
-	}
-
-	if conf.ServiceAccount == "" {
+	// the OAUTHBEARER token is minted for the pod's service account, so either
+	// stream needing it requires the identity authorized for ACL streams.
+	dlqNeedsToken := conf.DLQACL != nil && conf.DLQACL.KafkaTokenEnabled
+	if conf.ServiceAccount == "" && (hasSecurityProfile(sourceSecurity) || dlqNeedsToken) {
 		conf.ServiceAccount = fd.conf.KafkaSecurity.ServiceAccount
 	}
 
 	return nil
+}
+
+// wireKafkaDLQSecurity wires the Kafka DLQ producer. DLQ_KAFKA_STREAM marks the
+// DLQ as managed here (Dex fills it from the project's dagstream): while Kafka
+// DLQ is enabled the producer is wired from that stream, and once the DLQ is
+// deactivated (DLQ_SINK_ENABLE off or another DLQ_WRITER_TYPE) the brokers and
+// security injected by earlier plans are dropped. Without DLQ_KAFKA_STREAM,
+// DLQ_KAFKA_* is left as configured.
+//
+// The DLQ stream is resolved by kafka resource name (derived from the
+// stream_urn label), reusing the source resolution when it is the same stream.
+// DLQ_KAFKA_BROKERS is always set to the stream's URL. For ACL streams the
+// DLQ_KAFKA_* security keys are set and the stream's own truststore is
+// described in conf.DLQACL; the source's ACL, _JAVA_OPTIONS and KEDA wiring
+// are not touched.
+func (fd *firehoseDriver) wireKafkaDLQSecurity(ctx context.Context, exr module.ExpandedResource, conf *Config, sourceStreamName string, sourceSecurity *kafkamod.SecurityProfile) error {
+	conf.DLQACL = nil
+
+	dlqStreamURN := strings.TrimSpace(conf.EnvVariables[confDLQKafkaStream])
+	if dlqStreamURN == "" {
+		return nil
+	}
+	clearDLQSecurityConfigs(conf.EnvVariables)
+
+	if !isKafkaDLQEnabled(conf.EnvVariables) {
+		delete(conf.EnvVariables, confDLQKafkaBrokers)
+		zap.L().Debug("firehose kafka DLQ: DLQ deactivated, producer wiring cleared",
+			zap.String("resource", exr.Resource.URN),
+		)
+		return nil
+	}
+
+	dlqResourceName := kafkaResourceNameFromStreamURN(exr.Resource.Project, dlqStreamURN)
+
+	var out kafkamod.Output
+	if sourceStreamName != "" && dlqResourceName == sourceStreamName {
+		out = kafkamod.Output{URL: conf.EnvVariables[confKeyKafkaBrokers], Security: sourceSecurity}
+	} else {
+		var err error
+		out, err = fd.fetchKafkaOutput(ctx, exr.Resource.Project, dlqResourceName)
+		if err != nil {
+			zap.L().Error("firehose kafka DLQ: failed to resolve DLQ stream",
+				zap.String("resource", exr.Resource.URN),
+				zap.String("dlq_kafka_resource", dlqResourceName),
+				zap.Error(err),
+			)
+			return err
+		}
+	}
+
+	if out.URL != "" {
+		conf.EnvVariables[confDLQKafkaBrokers] = out.URL
+	}
+
+	if !isACLStream(out.Security) {
+		zap.L().Debug("firehose kafka DLQ: stream has no ACL, security skipped",
+			zap.String("resource", exr.Resource.URN),
+			zap.String("dlq_kafka_resource", dlqResourceName),
+		)
+		return nil
+	}
+
+	for key, val := range buildDLQSecurityConfigs(out.Security, fd.conf.KafkaSecurity) {
+		conf.EnvVariables[key] = val
+	}
+	conf.DLQACL = buildDLQACLConfig(out.Security)
+
+	zap.L().Info("firehose kafka DLQ security wired",
+		zap.String("resource", exr.Resource.URN),
+		zap.String("dlq_kafka_resource", dlqResourceName),
+		zap.String("security_protocol", out.Security.SecurityProtocol),
+	)
+
+	return nil
+}
+
+// kafkaResourceNameFromStreamURN maps a kafka resource's stream_urn label
+// (project-prefixed) to the entropy kafka resource name Dex lists by.
+func kafkaResourceNameFromStreamURN(project, streamURN string) string {
+	streamURN = strings.TrimSpace(streamURN)
+	if streamURN == "" {
+		return ""
+	}
+	const urnSep = ":"
+	if strings.HasPrefix(streamURN, "orn"+urnSep) {
+		parts := strings.Split(streamURN, urnSep)
+		if len(parts) >= 5 {
+			return parts[len(parts)-1]
+		}
+	}
+	prefix := project + "-"
+	if strings.HasPrefix(streamURN, prefix) {
+		return strings.TrimPrefix(streamURN, prefix)
+	}
+	return streamURN
+}
+
+func isKafkaDLQEnabled(env map[string]string) bool {
+	if env == nil {
+		return false
+	}
+	enabled, _ := strconv.ParseBool(env[confDLQSinkEnable])
+	return enabled && strings.EqualFold(strings.TrimSpace(env[confDLQWriterType]), dlqWriterTypeKafka)
 }
 
 // clearManagedSecurityConfigs drops everything a previous plan injected: this
@@ -342,6 +573,14 @@ func clearManagedSecurityConfigs(env map[string]string) {
 		env[keyJavaOptions] = opts
 	} else if _, ok := env[keyJavaOptions]; ok {
 		env[keyJavaOptions] = ""
+	}
+}
+
+// clearDLQSecurityConfigs drops the DLQ_KAFKA_* security keys a previous plan
+// injected, so a DLQ stream that loses its ACLs is not left half-wired.
+func clearDLQSecurityConfigs(env map[string]string) {
+	for _, key := range dlqManagedSecurityKeys {
+		delete(env, key)
 	}
 }
 
