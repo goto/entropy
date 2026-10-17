@@ -140,6 +140,86 @@ func (s *ResourceStoreTestSuite) TestUpdateLabels() {
 	s.Assert().Equal(newLabels, revisions[len(revisions)-1].Labels)
 }
 
+func (s *ResourceStoreTestSuite) TestList_SearchAndLabels() {
+	daggerLabels := map[string]string{"description": "test dagger resource"}
+
+	testCases := []struct {
+		Description string
+		Filter      resource.Filter
+		WantKinds   []string
+	}{
+		{
+			Description: "query matches name case-insensitively",
+			Filter:      resource.Filter{Query: "TEST-FIREHOSE"},
+			WantKinds:   []string{"firehose", "firehose", "firehose"},
+		},
+		{
+			Description: "query matches URN",
+			Filter:      resource.Filter{Query: "test-project-01"},
+			WantKinds:   []string{"dagger", "dagger", "firehose"},
+		},
+		{
+			Description: "percent in query is literal",
+			Filter:      resource.Filter{Query: "%"},
+		},
+		{
+			Description: "underscore in query is literal",
+			Filter:      resource.Filter{Query: "test_dagger"},
+		},
+		{
+			Description: "labels are filtered in SQL",
+			Filter:      resource.Filter{Labels: daggerLabels},
+			WantKinds:   []string{"dagger", "dagger", "dagger"},
+		},
+		{
+			Description: "all labels must match",
+			Filter:      resource.Filter{Labels: map[string]string{"description": "test dagger resource", "missing": "label"}},
+		},
+		{
+			Description: "query combines with kind and labels",
+			Filter:      resource.Filter{Kind: "dagger", Query: "dagger-01", Labels: daggerLabels},
+			WantKinds:   []string{"dagger"},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.Description, func() {
+			got, err := s.store.List(s.ctx, tc.Filter, false)
+			s.Require().NoError(err)
+
+			var kinds []string
+			for _, r := range got {
+				kinds = append(kinds, r.Kind)
+			}
+			slices.Sort(kinds)
+			s.Assert().Equal(tc.WantKinds, kinds)
+		})
+	}
+}
+
+func (s *ResourceStoreTestSuite) TestList_LabelFilterPagination() {
+	filter := resource.Filter{
+		Labels:   map[string]string{"description": "test dagger resource"},
+		PageSize: 2,
+		PageNum:  1,
+	}
+
+	page1, err := s.store.List(s.ctx, filter, false)
+	s.Require().NoError(err)
+	s.Assert().Len(page1, 2)
+
+	filter.PageNum = 2
+	page2, err := s.store.List(s.ctx, filter, false)
+	s.Require().NoError(err)
+	s.Assert().Len(page2, 1)
+
+	for _, r := range page2 {
+		for _, p := range page1 {
+			s.Assert().NotEqual(p.URN, r.URN)
+		}
+	}
+}
+
 func (s *ResourceStoreTestSuite) TearDownTest() {
 	if err := s.pool.Purge(s.resource); err != nil {
 		s.T().Fatal(err)

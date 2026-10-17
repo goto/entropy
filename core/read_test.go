@@ -142,6 +142,24 @@ func TestService_ListResources(t *testing.T) {
 			},
 			wantErr: nil,
 		},
+		{
+			name: "StoreResultIsNotFilteredInMemory",
+			setup: func(t *testing.T) *core.Service {
+				t.Helper()
+				repo := &mocks.ResourceStore{}
+				repo.EXPECT().
+					List(mock.Anything, mock.Anything, false).
+					Return([]resource.Resource{sampleResource}, nil).
+					Once()
+				return core.New(repo, nil, deadClock, defaultSyncBackoff, defaultMaxRetries, serviceName)
+			},
+			filter: resource.Filter{Kind: "kind-that-does-not-match", Query: "no-match"},
+			want: resource.PagedResource{
+				Count:     1,
+				Resources: []resource.Resource{sampleResource},
+			},
+			wantErr: nil,
+		},
 	}
 
 	for _, tt := range tests {
