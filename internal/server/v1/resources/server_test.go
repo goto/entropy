@@ -434,6 +434,28 @@ func TestAPIServer_ListResources(t *testing.T) {
 			wantErr: status.Error(codes.Internal, "internal_error: some unexpected error occurred: failed"),
 		},
 		{
+			name: "QueryAndLabelsArePassedToService",
+			setup: func(t *testing.T) *APIServer {
+				t.Helper()
+				resourceService := &mocks.ResourceService{}
+				resourceService.EXPECT().
+					ListResources(mock.Anything, resource.Filter{
+						Project: "p-testdata-gl",
+						Query:   "test",
+						Labels:  map[string]string{"team": "a"},
+					}, false).
+					Return(resource.PagedResource{}, nil).Once()
+
+				return NewAPIServer(resourceService, nil, nil)
+			},
+			request: &entropyv1beta1.ListResourcesRequest{
+				Project: "p-testdata-gl",
+				Q:       "test",
+				Labels:  map[string]string{"team": "a"},
+			},
+			want: &entropyv1beta1.ListResourcesResponse{},
+		},
+		{
 			name: "Success",
 			setup: func(t *testing.T) *APIServer {
 				t.Helper()

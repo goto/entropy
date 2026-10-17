@@ -23,7 +23,9 @@ FROM resources r
 WHERE ($1 = '' OR r.project = $1)
   AND ($2 = '' OR r.kind = $2)
   AND r.deleted_at IS NULL
+  AND ($5 = '' OR r.urn ILIKE $5 ESCAPE '\' OR r.name ILIKE $5 ESCAPE '\')
 GROUP BY r.id
+ORDER BY r.updated_at DESC, r.id
 LIMIT $3
 OFFSET $4
 `
@@ -38,7 +40,9 @@ FROM resources r
 WHERE ($1 = '' OR r.project = $1)
   AND ($2 = '' OR r.kind = $2)
   AND r.deleted_at IS NULL
+  AND ($5 = '' OR r.urn ILIKE $5 ESCAPE '\' OR r.name ILIKE $5 ESCAPE '\')
 GROUP BY r.id
+ORDER BY r.updated_at DESC, r.id
 LIMIT $3
 OFFSET $4
 `
@@ -85,13 +89,13 @@ type ListResourceByFilterRow struct {
 	Dependencies    []byte
 }
 
-func listResourceWithSpecConfigsByFilter(ctx context.Context, db *sqlx.DB, project, kind string, limit int32, offset int32) ([]ListResourceByFilterRow, error) {
+func listResourceWithSpecConfigsByFilter(ctx context.Context, db *sqlx.DB, project, kind, searchPattern string, limit int32, offset int32) ([]ListResourceByFilterRow, error) {
 	// Set limit default to nil
 	var limitPointers *int32
 	if limit != 0 {
 		limitPointers = &limit
 	}
-	rows, err := db.QueryContext(ctx, listResourceWithSpecConfigsByFilterQuery, project, kind, limitPointers, offset)
+	rows, err := db.QueryContext(ctx, listResourceWithSpecConfigsByFilterQuery, project, kind, limitPointers, offset, searchPattern)
 	if err != nil {
 		return nil, err
 	}
@@ -132,13 +136,13 @@ func listResourceWithSpecConfigsByFilter(ctx context.Context, db *sqlx.DB, proje
 	return items, nil
 }
 
-func listResourceByFilter(ctx context.Context, db *sqlx.DB, project, kind string, limit int32, offset int32) ([]ListResourceByFilterRow, error) {
+func listResourceByFilter(ctx context.Context, db *sqlx.DB, project, kind, searchPattern string, limit int32, offset int32) ([]ListResourceByFilterRow, error) {
 	// Set limit default to nil
 	var limitPointers *int32
 	if limit != 0 {
 		limitPointers = &limit
 	}
-	rows, err := db.QueryContext(ctx, listResourceByFilterQuery, project, kind, limitPointers, offset)
+	rows, err := db.QueryContext(ctx, listResourceByFilterQuery, project, kind, limitPointers, offset, searchPattern)
 	if err != nil {
 		return nil, err
 	}
