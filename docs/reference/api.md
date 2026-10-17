@@ -107,11 +107,14 @@ curl --location --request POST '{{HOST}}/api/v1beta1/resources' \
 ```console
 FLAGS
   -k, --kind string          kind of resources
+      --label stringToString filter by label as key=value; repeat the flag for multiple labels
   -o, --out -o json | yaml   output format, -o json | yaml
   -p, --project string       project of resources
+  -q, --query string         search resources by URN or name (case-insensitive substring)
 
 EXAMPLE
   $ entropy resource list --kind=<resource-kind> --project=<project-name> --out=json
+  $ entropy resource list --query=<name-fragment> --label=<key>=<value>
 ```
 
   </TabItem>

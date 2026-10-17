@@ -45,7 +45,6 @@ func (svc *Service) ListResources(ctx context.Context, filter resource.Filter, w
 		return resource.PagedResource{}, errors.ErrInternal.WithCausef("%s", err.Error())
 	}
 
-	resources = filter.Apply(resources)
 	return resource.PagedResource{
 		Count:     int32(len(resources)),
 		Resources: resources,

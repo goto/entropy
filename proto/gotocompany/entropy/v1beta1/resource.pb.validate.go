@@ -1005,6 +1005,8 @@ func (m *ListResourcesRequest) validate(all bool) error {
 
 	// no validation rules for PageNum
 
+	// no validation rules for Query
+
 	if len(errors) > 0 {
 		return ListResourcesRequestMultiError(errors)
 	}

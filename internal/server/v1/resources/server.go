@@ -150,6 +150,7 @@ func (server APIServer) ListResources(ctx context.Context, request *entropyv1bet
 		Kind:     request.GetKind(),
 		Project:  request.GetProject(),
 		Labels:   request.Labels,
+		Query:    request.GetQuery(),
 		PageSize: request.PageSize,
 		PageNum:  request.PageNum,
 	}

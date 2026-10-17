@@ -151,6 +151,13 @@ paths:
           required: false
           type: integer
           format: int32
+        - name: query
+          description: |-
+            case-insensitive substring match on resource urn and name.
+            if empty, no search filter is applied.
+          in: query
+          required: false
+          type: string
       tags:
         - ResourceService
     post:

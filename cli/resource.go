@@ -17,7 +17,8 @@ import (
 var PaginationSizeDefault, PaginationPageDefault int32
 
 func cmdViewResource() *cobra.Command {
-	var kind, project, urn string
+	var kind, project, urn, query string
+	var labels map[string]string
 	var pageNum, pageSize int32
 	cmd := &cobra.Command{
 		Use:     "get",
@@ -58,6 +59,8 @@ func cmdViewResource() *cobra.Command {
 			req := entropyv1beta1.ListResourcesRequest{
 				Kind:     kind,
 				Project:  project,
+				Labels:   labels,
+				Query:    query,
 				PageNum:  pageNum,
 				PageSize: pageSize,
 			}
@@ -86,6 +89,8 @@ func cmdViewResource() *cobra.Command {
 
 	cmd.Flags().StringVarP(&kind, "kind", "k", "", "kind of resources")
 	cmd.Flags().StringVarP(&project, "project", "p", "", "project of resources")
+	cmd.Flags().StringVarP(&query, "query", "q", "", "search resources by URN or name (case-insensitive substring)")
+	cmd.Flags().StringToStringVar(&labels, "label", nil, "filter by label as key=value; repeat the flag for multiple labels")
 	cmd.Flags().Int32Var(&pageNum, "page-num", PaginationPageDefault, "resources page number")
 	cmd.Flags().Int32Var(&pageSize, "page-size", PaginationSizeDefault, "resources page size")
 	cmd.Flags().StringVarP(&urn, "urn", "u", "", "URN of the module to view")
