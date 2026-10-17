@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"strings"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -15,6 +16,10 @@ import (
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/pkg/errors"
 )
+
+// likeEscaper makes user input match literally inside an ILIKE pattern that
+// uses '\' as the escape character.
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 
 func (st *Store) GetByURN(ctx context.Context, urn string) (*resource.Resource, error) {
 	return st.getByURN(ctx, urn, false)
@@ -115,11 +120,16 @@ func (st *Store) List(ctx context.Context, filter resource.Filter, withSpecConfi
 		}...,
 	)
 
+	var searchPattern string
+	if filter.Query != "" {
+		searchPattern = "%" + likeEscaper.Replace(filter.Query) + "%"
+	}
+
 	var err error
 	if withSpecConfigs {
-		resourceList, err = listResourceWithSpecConfigsByFilter(ctx, st.db, filter.Project, filter.Kind, filter.PageSize, offset)
+		resourceList, err = listResourceWithSpecConfigsByFilter(ctx, st.db, filter.Project, filter.Kind, searchPattern, filter.PageSize, offset)
 	} else {
-		resourceList, err = listResourceByFilter(ctx, st.db, filter.Project, filter.Kind, filter.PageSize, offset)
+		resourceList, err = listResourceByFilter(ctx, st.db, filter.Project, filter.Kind, searchPattern, filter.PageSize, offset)
 	}
 	if err != nil {
 		return nil, err
