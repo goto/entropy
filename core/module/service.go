@@ -98,6 +98,22 @@ func (mr *Service) GetOutput(ctx context.Context, res ExpandedResource) (json.Ra
 	return driver.Output(ctx, res)
 }
 
+func (mr *Service) IsRunning(_ context.Context, res ExpandedResource) (bool, error) {
+	desc, err := mr.registry.GetDescriptor(res.Kind)
+	if err != nil {
+		if errors.Is(err, errors.ErrNotFound) {
+			return false, errors.ErrInvalid.WithMsgf("driver not found for kind '%s'", res.Kind)
+		}
+		return false, err
+	}
+
+	if desc.IsRunning == nil {
+		return false, errors.ErrUnsupported.WithMsgf("running state check not supported for kind '%s'", res.Kind)
+	}
+
+	return desc.IsRunning(res.Resource)
+}
+
 func (mr *Service) GetModule(ctx context.Context, urn string) (*Module, error) {
 	return mr.store.GetModule(ctx, urn)
 }

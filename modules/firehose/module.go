@@ -38,7 +38,8 @@ var mu sync.Mutex
 // security profile, without declaring it as a dependency.
 func Module(getResource ResourceGetter) module.Descriptor {
 	return module.Descriptor{
-		Kind: "firehose",
+		Kind:      "firehose",
+		IsRunning: IsRunning,
 		Dependencies: map[string]string{
 			keyKubeDependency: kubernetes.Module.Kind,
 		},

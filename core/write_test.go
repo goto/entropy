@@ -861,6 +861,134 @@ func TestService_DeleteResource(t *testing.T) {
 	}
 }
 
+func TestService_SoftDeleteResource(t *testing.T) {
+	t.Parallel()
+
+	testErr := errors.New("failed")
+	const urn = "orn:entropy:mock:foo:bar"
+
+	res := func(status string) *resource.Resource {
+		return &resource.Resource{
+			URN:       urn,
+			Kind:      "mock",
+			Name:      "bar",
+			Project:   "foo",
+			State:     resource.State{Status: status},
+			CreatedAt: frozenTime,
+			UpdatedAt: frozenTime,
+		}
+	}
+
+	tests := []struct {
+		name    string
+		setup   func(t *testing.T) *core.Service
+		wantErr error
+	}{
+		{
+			name: "ResourceNotFound",
+			setup: func(t *testing.T) *core.Service {
+				t.Helper()
+				resourceRepo := &mocks.ResourceStore{}
+				resourceRepo.EXPECT().GetByURN(mock.Anything, urn).Return(nil, errors.ErrNotFound).Once()
+
+				return core.New(resourceRepo, nil, deadClock, defaultSyncBackoff, defaultMaxRetries, serviceName)
+			},
+			wantErr: errors.ErrNotFound,
+		},
+		{
+			name: "InPending",
+			setup: func(t *testing.T) *core.Service {
+				t.Helper()
+				mod := &mocks.ModuleService{}
+				mod.EXPECT().GetOutput(mock.Anything, mock.Anything).Return(nil, nil).Once()
+
+				resourceRepo := &mocks.ResourceStore{}
+				resourceRepo.EXPECT().GetByURN(mock.Anything, urn).Return(res(resource.StatusPending), nil).Once()
+
+				return core.New(resourceRepo, mod, deadClock, defaultSyncBackoff, defaultMaxRetries, serviceName)
+			},
+			wantErr: errors.ErrInvalid,
+		},
+		{
+			name: "IsRunningFailure",
+			setup: func(t *testing.T) *core.Service {
+				t.Helper()
+				mod := &mocks.ModuleService{}
+				mod.EXPECT().GetOutput(mock.Anything, mock.Anything).Return(nil, nil).Once()
+				mod.EXPECT().IsRunning(mock.Anything, mock.Anything).Return(false, testErr).Once()
+
+				resourceRepo := &mocks.ResourceStore{}
+				resourceRepo.EXPECT().GetByURN(mock.Anything, urn).Return(res(resource.StatusCompleted), nil).Once()
+
+				return core.New(resourceRepo, mod, deadClock, defaultSyncBackoff, defaultMaxRetries, serviceName)
+			},
+			wantErr: testErr,
+		},
+		{
+			name: "Running",
+			setup: func(t *testing.T) *core.Service {
+				t.Helper()
+				mod := &mocks.ModuleService{}
+				mod.EXPECT().GetOutput(mock.Anything, mock.Anything).Return(nil, nil).Once()
+				mod.EXPECT().IsRunning(mock.Anything, mock.Anything).Return(true, nil).Once()
+
+				resourceRepo := &mocks.ResourceStore{}
+				resourceRepo.EXPECT().GetByURN(mock.Anything, urn).Return(res(resource.StatusCompleted), nil).Once()
+
+				return core.New(resourceRepo, mod, deadClock, defaultSyncBackoff, defaultMaxRetries, serviceName)
+			},
+			wantErr: errors.ErrInvalid,
+		},
+		{
+			name: "SoftDeleteFailure",
+			setup: func(t *testing.T) *core.Service {
+				t.Helper()
+				mod := &mocks.ModuleService{}
+				mod.EXPECT().GetOutput(mock.Anything, mock.Anything).Return(nil, nil).Once()
+				mod.EXPECT().IsRunning(mock.Anything, mock.Anything).Return(false, nil).Once()
+
+				resourceRepo := &mocks.ResourceStore{}
+				resourceRepo.EXPECT().GetByURN(mock.Anything, urn).Return(res(resource.StatusCompleted), nil).Once()
+				resourceRepo.EXPECT().SoftDelete(mock.Anything, urn, "test-user").Return(testErr).Once()
+
+				return core.New(resourceRepo, mod, deadClock, defaultSyncBackoff, defaultMaxRetries, serviceName)
+			},
+			wantErr: testErr,
+		},
+		{
+			name: "Success",
+			setup: func(t *testing.T) *core.Service {
+				t.Helper()
+				mod := &mocks.ModuleService{}
+				mod.EXPECT().GetOutput(mock.Anything, mock.Anything).Return(nil, nil).Once()
+				mod.EXPECT().IsRunning(mock.Anything, mock.Anything).Return(false, nil).Once()
+
+				resourceRepo := &mocks.ResourceStore{}
+				resourceRepo.EXPECT().GetByURN(mock.Anything, urn).Return(res(resource.StatusCompleted), nil).Once()
+				resourceRepo.EXPECT().SoftDelete(mock.Anything, urn, "test-user").Return(nil).Once()
+
+				return core.New(resourceRepo, mod, deadClock, defaultSyncBackoff, defaultMaxRetries, serviceName)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			svc := tt.setup(t)
+
+			err := svc.SoftDeleteResource(context.Background(), urn, "test-user")
+			if tt.wantErr != nil {
+				assert.Error(t, err)
+				assert.True(t, errors.Is(err, tt.wantErr))
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestService_ApplyAction(t *testing.T) {
 	t.Parallel()
 

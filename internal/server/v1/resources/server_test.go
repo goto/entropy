@@ -590,27 +590,77 @@ func TestAPIServer_DeleteResource(t *testing.T) {
 		name    string
 		setup   func(t *testing.T) *APIServer
 		request *entropyv1beta1.DeleteResourceRequest
+		md      metadata.MD
 		want    *entropyv1beta1.DeleteResourceResponse
 		wantErr error
 	}{
 		{
-			name: "ResourceNotFound",
+			name: "SoftDelete_ResourceNotFound",
 			setup: func(t *testing.T) *APIServer {
 				t.Helper()
 				resourceService := &mocks.ResourceService{}
 				resourceService.EXPECT().
-					DeleteResource(mock.Anything, "p-testdata-gl-testname-log").
+					SoftDeleteResource(mock.Anything, "p-testdata-gl-testname-log", "john.doe@goto.com").
 					Return(errors.ErrNotFound).Once()
 				return NewAPIServer(resourceService, nil, nil)
 			},
 			request: &entropyv1beta1.DeleteResourceRequest{
 				Urn: "p-testdata-gl-testname-log",
 			},
+			md:      metadata.New(map[string]string{"user-id": "john.doe@goto.com"}),
 			want:    nil,
 			wantErr: status.Error(codes.NotFound, "not_found: requested entity not found"),
 		},
 		{
-			name: "Success",
+			name: "SoftDelete_MissingUserID",
+			setup: func(t *testing.T) *APIServer {
+				t.Helper()
+				resourceService := &mocks.ResourceService{}
+				return NewAPIServer(resourceService, nil, nil)
+			},
+			request: &entropyv1beta1.DeleteResourceRequest{
+				Urn: "p-testdata-gl-testname-log",
+			},
+			md:      metadata.New(map[string]string{}),
+			want:    nil,
+			wantErr: status.Error(codes.InvalidArgument, "missing 'user-id' header"),
+		},
+		{
+			name: "SoftDelete_Success_Default",
+			setup: func(t *testing.T) *APIServer {
+				t.Helper()
+				resourceService := &mocks.ResourceService{}
+				resourceService.EXPECT().
+					SoftDeleteResource(mock.Anything, "p-testdata-gl-testname-log", "john.doe@goto.com").
+					Return(nil).Once()
+
+				return NewAPIServer(resourceService, nil, nil)
+			},
+			request: &entropyv1beta1.DeleteResourceRequest{
+				Urn: "p-testdata-gl-testname-log",
+			},
+			md:   metadata.New(map[string]string{"user-id": "john.doe@goto.com"}),
+			want: &entropyv1beta1.DeleteResourceResponse{},
+		},
+		{
+			name: "SoftDelete_Success_ForceFalse",
+			setup: func(t *testing.T) *APIServer {
+				t.Helper()
+				resourceService := &mocks.ResourceService{}
+				resourceService.EXPECT().
+					SoftDeleteResource(mock.Anything, "p-testdata-gl-testname-log", "john.doe@goto.com").
+					Return(nil).Once()
+
+				return NewAPIServer(resourceService, nil, nil)
+			},
+			request: &entropyv1beta1.DeleteResourceRequest{
+				Urn: "p-testdata-gl-testname-log",
+			},
+			md:   metadata.New(map[string]string{"user-id": "john.doe@goto.com", "force": "false"}),
+			want: &entropyv1beta1.DeleteResourceResponse{},
+		},
+		{
+			name: "HardDelete_Success_ForceTrue",
 			setup: func(t *testing.T) *APIServer {
 				t.Helper()
 				resourceService := &mocks.ResourceService{}
@@ -623,7 +673,26 @@ func TestAPIServer_DeleteResource(t *testing.T) {
 			request: &entropyv1beta1.DeleteResourceRequest{
 				Urn: "p-testdata-gl-testname-log",
 			},
+			md:   metadata.New(map[string]string{"user-id": "john.doe@goto.com", "force": "true"}),
 			want: &entropyv1beta1.DeleteResourceResponse{},
+		},
+		{
+			name: "HardDelete_Failure_ForceTrue",
+			setup: func(t *testing.T) *APIServer {
+				t.Helper()
+				resourceService := &mocks.ResourceService{}
+				resourceService.EXPECT().
+					DeleteResource(mock.Anything, "p-testdata-gl-testname-log").
+					Return(errors.ErrNotFound).Once()
+
+				return NewAPIServer(resourceService, nil, nil)
+			},
+			request: &entropyv1beta1.DeleteResourceRequest{
+				Urn: "p-testdata-gl-testname-log",
+			},
+			md:      metadata.New(map[string]string{"force": "true"}),
+			want:    nil,
+			wantErr: status.Error(codes.NotFound, "not_found: requested entity not found"),
 		},
 	}
 
@@ -633,7 +702,12 @@ func TestAPIServer_DeleteResource(t *testing.T) {
 			t.Parallel()
 			srv := tt.setup(t)
 
-			got, err := srv.DeleteResource(context.Background(), tt.request)
+			ctx := context.Background()
+			if tt.md != nil {
+				ctx = metadata.NewIncomingContext(ctx, tt.md)
+			}
+
+			got, err := srv.DeleteResource(ctx, tt.request)
 			if tt.wantErr != nil {
 				assert.Error(t, err)
 				assert.Truef(t, errors.Is(err, tt.wantErr), "'%s' != '%s'", tt.wantErr, err)

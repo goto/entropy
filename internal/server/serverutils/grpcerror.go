@@ -10,6 +10,10 @@ import (
 // ToRPCError returns an instance of gRPC Error Status equivalent to the
 // given error value.
 func ToRPCError(e error) error {
+	if _, ok := status.FromError(e); ok {
+		return e
+	}
+
 	err := errors.E(e)
 
 	var code codes.Code
