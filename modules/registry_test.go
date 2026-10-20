@@ -68,6 +68,33 @@ func TestRegistry_GetDriver(t *testing.T) {
 	})
 }
 
+func TestRegistry_GetDescriptor(t *testing.T) {
+	t.Parallel()
+
+	factoryCalled := false
+	reg := &modules.Registry{}
+	require.NoError(t, reg.Register(module.Descriptor{
+		Kind: "foo",
+		DriverFactory: func(_ json.RawMessage) (module.Driver, error) {
+			factoryCalled = true
+			return &mocks.ModuleDriver{}, nil
+		},
+	}))
+
+	t.Run("UnknownKind", func(t *testing.T) {
+		_, err := reg.GetDescriptor("unknown_kind")
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, errors.ErrNotFound))
+	})
+
+	t.Run("KnownKind_DoesNotInitDriver", func(t *testing.T) {
+		desc, err := reg.GetDescriptor("foo")
+		assert.NoError(t, err)
+		assert.Equal(t, "foo", desc.Kind)
+		assert.False(t, factoryCalled)
+	})
+}
+
 func TestRegistry_Register(t *testing.T) {
 	t.Parallel()
 
