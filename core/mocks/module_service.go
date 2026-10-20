@@ -86,6 +86,63 @@ func (_c *ModuleService_GetOutput_Call) RunAndReturn(run func(context.Context, m
 	return _c
 }
 
+// IsRunning provides a mock function with given fields: ctx, res
+func (_m *ModuleService) IsRunning(ctx context.Context, res module.ExpandedResource) (bool, error) {
+	ret := _m.Called(ctx, res)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsRunning")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, module.ExpandedResource) (bool, error)); ok {
+		return rf(ctx, res)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, module.ExpandedResource) bool); ok {
+		r0 = rf(ctx, res)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, module.ExpandedResource) error); ok {
+		r1 = rf(ctx, res)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ModuleService_IsRunning_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsRunning'
+type ModuleService_IsRunning_Call struct {
+	*mock.Call
+}
+
+// IsRunning is a helper method to define mock.On call
+//   - ctx context.Context
+//   - res module.ExpandedResource
+func (_e *ModuleService_Expecter) IsRunning(ctx interface{}, res interface{}) *ModuleService_IsRunning_Call {
+	return &ModuleService_IsRunning_Call{Call: _e.mock.On("IsRunning", ctx, res)}
+}
+
+func (_c *ModuleService_IsRunning_Call) Run(run func(ctx context.Context, res module.ExpandedResource)) *ModuleService_IsRunning_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(module.ExpandedResource))
+	})
+	return _c
+}
+
+func (_c *ModuleService_IsRunning_Call) Return(_a0 bool, _a1 error) *ModuleService_IsRunning_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *ModuleService_IsRunning_Call) RunAndReturn(run func(context.Context, module.ExpandedResource) (bool, error)) *ModuleService_IsRunning_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PlanAction provides a mock function with given fields: ctx, res, act
 func (_m *ModuleService) PlanAction(ctx context.Context, res module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error) {
 	ret := _m.Called(ctx, res, act)

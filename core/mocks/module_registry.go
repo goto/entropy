@@ -22,6 +22,62 @@ func (_m *ModuleRegistry) EXPECT() *ModuleRegistry_Expecter {
 	return &ModuleRegistry_Expecter{mock: &_m.Mock}
 }
 
+// GetDescriptor provides a mock function with given fields: kind
+func (_m *ModuleRegistry) GetDescriptor(kind string) (module.Descriptor, error) {
+	ret := _m.Called(kind)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetDescriptor")
+	}
+
+	var r0 module.Descriptor
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (module.Descriptor, error)); ok {
+		return rf(kind)
+	}
+	if rf, ok := ret.Get(0).(func(string) module.Descriptor); ok {
+		r0 = rf(kind)
+	} else {
+		r0 = ret.Get(0).(module.Descriptor)
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(kind)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ModuleRegistry_GetDescriptor_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDescriptor'
+type ModuleRegistry_GetDescriptor_Call struct {
+	*mock.Call
+}
+
+// GetDescriptor is a helper method to define mock.On call
+//   - kind string
+func (_e *ModuleRegistry_Expecter) GetDescriptor(kind interface{}) *ModuleRegistry_GetDescriptor_Call {
+	return &ModuleRegistry_GetDescriptor_Call{Call: _e.mock.On("GetDescriptor", kind)}
+}
+
+func (_c *ModuleRegistry_GetDescriptor_Call) Run(run func(kind string)) *ModuleRegistry_GetDescriptor_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *ModuleRegistry_GetDescriptor_Call) Return(_a0 module.Descriptor, _a1 error) *ModuleRegistry_GetDescriptor_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *ModuleRegistry_GetDescriptor_Call) RunAndReturn(run func(string) (module.Descriptor, error)) *ModuleRegistry_GetDescriptor_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetDriver provides a mock function with given fields: ctx, mod
 func (_m *ModuleRegistry) GetDriver(ctx context.Context, mod module.Module) (module.Driver, module.Descriptor, error) {
 	ret := _m.Called(ctx, mod)

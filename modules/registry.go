@@ -34,6 +34,19 @@ func (mr *Registry) GetDriver(_ context.Context, mod module.Module) (module.Driv
 	return driver, desc, nil
 }
 
+// GetDescriptor returns the descriptor registered for the kind without
+// initialising the driver.
+func (mr *Registry) GetDescriptor(kind string) (module.Descriptor, error) {
+	mr.mu.RLock()
+	defer mr.mu.RUnlock()
+
+	desc, found := mr.modules[kind]
+	if !found {
+		return module.Descriptor{}, errors.ErrNotFound
+	}
+	return desc, nil
+}
+
 // Register adds a module to the registry.
 func (mr *Registry) Register(desc module.Descriptor) error {
 	mr.mu.Lock()

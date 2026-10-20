@@ -152,3 +152,12 @@ func (dd *daggerDriver) getFlinkExceptions(ctx context.Context, configs kube.Con
 
 	return jobException, nil
 }
+
+// IsRunning reports whether the dagger job is running.
+func IsRunning(res resource.Resource) (bool, error) {
+	output, err := readOutputData(module.ExpandedResource{Resource: res})
+	if err != nil {
+		return false, err
+	}
+	return output.State == "RUNNING", nil
+}

@@ -43,6 +43,7 @@ type ModuleService interface {
 	SyncState(ctx context.Context, res module.ExpandedResource) (*resource.State, error)
 	StreamLogs(ctx context.Context, res module.ExpandedResource, filter map[string]string) (<-chan module.LogChunk, error)
 	GetOutput(ctx context.Context, res module.ExpandedResource) (json.RawMessage, error)
+	IsRunning(ctx context.Context, res module.ExpandedResource) (bool, error)
 }
 
 func New(repo resource.Store, moduleSvc ModuleService, clockFn func() time.Time, syncBackoffInterval time.Duration, maxRetries int, serviceName string, opts ...Option) *Service {

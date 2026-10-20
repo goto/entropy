@@ -89,6 +89,29 @@ func (svc *Service) DeleteResource(ctx context.Context, urn string) error {
 }
 
 func (svc *Service) SoftDeleteResource(ctx context.Context, urn string, deletedBy string) error {
+	res, err := svc.GetResource(ctx, urn)
+	if err != nil {
+		return err
+	}
+
+	if res.State.Status != resource.StatusCompleted {
+		return errors.ErrInvalid.
+			WithMsgf("cannot soft delete resource in '%s', must be '%s'", res.State.Status, resource.StatusCompleted)
+	}
+
+	modSpec, err := svc.generateModuleSpec(ctx, *res)
+	if err != nil {
+		return err
+	}
+
+	running, err := svc.moduleSvc.IsRunning(ctx, *modSpec)
+	if err != nil {
+		return err
+	}
+	if running {
+		return errors.ErrInvalid.WithMsgf("cannot soft delete a running resource, stop it first")
+	}
+
 	return svc.store.SoftDelete(ctx, urn, deletedBy)
 }
 

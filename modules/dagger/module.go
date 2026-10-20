@@ -34,7 +34,8 @@ type FlinkCRDStatus struct {
 // security profile, without declaring it as a dependency.
 func Module(getResource ResourceGetter) module.Descriptor {
 	return module.Descriptor{
-		Kind: "dagger",
+		Kind:      "dagger",
+		IsRunning: IsRunning,
 		Dependencies: map[string]string{
 			keyFlinkDependency: flink.Module.Kind,
 		},

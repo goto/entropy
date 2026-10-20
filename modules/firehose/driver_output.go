@@ -62,3 +62,12 @@ func (fd *firehoseDriver) desiredStatus(conf Config) string {
 	}
 	return desiredStatusRunning
 }
+
+// IsRunning reports whether the firehose is desired to be running.
+func IsRunning(res resource.Resource) (bool, error) {
+	output, err := readOutputData(module.ExpandedResource{Resource: res})
+	if err != nil {
+		return false, err
+	}
+	return output.DesiredStatus == desiredStatusRunning, nil
+}

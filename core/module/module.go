@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/pkg/errors"
 )
 
@@ -29,12 +30,18 @@ type Descriptor struct {
 	Actions       []ActionDesc                               `json:"actions"`
 	Dependencies  map[string]string                          `json:"dependencies"`
 	DriverFactory func(conf json.RawMessage) (Driver, error) `json:"-"`
+
+	// IsRunning is optional. It reports whether the resource is actively
+	// running based on the resource's stored state. Modules without a notion
+	// of running leave it nil.
+	IsRunning func(res resource.Resource) (bool, error) `json:"-"`
 }
 
 // Registry is responsible for installing and managing module-drivers as per
 // module definitions provided.
 type Registry interface {
 	GetDriver(ctx context.Context, mod Module) (Driver, Descriptor, error)
+	GetDescriptor(kind string) (Descriptor, error)
 }
 
 // Store is responsible for persisting modules defined for each project.
