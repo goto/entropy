@@ -616,7 +616,7 @@ func TestAPIServer_DeleteResource(t *testing.T) {
 			setup: func(t *testing.T) *APIServer {
 				t.Helper()
 				resourceService := &mocks.ResourceService{}
-				return NewAPIServer(resourceService)
+				return NewAPIServer(resourceService, nil, nil)
 			},
 			request: &entropyv1beta1.DeleteResourceRequest{
 				Urn: "p-testdata-gl-testname-log",
@@ -634,7 +634,7 @@ func TestAPIServer_DeleteResource(t *testing.T) {
 					SoftDeleteResource(mock.Anything, "p-testdata-gl-testname-log", "john.doe@goto.com").
 					Return(nil).Once()
 
-				return NewAPIServer(resourceService)
+				return NewAPIServer(resourceService, nil, nil)
 			},
 			request: &entropyv1beta1.DeleteResourceRequest{
 				Urn: "p-testdata-gl-testname-log",
@@ -651,7 +651,7 @@ func TestAPIServer_DeleteResource(t *testing.T) {
 					SoftDeleteResource(mock.Anything, "p-testdata-gl-testname-log", "john.doe@goto.com").
 					Return(nil).Once()
 
-				return NewAPIServer(resourceService)
+				return NewAPIServer(resourceService, nil, nil)
 			},
 			request: &entropyv1beta1.DeleteResourceRequest{
 				Urn: "p-testdata-gl-testname-log",
@@ -685,7 +685,7 @@ func TestAPIServer_DeleteResource(t *testing.T) {
 					DeleteResource(mock.Anything, "p-testdata-gl-testname-log").
 					Return(errors.ErrNotFound).Once()
 
-				return NewAPIServer(resourceService)
+				return NewAPIServer(resourceService, nil, nil)
 			},
 			request: &entropyv1beta1.DeleteResourceRequest{
 				Urn: "p-testdata-gl-testname-log",

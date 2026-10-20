@@ -94,9 +94,9 @@ func (svc *Service) SoftDeleteResource(ctx context.Context, urn string, deletedB
 		return err
 	}
 
-	if res.State.Status != resource.StatusCompleted {
+	if res.State.Status == resource.StatusPending {
 		return errors.ErrInvalid.
-			WithMsgf("cannot soft delete resource in '%s', must be '%s'", res.State.Status, resource.StatusCompleted)
+			WithMsgf("cannot soft delete resource in '%s'", resource.StatusPending)
 	}
 
 	modSpec, err := svc.generateModuleSpec(ctx, *res)

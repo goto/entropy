@@ -896,7 +896,7 @@ func TestService_SoftDeleteResource(t *testing.T) {
 			wantErr: errors.ErrNotFound,
 		},
 		{
-			name: "NotCompleted",
+			name: "InPending",
 			setup: func(t *testing.T) *core.Service {
 				t.Helper()
 				mod := &mocks.ModuleService{}
@@ -904,20 +904,6 @@ func TestService_SoftDeleteResource(t *testing.T) {
 
 				resourceRepo := &mocks.ResourceStore{}
 				resourceRepo.EXPECT().GetByURN(mock.Anything, urn).Return(res(resource.StatusPending), nil).Once()
-
-				return core.New(resourceRepo, mod, deadClock, defaultSyncBackoff, defaultMaxRetries, serviceName)
-			},
-			wantErr: errors.ErrInvalid,
-		},
-		{
-			name: "ErrorStatus",
-			setup: func(t *testing.T) *core.Service {
-				t.Helper()
-				mod := &mocks.ModuleService{}
-				mod.EXPECT().GetOutput(mock.Anything, mock.Anything).Return(nil, nil).Once()
-
-				resourceRepo := &mocks.ResourceStore{}
-				resourceRepo.EXPECT().GetByURN(mock.Anything, urn).Return(res(resource.StatusError), nil).Once()
 
 				return core.New(resourceRepo, mod, deadClock, defaultSyncBackoff, defaultMaxRetries, serviceName)
 			},
