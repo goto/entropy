@@ -89,14 +89,6 @@ func (svc *Service) DeleteResource(ctx context.Context, urn string) error {
 }
 
 func (svc *Service) SoftDeleteResource(ctx context.Context, urn string, deletedBy string) error {
-	_, actionErr := svc.ApplyAction(ctx, urn, module.ActionRequest{
-		Name:   module.DeleteAction,
-		UserID: deletedBy,
-	}, WithDryRun(false))
-	if actionErr != nil {
-		return actionErr
-	}
-
 	return svc.store.SoftDelete(ctx, urn, deletedBy)
 }
 
