@@ -24,7 +24,7 @@ This RFC introduces **add-ons**: optional supporting resources of a parent resou
 ## Non-goals
 
 - Migrating existing Telegraf, ACL or autoscaler config (follow-up RFCs: Kafka ACL, alerts).
-- A **background retry loop** or queued reconciliation for add-ons (timeouts and manual re-apply only in v1). **Sync-adjacent triggers** when the parent reaches `STATUS_COMPLETED` are in scope; see Reconciliation triggers.
+- A **background retry loop** or queued reconciliation for add-ons (timeouts and manual re-apply only in v1). Add-on **Apply** is not coupled to the resource sync loop; see Reconciliation triggers.
 - Cascading external deletes when a parent is soft-deleted.
 - A dedicated add-on permission model (reuse existing project/resource authorization; see API).
 
@@ -114,20 +114,19 @@ Each row records `origin`.
 
 Hook logic calls the same apply/delete paths as the HTTP API. Add-ons do **not** call external systems on parent **dry-run** (`WithDryRun`).
 
-Parent writes (`execAction` in `core/write.go`) plan and upsert the parent, usually leaving it `STATUS_PENDING`. Resolved `State.Output` is produced in `handleSync` → `SyncState` (`core/sync.go`).
+Parent writes (`execAction` in `core/write.go`) plan and upsert the parent, usually leaving it `STATUS_PENDING`. Resolved `State.Output` is produced in `handleSync` → `SyncState` (`core/sync.go`); the sync loop does **not** invoke add-on logic.
 
-**Chosen (D1):** split reconcile (persist desired add-on rows from merged defaults/spec) from external **Apply**.
+**Chosen (D1):** split reconcile (persist desired add-on rows from merged defaults/spec) from external **Apply**. External **Apply** is only triggered by the add-on API (or a future optional worker), not by resource sync.
 
 | Trigger | Code path | Parent state | Add-on action |
 | ------- | --------- | ------------ | ------------- |
-| Parent create/update (not dry-run) | After successful parent `upsert` in `execAction` | Any | Reconcile `spec`-origin rows (spec, tombstone removed types); no external `Apply` unless type documents it does not need output |
-| Parent reaches `STATUS_COMPLETED` | End of successful `handleSync` when status becomes or remains `STATUS_COMPLETED` after create/update | `STATUS_COMPLETED` | For each enabled add-on row (spec or api origin): run external `Apply` if spec changed since last successful apply or row is new |
+| Parent create/update (not dry-run) | After successful parent `upsert` in `execAction` | Any | Reconcile `spec`-origin rows (spec, tombstone removed types); **no** external `Apply` |
 | Parent `PUT .../addons/{type}` | Add-on handler | `STATUS_COMPLETED` required for types that need output (e.g. logs); otherwise invalid with clear error | Validate, persist, `Apply` |
 | Parent soft-delete | `SoftDeleteResource` | Tombstoned parent | Tombstone all add-on rows for `parent_urn`; **no** external `Delete` |
 | Add-on `DELETE` | Add-on handler | Parent may be soft-deleted (tombstone-inclusive get) | External `Delete`, then tombstone add-on row |
 | Force delete parent | `DeleteResource` with force | Hard-deleted parent | Tombstone or delete add-on rows in DB; **no** mandatory external `Delete` in v1 |
 
-If the parent stays `STATUS_ERROR` or `STATUS_PENDING`, spec-origin rows exist but external `Apply` does not run until the parent completes successfully. Operators may use API PUT after recovery.
+If the parent stays `STATUS_ERROR` or `STATUS_PENDING`, spec-origin rows may exist but external `Apply` only runs when an operator calls the add-on API (after the parent is `STATUS_COMPLETED` when output is required).
 
 **Failure:** each add-on spec may set `on_failure: fail | continue` (default `continue`). `fail` returns an error to the caller for that trigger, leaves the parent saved, and marks the add-on `ERROR`. `continue` lets the parent operation succeed and records `ERROR` on the add-on. Recovery: idempotent manual PUT on the add-on API.
 
@@ -203,13 +202,13 @@ Sensitive fields use the same masking and `restoreSensitive` flow as modules (`m
 
 ### Observability
 
-OTel counters for apply/delete results and timeouts, labelled by add-on type; gauge of add-ons in `ERROR`. Structured log per reconcile/apply with `parent_urn`, `addon_type`, `origin`, `trigger` (`write_reconcile` | `sync_completed` | `api`), `on_failure`, and outcome.
+OTel counters for apply/delete results and timeouts, labelled by add-on type; gauge of add-ons in `ERROR`. Structured log per reconcile/apply with `parent_urn`, `addon_type`, `origin`, `trigger` (`write_reconcile` | `api`), `on_failure`, and outcome.
 
 ### Test plan (v1)
 
 - Table-driven: default + spec merge, `enabled: false`, origin rules, spec-origin PUT rejection.
 - Integration: dry-run parent create does not call external Apply.
-- Integration: add-on Apply runs after parent sync to `STATUS_COMPLETED`.
+- Integration: parent sync does not invoke add-on Apply; Apply only via add-on API.
 - Integration: soft-delete parent tombstones add-ons without external delete; add-on DELETE with tombstoned parent still calls external delete.
 
 ## Alternatives
@@ -226,7 +225,7 @@ OTel counters for apply/delete results and timeouts, labelled by add-on type; ga
 
 **Chosen:** a separate table with its own API, a hybrid of the two: declared in the parent spec like B, stored and managed as independent records like A.
 
-**Asynchronous reconciliation** via a dedicated worker loop would give retries, backoff and a visible `ERROR` state with less request latency. Rejected for v1; sync-completed trigger is the narrow exception for output-dependent apply.
+**Asynchronous reconciliation** via a dedicated worker loop would give retries, backoff and a visible `ERROR` state with less request latency. Rejected for v1; add-on Apply is decoupled from resource sync.
 
 **addon_revisions on day one:** rejected for v1 (schema, API, masking cost); defer.
 
@@ -239,13 +238,80 @@ Opt-in with zero migration. A parent with no `addons` entry and no module defaul
 1. This RFC agreed.
 2. Proton messages + `PROTON_COMMIT`.
 3. Postgres schema (`addons`, `addon_configs`).
-4. Core: registry, merge/reconcile, triggers on write + sync, origin rules.
+4. Core: registry, merge/reconcile on write, origin rules (no sync coupling).
 5. HTTP handlers.
 6. `logs` add-on + firehose descriptor + addon-config paths.
 
+## First implementation (reference example)
+
+This section describes the **first shipped add-on stack** in Entropy. It is the concrete reference for how later add-on types (for example barito) should plug into the same framework.
+
+### Scope
+
+| Layer | Location | Role |
+| ----- | -------- | ---- |
+| Engine and types | [`core/addon/`](../../core/addon/) | `Driver` registry, spec merge/extract, `Engine` (reconcile, API apply/delete), `origin` / `spec_version` |
+| Parent hooks | [`core/addon_hooks.go`](../../core/addon_hooks.go), [`core/write.go`](../../core/write.go) | Strip `addons` from configs before `PlanAction`; re-inject into stored spec; **reconcile** spec-origin rows after parent upsert |
+| Storage | [`internal/store/postgres/schema.sql`](../../internal/store/postgres/schema.sql), [`addon_store.go`](../../internal/store/postgres/addon_store.go) | `addons`, `addon_configs` tables |
+| HTTP (pre-proton) | [`internal/server/v1/addons/http.go`](../../internal/server/v1/addons/http.go) | Nested routes under `/api/v1beta1/...` |
+| Wiring | [`cli/serve.go`](../../cli/serve.go) | Register engine on `core.Service`; mount HTTP routes in [`internal/server/server.go`](../../internal/server/server.go) |
+
+**Not in this slice:** gRPC/protobuf in `goto/proton` (HTTP only for now), `addon_revisions`, OTel metrics (described above but not wired), addon-config response masking.
+
+### Driver contract (as implemented)
+
+```go
+type Driver interface {
+    Validate(spec json.RawMessage) error
+    RequiresParentCompleted() bool
+    Apply(ctx context.Context, parent ParentContext, spec json.RawMessage) (json.RawMessage, error)
+    Delete(ctx context.Context, parent ParentContext, spec json.RawMessage) error
+}
+```
+
+`ParentContext` carries parent URN, kind, project, name, and `State.Output` JSON. Types that need planned config or dependencies should extend this in a follow-up change; the **logs** driver only needs completed parent output.
+
+### Decoupling from resource sync
+
+- **Parent create/update:** updates add-on **rows** only (reconcile). No external I/O.
+- **Resource sync** (`core/sync.go`): does **not** call the add-on engine.
+- **External Apply/Delete:** only via add-on **HTTP API** (or a future worker). After reconcile, operators `PUT .../addons/{type}` once the parent is `STATUS_COMPLETED` when `RequiresParentCompleted()` is true.
+
+This matches **Chosen (D1)** and avoids blocking or coupling the sync loop to Barito, logging APIs, or other backends.
+
+### First add-on type: `logs`
+
+| Item | Detail |
+| ---- | ------ |
+| Implementation | [`addons/logs/logs.go`](../../addons/logs/logs.go) |
+| Module opt-in | [`modules/firehose/module.go`](../../modules/firehose/module.go) — `Descriptor.Addons = ["logs"]` |
+| Project config | `PUT /api/v1beta1/projects/{project}/addon-configs/logs` with `configs.endpoint` and `configs.token` |
+| Apply | HTTP PUT to `{endpoint}/registrations` with parent URN, namespace from firehose output, and spec |
+| Delete | HTTP DELETE on `{endpoint}/registrations/{parent_urn}` |
+| Prerequisite | Parent `STATUS_COMPLETED` and output JSON including `namespace` |
+
+**logs** is intentionally separate from legacy Odin **barito** log shipping; barito is a planned second driver on the same `Driver` + `Engine` surface, not a replacement for this HTTP registration shape.
+
+### End-to-end flow (firehose + logs)
+
+1. Deploy with `--migrate` so `addons` / `addon_configs` exist.
+2. Configure project `addon-config` for `logs`.
+3. Optional: set `addon_defaults` on the firehose **module** row, or declare `addons.logs` in the firehose resource `spec.configs`.
+4. Create or update the firehose resource (reconcile creates/updates the add-on row; parent may stay `PENDING` until sync completes).
+5. When the firehose is `STATUS_COMPLETED`, call `PUT /api/v1beta1/resources/{urn}/addons/logs` with desired spec (header `user-id` required, same as other APIs).
+6. To tear down externally: `DELETE .../addons/logs` (works even if the parent is soft-deleted, using tombstone-inclusive parent load).
+
+### What to copy for the next add-on type
+
+1. Implement `core/addon.Driver` under `addons/<type>/`.
+2. `addonRegistry.Register(addon.TypeX, ...)` in `cli/serve.go`.
+3. Add the type string to the parent module `Descriptor.Addons`.
+4. Document required `addon-config` JSON and spec shape.
+5. Keep external calls on the **API apply path** unless a future RFC adds an async worker.
+
 ## Risks
 
-- **Always-sync.** External calls run in request or sync path; slow APIs block callers. Mitigated by timeouts, default `on_failure: continue`, and idempotent manual PUT.
+- **Always-sync on API apply.** External calls run in the add-on API request path; slow APIs block that caller only (not resource sync). Mitigated by timeouts, default `on_failure: continue`, and idempotent manual PUT.
 - **Two writers of desired state** (spec and API). Mitigated by `origin` and `spec_version` on API PUT.
 - **Parent ERROR / PENDING.** Add-on rows may exist without successful external apply until parent completes or operator intervenes.
 - **External orphans.** Soft-delete parent without prior add-on DELETE leaves external registrations until explicit add-on DELETE (if parent row still recoverable) or manual cleanup.
@@ -256,4 +322,4 @@ Opt-in with zero migration. A parent with no `addons` entry and no module defaul
 
 - Whether `fail` add-ons should include a retry hint in the error response.
 - Whether a future RFC adds `addon_revisions` and/or an opt-in background retry worker for add-ons.
-- Hook execution order when multiple add-on types apply on the same sync-completed event (v1: undefined order; types must not depend on each other).
+- Hook execution order when multiple add-on types are applied in one operation (v1: undefined order; types must not depend on each other).
