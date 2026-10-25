@@ -58,6 +58,29 @@ type Pod struct {
 	Name       string   `json:"name"`
 	Containers []string `json:"containers"`
 	Status     string   `json:"status"`
+	Reason     string   `json:"reason,omitempty"`
+}
+
+var podErrorReasons = map[string]bool{
+	"CrashLoopBackOff":           true,
+	"ImagePullBackOff":           true,
+	"ErrImagePull":               true,
+	"InvalidImageName":           true,
+	"CreateContainerConfigError": true,
+	"RunContainerError":          true,
+}
+
+func (p Pod) IsError() bool {
+	return p.Status == string(corev1.PodFailed) || podErrorReasons[p.Reason]
+}
+
+func FirstPodError(pods []Pod) *Pod {
+	for i := range pods {
+		if pods[i].IsError() {
+			return &pods[i]
+		}
+	}
+	return nil
 }
 
 type FlinkDeploymentStatus struct {
@@ -334,6 +357,13 @@ func (c Client) GetPodDetails(ctx context.Context, namespace string, labelSelect
 		podDetail := Pod{
 			Name:   pod.Name,
 			Status: string(pod.Status.Phase),
+		}
+
+		for _, cs := range pod.Status.ContainerStatuses {
+			if cs.State.Waiting != nil {
+				podDetail.Reason = cs.State.Waiting.Reason
+				break
+			}
 		}
 
 		for _, container := range pod.Spec.Containers {
