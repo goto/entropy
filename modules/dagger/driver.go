@@ -197,7 +197,19 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 		labelNamespace: conf.Namespace,
 	}
 
-	deploymentLabels, err := renderTpl(dd.conf.Labels, modules.CloneAndMergeMaps(res.Labels, modules.CloneAndMergeMaps(entropyLabels, otherLabels)))
+	tplValues := modules.CloneAndMergeMaps(res.Labels, modules.CloneAndMergeMaps(entropyLabels, otherLabels))
+
+	deploymentLabels, err := renderTpl(dd.conf.Labels, tplValues)
+	if err != nil {
+		return nil, err
+	}
+
+	// HA urls can be Go templates too, e.g. to pick the bucket from a resource label.
+	haURLs, err := renderTpl(map[string]string{
+		"dagger_checkpoint_url": conf.DaggerCheckpointURL,
+		"dagger_savepoint_url":  conf.DaggerSavepointURL,
+		"dagger_k8s_ha_url":     conf.DaggerK8sHAURL,
+	}, tplValues)
 	if err != nil {
 		return nil, err
 	}
@@ -295,9 +307,9 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 		"state":                 conf.JobState,
 		"namespace":             conf.Namespace,
 		"urn":                   res.URN,
-		"dagger_checkpoint_url": conf.DaggerCheckpointURL,
-		"dagger_savepoint_url":  conf.DaggerSavepointURL,
-		"dagger_k8s_ha_url":     conf.DaggerK8sHAURL,
+		"dagger_checkpoint_url": haURLs["dagger_checkpoint_url"],
+		"dagger_savepoint_url":  haURLs["dagger_savepoint_url"],
+		"dagger_k8s_ha_url":     haURLs["dagger_k8s_ha_url"],
 		"cloud_provider":        conf.CloudProvider,
 		"fs_oss_endpoint":       conf.FSOSSEndpoint,
 		"tolerations":           tolerations,
