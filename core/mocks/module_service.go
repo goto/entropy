@@ -7,6 +7,8 @@ import (
 
 	json "encoding/json"
 
+	http "net/http"
+
 	mock "github.com/stretchr/testify/mock"
 
 	module "github.com/goto/entropy/core/module"
@@ -318,6 +320,65 @@ func (_c *ModuleService_SyncState_Call) Return(_a0 *resource.State, _a1 error) *
 }
 
 func (_c *ModuleService_SyncState_Call) RunAndReturn(run func(context.Context, module.ExpandedResource) (*resource.State, error)) *ModuleService_SyncState_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WebUIProxy provides a mock function with given fields: ctx, res
+func (_m *ModuleService) WebUIProxy(ctx context.Context, res module.ExpandedResource) (http.Handler, error) {
+	ret := _m.Called(ctx, res)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WebUIProxy")
+	}
+
+	var r0 http.Handler
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, module.ExpandedResource) (http.Handler, error)); ok {
+		return rf(ctx, res)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, module.ExpandedResource) http.Handler); ok {
+		r0 = rf(ctx, res)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(http.Handler)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, module.ExpandedResource) error); ok {
+		r1 = rf(ctx, res)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ModuleService_WebUIProxy_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WebUIProxy'
+type ModuleService_WebUIProxy_Call struct {
+	*mock.Call
+}
+
+// WebUIProxy is a helper method to define mock.On call
+//   - ctx context.Context
+//   - res module.ExpandedResource
+func (_e *ModuleService_Expecter) WebUIProxy(ctx interface{}, res interface{}) *ModuleService_WebUIProxy_Call {
+	return &ModuleService_WebUIProxy_Call{Call: _e.mock.On("WebUIProxy", ctx, res)}
+}
+
+func (_c *ModuleService_WebUIProxy_Call) Run(run func(ctx context.Context, res module.ExpandedResource)) *ModuleService_WebUIProxy_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(module.ExpandedResource))
+	})
+	return _c
+}
+
+func (_c *ModuleService_WebUIProxy_Call) Return(_a0 http.Handler, _a1 error) *ModuleService_WebUIProxy_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *ModuleService_WebUIProxy_Call) RunAndReturn(run func(context.Context, module.ExpandedResource) (http.Handler, error)) *ModuleService_WebUIProxy_Call {
 	_c.Call.Return(run)
 	return _c
 }

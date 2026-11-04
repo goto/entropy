@@ -96,6 +96,7 @@ func Serve(ctx context.Context, httpAddr, grpcAddr string, nrApp *newrelic.Appli
 		withOpenTelemetry(),
 		nrgorilla.Middleware(nrApp),
 	)
+	resourcesv1.RegisterWebUI(httpRouter, resourceSvc)
 	httpRouter.PathPrefix("/api/").Handler(http.StripPrefix("/api", rpcHTTPGateway))
 	httpRouter.Handle("/ping", http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
 		_, _ = fmt.Fprintf(wr, "pong")

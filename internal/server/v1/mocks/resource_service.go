@@ -5,6 +5,8 @@ package mocks
 import (
 	context "context"
 
+	http "net/http"
+
 	core "github.com/goto/entropy/core"
 	mock "github.com/stretchr/testify/mock"
 
@@ -638,6 +640,65 @@ func (_c *ResourceService_UpdateResourceLabels_Call) Return(_a0 *resource.Resour
 }
 
 func (_c *ResourceService_UpdateResourceLabels_Call) RunAndReturn(run func(context.Context, string, map[string]string, string) (*resource.Resource, error)) *ResourceService_UpdateResourceLabels_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetWebUIProxy provides a mock function with given fields: ctx, urn
+func (_m *ResourceService) GetWebUIProxy(ctx context.Context, urn string) (http.Handler, error) {
+	ret := _m.Called(ctx, urn)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetWebUIProxy")
+	}
+
+	var r0 http.Handler
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (http.Handler, error)); ok {
+		return rf(ctx, urn)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) http.Handler); ok {
+		r0 = rf(ctx, urn)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(http.Handler)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, urn)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ResourceService_GetWebUIProxy_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetWebUIProxy'
+type ResourceService_GetWebUIProxy_Call struct {
+	*mock.Call
+}
+
+// GetWebUIProxy is a helper method to define mock.On call
+//   - ctx context.Context
+//   - urn string
+func (_e *ResourceService_Expecter) GetWebUIProxy(ctx interface{}, urn interface{}) *ResourceService_GetWebUIProxy_Call {
+	return &ResourceService_GetWebUIProxy_Call{Call: _e.mock.On("GetWebUIProxy", ctx, urn)}
+}
+
+func (_c *ResourceService_GetWebUIProxy_Call) Run(run func(ctx context.Context, urn string)) *ResourceService_GetWebUIProxy_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *ResourceService_GetWebUIProxy_Call) Return(_a0 http.Handler, _a1 error) *ResourceService_GetWebUIProxy_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *ResourceService_GetWebUIProxy_Call) RunAndReturn(run func(context.Context, string) (http.Handler, error)) *ResourceService_GetWebUIProxy_Call {
 	_c.Call.Return(run)
 	return _c
 }

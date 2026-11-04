@@ -14,6 +14,8 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
+
+	resourcesv1 "github.com/goto/entropy/internal/server/v1/resources"
 )
 
 const (
@@ -79,6 +81,12 @@ func requestID() gorillamux.MiddlewareFunc {
 func requestLogger() gorillamux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
+			// the web ui proxy streams assets, so it can't go through the buffering writer below.
+			if route := gorillamux.CurrentRoute(req); route != nil && route.GetName() == resourcesv1.WebUIRouteName {
+				next.ServeHTTP(wr, req)
+				return
+			}
+
 			t := time.Now()
 			span := trace.SpanFromContext(req.Context())
 
