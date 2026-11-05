@@ -145,6 +145,11 @@ type driverConf struct {
 	// NodeAffinityMatchExpressions can be used to set node-affinity for the deployment.
 	NodeAffinityMatchExpressions pod.NodeAffinityMatchExpressions `json:"node_affinity_match_expressions"`
 
+	// TopologySpreadConstraints spreads the pods of every firehose in the project
+	// across zones and nodes. The chart adds the label selector for each release.
+	// Empty means no constraints, which keeps the rendered manifest unchanged.
+	TopologySpreadConstraints []pod.TopologySpreadConstraint `json:"topology_spread_constraints,omitempty" validate:"omitempty,dive"`
+
 	// delay between stopping a firehose and making an offset reset request
 	OffsetResetDelaySeconds int `json:"offset_reset_delay_seconds"`
 
@@ -464,6 +469,10 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if tsc := pod.TopologySpreadConstraintsToValues(fd.conf.TopologySpreadConstraints); tsc != nil {
+		rc.Values["topologySpreadConstraints"] = tsc
 	}
 
 	return rc, nil

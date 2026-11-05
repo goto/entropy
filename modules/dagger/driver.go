@@ -112,6 +112,11 @@ type driverConf struct {
 	KubeDeployTimeout int `json:"kube_deploy_timeout_seconds"`
 
 	NodeAffinityMatchExpressions pod.NodeAffinityMatchExpressions `json:"node_affinity_match_expressions"`
+
+	// TopologySpreadConstraints spreads the pods of every dagger in the project
+	// across zones and nodes. The chart adds the label selector for each release.
+	// Empty means no constraints, which keeps the rendered manifest unchanged.
+	TopologySpreadConstraints []pod.TopologySpreadConstraint `json:"topology_spread_constraints,omitempty" validate:"omitempty,dive"`
 }
 
 type Output struct {
@@ -321,6 +326,10 @@ func (dd *daggerDriver) getHelmRelease(res resource.Resource, conf Config,
 		// the rendered FlinkDeployment byte-for-byte identical to before.
 		"acl_mounts":                             aclMounts,
 		"kubernetes_taskmanager_service_account": conf.TaskManagerServiceAccount,
+	}
+
+	if tsc := pod.TopologySpreadConstraintsToValues(dd.conf.TopologySpreadConstraints); tsc != nil {
+		rc.Values["topologySpreadConstraints"] = tsc
 	}
 
 	return rc, nil
