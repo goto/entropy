@@ -3,14 +3,19 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"time"
 
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/spf13/cobra"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/goto/entropy/addons/logs"
+	"github.com/goto/entropy/addons/webui"
 	"github.com/goto/entropy/core"
+	"github.com/goto/entropy/core/addon"
 	"github.com/goto/entropy/core/module"
 	entropyserver "github.com/goto/entropy/internal/server"
 	"github.com/goto/entropy/internal/store/postgres"
@@ -72,7 +77,8 @@ func StartServer(ctx context.Context, cfg Config, migrate, spawnWorker bool) err
 	}
 
 	store := setupStorage(cfg.PGConnStr, cfg.Syncer, cfg.Service)
-	moduleService := module.NewService(setupRegistry(store), store)
+	moduleRegistry := setupRegistry(store)
+	moduleService := module.NewService(moduleRegistry, store)
 
 	// TODO: Securely load this value from an environment variable or secrets
 	// vault. Do not hardcode. When empty, masking is disabled (pass-through).
@@ -93,6 +99,8 @@ func StartServer(ctx context.Context, cfg Config, migrate, spawnWorker bool) err
 
 	resourceService := core.New(store, moduleService, time.Now, cfg.Syncer.SyncBackoffInterval, cfg.Syncer.MaxRetries, cfg.Telemetry.ServiceName, coreOpts...)
 
+	addonService := addon.NewService(store, setupAddonRegistry(resourceService), store, moduleRegistry, time.Now, cfg.Addons.Timeout)
+
 	if migrate {
 		if migrateErr := runMigrations(ctx, cfg); migrateErr != nil {
 			return migrateErr
@@ -111,7 +119,7 @@ func StartServer(ctx context.Context, cfg Config, migrate, spawnWorker bool) err
 
 	return entropyserver.Serve(ctx,
 		cfg.Service.httpAddr(), cfg.Service.grpcAddr(),
-		nrApp, resourceService, moduleService, masker, configCache,
+		nrApp, resourceService, moduleService, masker, configCache, addonService,
 	)
 }
 
@@ -147,6 +155,26 @@ func setupRegistry(store *postgres.Store) module.Registry {
 		if err := registry.Register(desc); err != nil {
 			zap.L().Fatal("failed to register module",
 				zap.String("module_kind", desc.Kind),
+				zap.Error(err),
+			)
+		}
+	}
+	return registry
+}
+
+func setupAddonRegistry(resourceService *core.Service) *addon.Registry {
+	httpClient := &http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}
+
+	drivers := map[string]addon.Driver{
+		addon.TypeLogs:  logs.New(httpClient),
+		addon.TypeWebUI: webui.New(resourceService),
+	}
+
+	registry := &addon.Registry{}
+	for typ, drv := range drivers {
+		if err := registry.Register(typ, drv); err != nil {
+			zap.L().Fatal("failed to register add-on",
+				zap.String("addon_type", typ),
 				zap.Error(err),
 			)
 		}

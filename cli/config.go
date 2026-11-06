@@ -28,6 +28,13 @@ type Config struct {
 	PGConnStr string           `mapstructure:"pg_conn_str" default:"postgres://postgres@localhost:5432/entropy?sslmode=disable"`
 	Telemetry telemetry.Config `mapstructure:"telemetry"`
 	Masking   MaskingConfig    `mapstructure:"masking"`
+	Addons    AddonsConfig     `mapstructure:"addons"`
+}
+
+// AddonsConfig holds settings for add-on apply/delete calls.
+type AddonsConfig struct {
+	// Timeout bounds each add-on driver call.
+	Timeout time.Duration `mapstructure:"timeout" default:"30s"`
 }
 
 // MaskingConfig holds settings for response masking of sensitive values.

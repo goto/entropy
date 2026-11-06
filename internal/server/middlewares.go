@@ -15,6 +15,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
+	addonsv1 "github.com/goto/entropy/internal/server/v1/addons"
 	resourcesv1 "github.com/goto/entropy/internal/server/v1/resources"
 )
 
@@ -87,6 +88,12 @@ func requestLogger() gorillamux.MiddlewareFunc {
 				return
 			}
 
+			// addon-configs carry credentials, so their bodies are never logged.
+			logBodies := true
+			if route := gorillamux.CurrentRoute(req); route != nil && route.GetName() == addonsv1.ConfigsRouteName {
+				logBodies = false
+			}
+
 			t := time.Now()
 			span := trace.SpanFromContext(req.Context())
 
@@ -95,7 +102,9 @@ func requestLogger() gorillamux.MiddlewareFunc {
 			wrapped := &wrappedWriter{
 				Status:         http.StatusOK,
 				ResponseWriter: wr,
-				ResponseBuffer: &bytes.Buffer{},
+			}
+			if logBodies {
+				wrapped.ResponseBuffer = &bytes.Buffer{}
 			}
 
 			bodyBytes, err := io.ReadAll(req.Body)
@@ -123,7 +132,7 @@ func requestLogger() gorillamux.MiddlewareFunc {
 				zap.String("trace_id", span.SpanContext().TraceID().String()),
 			}
 
-			if len(bodyBytes) > 0 {
+			if logBodies && len(bodyBytes) > 0 {
 				dst := bytes.NewBuffer(nil)
 				err = json.Compact(dst, bodyBytes)
 				if err != nil {
@@ -134,7 +143,9 @@ func requestLogger() gorillamux.MiddlewareFunc {
 			}
 
 			if !is2xx(wrapped.Status) {
-				fields = append(fields, zap.String("response_body", wrapped.ResponseBuffer.String()))
+				if logBodies {
+					fields = append(fields, zap.String("response_body", wrapped.ResponseBuffer.String()))
+				}
 				zap.L().Error("request handled with non-2xx response", fields...)
 			} else {
 				zap.L().Info("request handled", fields...)

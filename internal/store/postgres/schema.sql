@@ -87,3 +87,33 @@ ALTER TABLE resources
 
 CREATE INDEX IF NOT EXISTS idx_resources_project_kind_active ON resources (project, kind) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_resources_next_sync_active ON resources (state_next_sync) WHERE deleted_at IS NULL;
+-- add-ons: at most one live row per (parent_urn, type); tombstoned rows are kept as history.
+CREATE TABLE IF NOT EXISTS addons
+(
+    id           BIGSERIAL   NOT NULL PRIMARY KEY,
+    urn          TEXT        NOT NULL,
+    parent_urn   TEXT        NOT NULL,
+    type         TEXT        NOT NULL,
+    spec         bytea       NOT NULL,
+    output       bytea       NOT NULL DEFAULT '{}',
+    status       TEXT        NOT NULL,
+    last_error   TEXT        NOT NULL DEFAULT '',
+    spec_version BIGINT      NOT NULL DEFAULT 1,
+    created_at   timestamptz NOT NULL DEFAULT current_timestamp,
+    updated_at   timestamptz NOT NULL DEFAULT current_timestamp,
+    created_by   TEXT        NOT NULL DEFAULT '<unknown>',
+    updated_by   TEXT        NOT NULL DEFAULT '<unknown>',
+    deleted_at   timestamptz,
+    deleted_by   TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_addons_parent_type_active ON addons (parent_urn, type) WHERE deleted_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS addon_configs
+(
+    project    TEXT        NOT NULL,
+    type       TEXT        NOT NULL,
+    configs    bytea       NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT current_timestamp,
+    updated_at timestamptz NOT NULL DEFAULT current_timestamp,
+    PRIMARY KEY (project, type)
+);

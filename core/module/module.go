@@ -31,6 +31,9 @@ type Descriptor struct {
 	Dependencies  map[string]string                          `json:"dependencies"`
 	DriverFactory func(conf json.RawMessage) (Driver, error) `json:"-"`
 
+	// Addons lists the add-on types that resources of this kind support.
+	Addons []string `json:"addons,omitempty"`
+
 	// IsRunning is optional. It reports whether the resource is actively
 	// running based on the resource's stored state. Modules without a notion
 	// of running leave it nil.
