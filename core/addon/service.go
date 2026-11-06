@@ -1,6 +1,7 @@
 package addon
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"slices"
@@ -152,20 +153,57 @@ func (svc *Service) Apply(ctx context.Context, req ApplyRequest) (*Addon, error)
 	return &addon, nil
 }
 
-// Get returns the live add-on of the given type on the parent.
+// Get returns the live add-on of the given type on the parent. Meta add-ons
+// are computed and returned while enabled.
 func (svc *Service) Get(ctx context.Context, parentURN, typ string) (*Addon, error) {
-	if _, err := svc.parents.GetByURN(ctx, parentURN); err != nil {
+	parent, err := svc.parents.GetByURN(ctx, parentURN)
+	if err != nil {
 		return nil, err
+	}
+
+	if m, isMeta := svc.registry.GetMeta(typ); isMeta {
+		a, err := svc.meta(ctx, *parent, typ, m)
+		if err != nil {
+			return nil, err
+		}
+		if a == nil {
+			return nil, errors.ErrNotFound.WithMsgf("add-on '%s' not found on resource '%s'", typ, parentURN)
+		}
+		return a, nil
 	}
 	return svc.store.GetAddon(ctx, parentURN, typ)
 }
 
-// List returns the live add-ons of the parent.
+// List returns the live add-ons of the parent, including enabled meta add-ons.
 func (svc *Service) List(ctx context.Context, parentURN string) ([]Addon, error) {
-	if _, err := svc.parents.GetByURN(ctx, parentURN); err != nil {
+	parent, err := svc.parents.GetByURN(ctx, parentURN)
+	if err != nil {
 		return nil, err
 	}
-	return svc.store.ListAddons(ctx, parentURN)
+
+	addons, err := svc.store.ListAddons(ctx, parentURN)
+	if err != nil {
+		return nil, err
+	}
+
+	desc, err := svc.descriptors.GetDescriptor(parent.Kind)
+	if err != nil {
+		return nil, err
+	}
+	for _, typ := range desc.Addons {
+		m, isMeta := svc.registry.GetMeta(typ)
+		if !isMeta {
+			continue
+		}
+		a, err := svc.meta(ctx, *parent, typ, m)
+		if err != nil {
+			return nil, err
+		}
+		if a != nil {
+			addons = append(addons, *a)
+		}
+	}
+	return addons, nil
 }
 
 // Delete calls the driver to remove external state, then soft-deletes the add-on.
@@ -201,7 +239,7 @@ func (svc *Service) Delete(ctx context.Context, parentURN, typ, deletedBy string
 
 // GetConfig returns the addon-config of the project with sensitive keys masked.
 func (svc *Service) GetConfig(ctx context.Context, project, typ string) (*Config, error) {
-	drv, err := svc.registry.Get(typ)
+	sensitive, err := svc.registry.sensitiveKeys(typ)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +249,7 @@ func (svc *Service) GetConfig(ctx context.Context, project, typ string) (*Config
 		return nil, err
 	}
 
-	cfg.Configs, err = maskConfigs(cfg.Configs, drv.SensitiveConfigKeys())
+	cfg.Configs, err = maskConfigs(cfg.Configs, sensitive)
 	if err != nil {
 		return nil, err
 	}
@@ -221,9 +259,14 @@ func (svc *Service) GetConfig(ctx context.Context, project, typ string) (*Config
 // PutConfig creates or updates the addon-config of the project. Sensitive keys
 // sent as the mask placeholder keep their stored value.
 func (svc *Service) PutConfig(ctx context.Context, project, typ string, configs json.RawMessage) (*Config, error) {
-	drv, err := svc.registry.Get(typ)
+	sensitive, err := svc.registry.sensitiveKeys(typ)
 	if err != nil {
 		return nil, err
+	}
+	if _, isMeta := svc.registry.GetMeta(typ); isMeta {
+		if _, err := metaEnabled(configs); err != nil {
+			return nil, err
+		}
 	}
 
 	var stored json.RawMessage
@@ -234,7 +277,7 @@ func (svc *Service) PutConfig(ctx context.Context, project, typ string, configs 
 		return nil, err
 	}
 
-	restored, err := restoreConfigs(configs, stored, drv.SensitiveConfigKeys())
+	restored, err := restoreConfigs(configs, stored, sensitive)
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +291,7 @@ func (svc *Service) PutConfig(ctx context.Context, project, typ string, configs 
 		return nil, err
 	}
 
-	cfg.Configs, err = maskConfigs(cfg.Configs, drv.SensitiveConfigKeys())
+	cfg.Configs, err = maskConfigs(cfg.Configs, sensitive)
 	if err != nil {
 		return nil, err
 	}
@@ -257,7 +300,7 @@ func (svc *Service) PutConfig(ctx context.Context, project, typ string, configs 
 
 // DeleteConfig deletes the addon-config of the project.
 func (svc *Service) DeleteConfig(ctx context.Context, project, typ string) error {
-	if _, err := svc.registry.Get(typ); err != nil {
+	if _, err := svc.registry.sensitiveKeys(typ); err != nil {
 		return err
 	}
 	return svc.store.DeleteAddonConfig(ctx, project, typ)
@@ -292,6 +335,59 @@ func (svc *Service) loadConfig(ctx context.Context, drv Driver, project, typ str
 		return nil, err
 	}
 	return cfg.Configs, nil
+}
+
+// meta computes the meta add-on of the given type on the parent. It returns nil
+// when the kind does not support the type or the project addon-config disables it.
+func (svc *Service) meta(ctx context.Context, parent resource.Resource, typ string, m Meta) (*Addon, error) {
+	desc, err := svc.descriptors.GetDescriptor(parent.Kind)
+	if err != nil {
+		return nil, err
+	}
+	if !slices.Contains(desc.Addons, typ) {
+		return nil, nil
+	}
+
+	cfg, err := svc.store.GetAddonConfig(ctx, parent.Project, typ)
+	if err != nil && !errors.Is(err, errors.ErrNotFound) {
+		return nil, err
+	}
+	if cfg != nil {
+		enabled, err := metaEnabled(cfg.Configs)
+		if err != nil {
+			return nil, err
+		}
+		if !enabled {
+			return nil, nil
+		}
+	}
+
+	return &Addon{
+		URN:       GenerateURN(parent.URN, typ),
+		ParentURN: parent.URN,
+		Type:      typ,
+		Spec:      json.RawMessage("{}"),
+		Output:    m.Output(parentContext(parent)),
+		Status:    StatusCompleted,
+		CreatedAt: parent.CreatedAt,
+		UpdatedAt: parent.UpdatedAt,
+		CreatedBy: parent.CreatedBy,
+		UpdatedBy: parent.UpdatedBy,
+	}, nil
+}
+
+// metaEnabled reads the addon-config of a meta add-on: {"enabled": bool},
+// where an absent value means enabled.
+func metaEnabled(configs json.RawMessage) (bool, error) {
+	var cfg struct {
+		Enabled *bool `json:"enabled"`
+	}
+	dec := json.NewDecoder(bytes.NewReader(configs))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&cfg); err != nil {
+		return false, errors.ErrInvalid.WithMsgf("invalid meta add-on config: %s", err.Error())
+	}
+	return cfg.Enabled == nil || *cfg.Enabled, nil
 }
 
 func parentContext(res resource.Resource) ParentContext {

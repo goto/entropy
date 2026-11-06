@@ -19,6 +19,7 @@ import (
 const (
 	parentURN = "orn:entropy:firehose:team-a:orders"
 	typLogs   = "logs"
+	typMeta   = "webui"
 )
 
 var frozenTime = time.Unix(1700000000, 0)
@@ -325,6 +326,115 @@ func TestService_Configs(t *testing.T) {
 	assert.ErrorIs(t, err, errors.ErrNotFound)
 }
 
+func TestService_Meta(t *testing.T) {
+	t.Parallel()
+
+	const daggerURN = "orn:entropy:dagger:team-a:orders-agg"
+	dagger := &resource.Resource{
+		URN: daggerURN, Kind: "dagger", Project: "team-a", Name: "orders-agg",
+		CreatedAt: frozenTime, UpdatedAt: frozenTime, CreatedBy: "alice", UpdatedBy: "alice",
+	}
+	firehose := &resource.Resource{URN: parentURN, Kind: "firehose", Project: "team-a"}
+
+	setup := func(t *testing.T, parent *resource.Resource) (*addon.Service, *memStore) {
+		t.Helper()
+		store := newMemStore()
+		reg := registryWith(t, &fakeDriver{})
+		require.NoError(t, reg.RegisterMeta(typMeta, fakeMeta{}))
+		svc := addon.NewService(store, reg, fakeParents{parent}, fakeDescriptors{},
+			func() time.Time { return frozenTime }, time.Second)
+		return svc, store
+	}
+	ctx := context.Background()
+
+	t.Run("EnabledByDefault", func(t *testing.T) {
+		t.Parallel()
+
+		svc, _ := setup(t, dagger)
+		got, err := svc.Get(ctx, daggerURN, typMeta)
+		require.NoError(t, err)
+		assert.Equal(t, &addon.Addon{
+			URN: daggerURN + ":webui", ParentURN: daggerURN, Type: typMeta,
+			Spec: json.RawMessage(`{}`), Output: json.RawMessage(`{"urn":"` + daggerURN + `"}`),
+			Status: addon.StatusCompleted, CreatedAt: frozenTime, UpdatedAt: frozenTime,
+			CreatedBy: "alice", UpdatedBy: "alice",
+		}, got)
+
+		list, err := svc.List(ctx, daggerURN)
+		require.NoError(t, err)
+		require.Len(t, list, 1)
+		assert.Equal(t, typMeta, list[0].Type)
+	})
+
+	t.Run("DisabledByProjectConfig", func(t *testing.T) {
+		t.Parallel()
+
+		svc, _ := setup(t, dagger)
+		_, err := svc.PutConfig(ctx, "team-a", typMeta, json.RawMessage(`{"enabled":false}`))
+		require.NoError(t, err)
+
+		_, err = svc.Get(ctx, daggerURN, typMeta)
+		assert.ErrorIs(t, err, errors.ErrNotFound)
+
+		list, err := svc.List(ctx, daggerURN)
+		require.NoError(t, err)
+		assert.Empty(t, list)
+
+		// enabling again is a config change too.
+		_, err = svc.PutConfig(ctx, "team-a", typMeta, json.RawMessage(`{"enabled":true}`))
+		require.NoError(t, err)
+		_, err = svc.Get(ctx, daggerURN, typMeta)
+		assert.NoError(t, err)
+	})
+
+	t.Run("UnsupportedKind", func(t *testing.T) {
+		t.Parallel()
+
+		svc, _ := setup(t, firehose)
+		_, err := svc.Get(ctx, parentURN, typMeta)
+		assert.ErrorIs(t, err, errors.ErrNotFound)
+
+		list, err := svc.List(ctx, parentURN)
+		require.NoError(t, err)
+		assert.Empty(t, list)
+	})
+
+	t.Run("NotWritable", func(t *testing.T) {
+		t.Parallel()
+
+		svc, store := setup(t, dagger)
+		_, err := svc.Apply(ctx, addon.ApplyRequest{ParentURN: daggerURN, Type: typMeta, UserID: "alice"})
+		assert.ErrorIs(t, err, errors.ErrInvalid)
+		assert.ErrorIs(t, svc.Delete(ctx, daggerURN, typMeta, "alice"), errors.ErrInvalid)
+		assert.Empty(t, store.addons)
+	})
+
+	t.Run("InvalidConfig", func(t *testing.T) {
+		t.Parallel()
+
+		svc, _ := setup(t, dagger)
+		_, err := svc.PutConfig(ctx, "team-a", typMeta, json.RawMessage(`{"x":1}`))
+		assert.ErrorIs(t, err, errors.ErrInvalid)
+		_, err = svc.PutConfig(ctx, "team-a", typMeta, json.RawMessage(`{"enabled":"no"}`))
+		assert.ErrorIs(t, err, errors.ErrInvalid)
+	})
+}
+
+func TestRegistry_RejectsDuplicateAcrossKinds(t *testing.T) {
+	t.Parallel()
+
+	reg := registryWith(t, &fakeDriver{})
+	assert.ErrorIs(t, reg.RegisterMeta(typLogs, fakeMeta{}), errors.ErrConflict)
+	require.NoError(t, reg.RegisterMeta(typMeta, fakeMeta{}))
+	assert.ErrorIs(t, reg.Register(typMeta, &fakeDriver{}), errors.ErrConflict)
+}
+
+type fakeMeta struct{}
+
+func (fakeMeta) Output(parent addon.ParentContext) json.RawMessage {
+	return json.RawMessage(`{"urn":"` + parent.URN + `"}`)
+}
+
 func newService(t *testing.T, store *memStore, parent *resource.Resource, drv *fakeDriver) *addon.Service {
 	t.Helper()
 	return addon.NewService(store, registryWith(t, drv), fakeParents{parent}, fakeDescriptors{},
@@ -351,8 +461,11 @@ func (f fakeParents) GetByURN(_ context.Context, urn string) (*resource.Resource
 type fakeDescriptors struct{}
 
 func (fakeDescriptors) GetDescriptor(kind string) (module.Descriptor, error) {
-	if kind == "firehose" {
+	switch kind {
+	case "firehose":
 		return module.Descriptor{Kind: kind, Addons: []string{typLogs}}, nil
+	case "dagger":
+		return module.Descriptor{Kind: kind, Addons: []string{typMeta}}, nil
 	}
 	return module.Descriptor{Kind: kind}, nil
 }

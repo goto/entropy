@@ -9,7 +9,7 @@ Status: Draft (revision 5 — add-ons are mutated only through the add-on API)
 - **Add-on URN** is `{parent_urn}:{type}` (was `orn:entropy:addon:<kind>:<project>:<name>:<type>`).
 - **Storage:** `id BIGSERIAL` primary key; `(parent_urn, type)` is unique **only among live rows** (partial unique index), so deleting and re-adding an add-on inserts a new row and the old tombstoned row stays as history.
 - **Driver contract** gains a `config` argument (project addon-config) on `Apply`/`Delete`, `RequiresConfig()` and `SensitiveConfigKeys()`.
-- **Second add-on type `webui`** for dagger: gates the existing Flink Web UI proxy (`/resources/{urn}/webui/`, JobManager `:8081`).
+- **Second add-on type `webui`** for dagger: a **meta add-on** (no `addons` row, no write) that serves the existing Flink Web UI proxy (`/resources/{urn}/webui/` → kube service `<deployment_id>-rest:8081`, the JobManager). Enabled by default; a project disables it through its addon-config.
 - **Minimal addon-config masking** is in scope.
 - **Failure semantics** on the API path clarified: a failed update keeps the previous spec, so no `last_applied_spec` column is needed.
 
@@ -154,6 +154,15 @@ type Driver interface {
 - **Sensitive keys:** `SensitiveConfigKeys()` lists top-level addon-config keys masked on read (see [Backend configuration and secrets](#backend-configuration-and-secrets)).
 - **Output:** `Apply` returns JSON stored in `output` and exposed on GET. Empty object if the type has nothing to return.
 - **Idempotency:** `Apply` and `Delete` must be safe to repeat for the same `(parent_urn, type)` and spec. Implementations should use stable external keys derived from `parent_urn`, not request ids or row ids.
+- **Meta add-ons:** a type with no external state can instead implement `Meta` and be registered with `RegisterMeta`:
+
+  ```go
+  type Meta interface {
+      Output(parent ParentContext) json.RawMessage
+  }
+  ```
+
+  A meta add-on keeps **no `addons` row** and is never written. It is enabled on every parent whose kind lists it in `Descriptor.Addons`, unless the project addon-config for the type is `{"enabled": false}` (no addon-config, or `enabled` absent/true, means enabled). Reads compute it: `GET` returns an entry with `spec={}`, `status=COMPLETED`, `spec_version=0`, `output` from `Output()` and the parent's timestamps; when disabled, `GET` returns `404` and the list omits it. `PUT`/`DELETE` on a meta type return `400`.
 - **Timeouts:** each driver call runs under `addons.timeout` from the server config (default `30s`). Timeout counts as failure.
 - **Parent load:** all operations use `GetByURN`, which hides soft-deleted parents. Once a parent is soft-deleted its add-ons are tombstoned too, so there is nothing left to read or delete through the API.
 
@@ -452,9 +461,9 @@ Full reuse of the HMAC masker (`pkg/masking`, nested paths, masking add-on specs
 
 ### Second add-on: webui (dagger)
 
-Exposes the Flink Web UI served by the dagger's JobManager (`<deployment_id>-rest:8081`). It shows that an add-on can switch on an **Entropy-side** capability instead of calling an external API.
+Exposes the Flink Web UI served by the dagger's JobManager: the reverse proxy targets the kube **Service `<deployment_id>-rest` on port `8081`**, which selects the **JobManager pod**. It shows that an add-on can be a **meta add-on**: it switches on an Entropy-side capability, has no external state, and so needs no row and no write.
 
-**Existing building block:** a read-only (GET/HEAD) reverse proxy at `/api/v1beta1/resources/{urn}/webui/` reaches the JobManager REST service through the kube API server service proxy:
+**Existing building block:** a read-only (GET/HEAD) reverse proxy at `/api/v1beta1/resources/{urn}/webui/` reaches the JobManager through the kube API server service proxy (`/api/v1/namespaces/<ns>/services/http:<deployment_id>-rest:8081/proxy`):
 
 - `internal/server/v1/resources/webui.go` (`RegisterWebUI`): the route
 - `core/read.go` (`GetWebUIProxy`) and the module interface `WebUIProxyable` (`core/module/driver.go`)
@@ -463,30 +472,47 @@ Exposes the Flink Web UI served by the dagger's JobManager (`<deployment_id>-res
 
 **Module opt-in:** `dagger`; `Descriptor.Addons = ["webui"]`.
 
-**Spec:** empty object `{}` (unknown keys rejected).
+**Storage:** none. `webui` is registered with `RegisterMeta` and never has an `addons` row.
 
-**Driver flags:** `RequiresParentCompleted() = true`, `RequiresConfig() = false` (no addon-config), no sensitive keys.
+**Default:** enabled on every dagger. To disable it for every dagger of a project:
 
-**Apply:** gets the proxy for the parent (`GetWebUIProxy`) and serves an in-process `GET /overview` (Flink REST cluster overview) through it. A non-2xx response or proxy error fails the apply (`status=ERROR`). On success the output records where the UI is served:
+```http
+PUT /api/v1beta1/projects/team-a/addon-configs/webui
+user-id: alice
+Content-Type: application/json
+
+{"configs":{"enabled":false}}
+```
+
+`{"enabled": true}` or deleting the addon-config enables it again. Unknown keys are rejected.
+
+**API:** `GET .../addons/webui` and the list return the computed entry while enabled; `PUT`/`DELETE .../addons/webui` return `400` (`add-on 'webui' is a meta add-on and cannot be written; disable it with the project addon-config`).
 
 ```json
 {
-  "url": "/api/v1beta1/resources/orn:entropy:dagger:team-a:orders-agg/webui/",
-  "flink_version": "1.17.1"
+  "urn": "orn:entropy:dagger:team-a:orders-agg:webui",
+  "parent_urn": "orn:entropy:dagger:team-a:orders-agg",
+  "type": "webui",
+  "spec": {},
+  "output": {
+    "url": "/api/v1beta1/resources/orn:entropy:dagger:team-a:orders-agg/webui/",
+    "target": "jobmanager",
+    "port": 8081
+  },
+  "status": "COMPLETED",
+  "spec_version": 0
 }
 ```
 
-**Delete:** nothing external to remove; the row is tombstoned.
-
-**Gating:** the `/webui/` route serves only while the resource has a **live `webui` add-on with `status=COMPLETED`**. Otherwise it returns `404` with a plain-text body (like the other errors of the proxy route):
+**Gating:** the `/webui/` route serves while the add-on is **enabled** (the add-on service `Get` returns it). When disabled it returns `404` with a plain-text body (like the other errors of the proxy route):
 
 ```text
 webui add-on is not enabled for resource 'orn:entropy:dagger:team-a:orders-agg'
 ```
 
-So DELETE on the add-on, or soft-deleting the dagger (cascade), turns the UI off. The gate only **reads** the `addons` table, so it fits [Write ownership](#write-ownership).
+A JobManager that is not running surfaces as the proxy's own error. The gate only **reads**, so it fits [Write ownership](#write-ownership).
 
-**Not in scope:** Ingress/HTTPRoute or any direct cluster exposure; write methods (the proxy stays GET/HEAD only, so job cancel/submit from the UI does not work).
+**Not in scope:** Ingress/HTTPRoute or any direct cluster exposure; per-resource disable; write methods (the proxy stays GET/HEAD only, so job cancel/submit from the UI does not work).
 
 ### Reference backend: Barito
 
@@ -506,8 +532,8 @@ OTel counters for apply/delete results and timeouts, labelled by add-on type; ga
 - Resource soft-delete tombstones all live add-ons of that resource in the same transaction, calls no driver, and leaves other resources' add-ons alone; force delete leaves add-ons untouched.
 - addon-config masking and `"****"` restore.
 - `logs` driver against a fake HTTP backend (request shape, auth header, missing namespace, non-2xx, idempotent delete).
-- `webui` driver with a fake proxy (output shape, non-2xx probe, proxy error); Apply succeeds without addon-config.
-- `/webui/` gate: no add-on → 404, `ERROR` add-on → 404, `COMPLETED` add-on → proxied.
+- Meta add-on: enabled by default (computed on get/list), disabled by `{"enabled": false}` (404 / omitted), unsupported kind → 404, `PUT`/`DELETE` → 400, invalid addon-config rejected; `webui` output shape.
+- `/webui/` gate: not enabled → 404, enabled → proxied.
 - Existing resource tests unchanged; resource writes and sync never touch the `addons` table.
 
 ## Alternatives
@@ -541,7 +567,7 @@ Opt-in with zero migration of existing data. Empty `addons` and `addon_configs` 
 3. `core/addon`: types, registry, driver contract, service (apply/get/list/delete, addon-config CRUD with masking).
 4. HTTP handlers + request-logger exclusion for addon-configs.
 5. `logs` add-on + firehose descriptor + wiring in `cli/serve.go`.
-6. `webui` add-on + dagger descriptor + `/webui/` gate.
+6. Meta add-on support + `webui` + dagger descriptor + `/webui/` gate.
 7. Follow-up: read-only `addons` field on resource GET (proton).
 8. v2: `addon_revisions`, merged `GET .../history`.
 
@@ -577,11 +603,11 @@ This section describes the **first shipped add-on stack** in Entropy and is the 
 | ---- | ------ |
 | Implementation | [`addons/webui/webui.go`](../../addons/webui/webui.go) |
 | Module opt-in | [`modules/dagger/module.go`](../../modules/dagger/module.go) — `Descriptor.Addons = ["webui"]` |
-| Project config | None |
-| Apply | Probe `GET /overview` through the existing `/webui` proxy; record `url` and `flink_version` |
-| Delete | No external call; tombstone |
-| Gate | `/api/v1beta1/resources/{urn}/webui/` serves only with a live `COMPLETED` `webui` add-on |
-| Prerequisite | Dagger `STATUS_COMPLETED` |
+| Kind | Meta add-on (`RegisterMeta`); no `addons` row, `PUT`/`DELETE` → 400 |
+| Target | kube Service `<deployment_id>-rest:8081` (Flink JobManager) via the existing `/webui` proxy |
+| Default | Enabled on every dagger |
+| Project config | Optional `PUT .../addon-configs/webui` with `{"enabled": false}` to disable |
+| Gate | `/api/v1beta1/resources/{urn}/webui/` serves only while enabled |
 
 ### End-to-end flow (firehose + logs)
 
@@ -605,7 +631,8 @@ Content-Type: application/json
 1. Implement `core/addon.Driver` under `addons/<type>/`.
 2. `addonRegistry.Register(addon.TypeX, ...)` in `cli/serve.go`.
 3. Add the type string to the parent module `Descriptor.Addons`.
-4. Document the required `addon-config` JSON (and its sensitive keys) and spec shape, or set `RequiresConfig()` to false if the type needs none (like `webui`).
+4. Document the required `addon-config` JSON (and its sensitive keys) and spec shape, or set `RequiresConfig()` to false if the type needs none.
+   If the type has no external state (it only switches on an Entropy-side capability, like `webui`), implement `Meta` and use `RegisterMeta` instead: no row, enabled by default, disabled by addon-config.
 5. Keep all add-on mutations on the add-on API; the only resource-side write is the soft-delete cascade in the store.
 
 ## Risks

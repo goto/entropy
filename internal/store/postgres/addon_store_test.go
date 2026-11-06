@@ -79,7 +79,7 @@ func (s *AddonStoreTestSuite) TestCreateGetList() {
 	s.Require().NoError(err)
 	s.Empty(list)
 
-	_, err = s.store.GetAddon(s.ctx, testParentURN, addon.TypeWebUI)
+	_, err = s.store.GetAddon(s.ctx, "orn:entropy:firehose:none:none", addon.TypeLogs)
 	s.ErrorIs(err, errors.ErrNotFound)
 }
 
@@ -125,11 +125,11 @@ func (s *AddonStoreTestSuite) TestSoftDeleteAndReAdd() {
 }
 
 func (s *AddonStoreTestSuite) TestResourceSoftDeleteCascades() {
-	const otherParentURN = "orn:entropy:dagger:test-project-01:test-dagger"
+	const otherParentURN = "orn:entropy:firehose:test-project-01:test-firehose"
 
 	logs := s.newAddon(testParentURN, addon.TypeLogs)
 	s.Require().NoError(s.store.CreateAddon(s.ctx, logs))
-	other := s.newAddon(otherParentURN, addon.TypeWebUI)
+	other := s.newAddon(otherParentURN, addon.TypeLogs)
 	s.Require().NoError(s.store.CreateAddon(s.ctx, other))
 
 	s.Require().NoError(s.store.SoftDelete(s.ctx, testParentURN, "carol"))
@@ -138,7 +138,7 @@ func (s *AddonStoreTestSuite) TestResourceSoftDeleteCascades() {
 	s.Require().NoError(err)
 	s.Empty(list)
 
-	_, err = s.store.GetAddon(s.ctx, otherParentURN, addon.TypeWebUI)
+	_, err = s.store.GetAddon(s.ctx, otherParentURN, addon.TypeLogs)
 	s.NoError(err)
 
 	// a missing resource still fails and touches nothing.

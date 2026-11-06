@@ -20,14 +20,14 @@ const (
 	WebUIRouteName = "resource-webui"
 )
 
-// WebUIGate looks up the live add-on of a resource that enables its web UI.
+// WebUIGate looks up the add-on of a resource that enables its web UI.
 type WebUIGate interface {
 	Get(ctx context.Context, parentURN, typ string) (*addon.Addon, error)
 }
 
 // RegisterWebUI mounts a read-only reverse proxy to the web UI of a resource on router.
-// When gate is set, the UI is served only while the resource has a live, completed
-// webui add-on.
+// When gate is set, the UI is served only while the webui add-on of the resource
+// is enabled.
 func RegisterWebUI(router *gorillamux.Router, svc ResourceService, gate WebUIGate) {
 	router.Name(WebUIRouteName).PathPrefix(WebUIPathPrefix + "/").
 		Handler(webUIHandler(svc, gate))

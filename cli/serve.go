@@ -99,7 +99,7 @@ func StartServer(ctx context.Context, cfg Config, migrate, spawnWorker bool) err
 
 	resourceService := core.New(store, moduleService, time.Now, cfg.Syncer.SyncBackoffInterval, cfg.Syncer.MaxRetries, cfg.Telemetry.ServiceName, coreOpts...)
 
-	addonService := addon.NewService(store, setupAddonRegistry(resourceService), store, moduleRegistry, time.Now, cfg.Addons.Timeout)
+	addonService := addon.NewService(store, setupAddonRegistry(), store, moduleRegistry, time.Now, cfg.Addons.Timeout)
 
 	if migrate {
 		if migrateErr := runMigrations(ctx, cfg); migrateErr != nil {
@@ -162,18 +162,28 @@ func setupRegistry(store *postgres.Store) module.Registry {
 	return registry
 }
 
-func setupAddonRegistry(resourceService *core.Service) *addon.Registry {
+func setupAddonRegistry() *addon.Registry {
 	httpClient := &http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}
 
 	drivers := map[string]addon.Driver{
-		addon.TypeLogs:  logs.New(httpClient),
-		addon.TypeWebUI: webui.New(resourceService),
+		addon.TypeLogs: logs.New(httpClient),
+	}
+	metas := map[string]addon.Meta{
+		addon.TypeWebUI: webui.New(),
 	}
 
 	registry := &addon.Registry{}
 	for typ, drv := range drivers {
 		if err := registry.Register(typ, drv); err != nil {
 			zap.L().Fatal("failed to register add-on",
+				zap.String("addon_type", typ),
+				zap.Error(err),
+			)
+		}
+	}
+	for typ, m := range metas {
+		if err := registry.RegisterMeta(typ, m); err != nil {
+			zap.L().Fatal("failed to register meta add-on",
 				zap.String("addon_type", typ),
 				zap.Error(err),
 			)
