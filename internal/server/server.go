@@ -22,6 +22,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/goto/entropy/internal/server/serverutils"
+	addonsv1 "github.com/goto/entropy/internal/server/v1/addons"
 	modulesv1 "github.com/goto/entropy/internal/server/v1/modules"
 	resourcesv1 "github.com/goto/entropy/internal/server/v1/resources"
 	"github.com/goto/entropy/pkg/common"
@@ -32,6 +33,12 @@ import (
 	"github.com/goto/salt/mux"
 )
 
+// AddonService serves the add-on API and gates the resource web UI.
+type AddonService interface {
+	addonsv1.AddonService
+	resourcesv1.WebUIGate
+}
+
 const (
 	gracePeriod    = 5 * time.Second
 	readTimeout    = 120 * time.Second
@@ -41,10 +48,11 @@ const (
 
 // Serve initialises all the gRPC+HTTP API routes, starts listening for requests at addr, and blocks until server exits.
 // Server exits gracefully when context is cancelled. masker and configCache enable
-// response masking; pass nil for both to disable masking.
+// response masking; pass nil for both to disable masking. addonSvc enables the
+// add-on API and gates the resource web UI; pass nil to disable both.
 func Serve(ctx context.Context, httpAddr, grpcAddr string, nrApp *newrelic.Application,
 	resourceSvc resourcesv1.ResourceService, moduleSvc modulesv1.ModuleService,
-	masker *masking.Masker, configCache *masking.ConfigCache,
+	masker *masking.Masker, configCache *masking.ConfigCache, addonSvc AddonService,
 ) error {
 	grpcOpts := []grpc.ServerOption{
 		grpc.UnaryInterceptor(grpcmiddleware.ChainUnaryServer(
@@ -96,6 +104,12 @@ func Serve(ctx context.Context, httpAddr, grpcAddr string, nrApp *newrelic.Appli
 		withOpenTelemetry(),
 		nrgorilla.Middleware(nrApp),
 	)
+	if addonSvc != nil {
+		addonsv1.Register(httpRouter, addonSvc)
+		resourcesv1.RegisterWebUI(httpRouter, resourceSvc, addonSvc)
+	} else {
+		resourcesv1.RegisterWebUI(httpRouter, resourceSvc, nil)
+	}
 	httpRouter.PathPrefix("/api/").Handler(http.StripPrefix("/api", rpcHTTPGateway))
 	httpRouter.Handle("/ping", http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
 		_, _ = fmt.Fprintf(wr, "pong")

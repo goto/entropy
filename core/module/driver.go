@@ -6,6 +6,7 @@ package module
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 
 	"github.com/goto/entropy/core/resource"
 )
@@ -36,6 +37,13 @@ type Loggable interface {
 	Driver
 
 	Log(ctx context.Context, res ExpandedResource, filter map[string]string) (<-chan LogChunk, error)
+}
+
+// WebUIProxyable extension of driver allows proxying the web UI of a resource.
+type WebUIProxyable interface {
+	Driver
+
+	WebUIProxy(ctx context.Context, res ExpandedResource) (http.Handler, error)
 }
 
 // ExpandedResource represents the context for Plan() or Sync() invocations.

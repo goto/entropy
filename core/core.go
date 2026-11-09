@@ -5,6 +5,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"time"
 
 	"github.com/goto/entropy/core/module"
@@ -42,6 +43,7 @@ type ModuleService interface {
 	PlanAction(ctx context.Context, res module.ExpandedResource, act module.ActionRequest) (*resource.Resource, error)
 	SyncState(ctx context.Context, res module.ExpandedResource) (*resource.State, error)
 	StreamLogs(ctx context.Context, res module.ExpandedResource, filter map[string]string) (<-chan module.LogChunk, error)
+	WebUIProxy(ctx context.Context, res module.ExpandedResource) (http.Handler, error)
 	GetOutput(ctx context.Context, res module.ExpandedResource) (json.RawMessage, error)
 	IsRunning(ctx context.Context, res module.ExpandedResource) (bool, error)
 }

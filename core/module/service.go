@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/goto/entropy/core/resource"
 	"github.com/goto/entropy/pkg/errors"
@@ -82,6 +83,25 @@ func (mr *Service) StreamLogs(ctx context.Context, res ExpandedResource, filter 
 	}
 
 	return lg.Log(ctx, res, filter)
+}
+
+func (mr *Service) WebUIProxy(ctx context.Context, res ExpandedResource) (http.Handler, error) {
+	mod, err := mr.discoverModule(ctx, res.Kind, res.Project)
+	if err != nil {
+		return nil, err
+	}
+
+	driver, _, err := mr.initDriver(ctx, *mod)
+	if err != nil {
+		return nil, err
+	}
+
+	px, supported := driver.(WebUIProxyable)
+	if !supported {
+		return nil, errors.ErrUnsupported.WithMsgf("web ui not supported for kind '%s'", res.Kind)
+	}
+
+	return px.WebUIProxy(ctx, res)
 }
 
 func (mr *Service) GetOutput(ctx context.Context, res ExpandedResource) (json.RawMessage, error) {

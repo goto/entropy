@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"context"
+	"net/http"
 
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/core/resource"
@@ -71,6 +72,20 @@ func (svc *Service) GetLog(ctx context.Context, urn string, filter map[string]st
 		return nil, err
 	}
 	return logCh, nil
+}
+
+func (svc *Service) GetWebUIProxy(ctx context.Context, urn string) (http.Handler, error) {
+	res, err := svc.GetResource(ctx, urn)
+	if err != nil {
+		return nil, err
+	}
+
+	modSpec, err := svc.generateModuleSpec(ctx, *res)
+	if err != nil {
+		return nil, err
+	}
+
+	return svc.moduleSvc.WebUIProxy(ctx, *modSpec)
 }
 
 func (svc *Service) GetRevisions(ctx context.Context, selector resource.RevisionsSelector) ([]resource.Revision, error) {
