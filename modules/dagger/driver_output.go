@@ -76,6 +76,9 @@ func (dd *daggerDriver) refreshOutput(ctx context.Context, r resource.Resource,
 	output.JMDeployStatus = crd.JMDeployStatus
 	output.JobStatus = crd.JobStatus
 	output.Reconcilation = crd.Reconciliation
+	output.DaggerCheckpointURL, _ = rc.Values["dagger_checkpoint_url"].(string)
+	output.DaggerSavepointURL, _ = rc.Values["dagger_savepoint_url"].(string)
+	output.DaggerK8sHAURL, _ = rc.Values["dagger_k8s_ha_url"].(string)
 
 	state := output.JobStatus
 	if state == "FINISHED" {

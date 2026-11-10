@@ -124,6 +124,11 @@ type Output struct {
 	JobID          string     `json:"job_id,omitempty"`
 	Error          string     `json:"error,omitempty"`
 	Exceptions     Exception  `json:"exception,omitempty"`
+
+	// rendered HA urls, i.e. with the resource label overrides (e.g. HA bucket) applied.
+	DaggerCheckpointURL string `json:"dagger_checkpoint_url,omitempty"`
+	DaggerSavepointURL  string `json:"dagger_savepoint_url,omitempty"`
+	DaggerK8sHAURL      string `json:"dagger_k8s_ha_url,omitempty"`
 }
 
 type Exception struct {
