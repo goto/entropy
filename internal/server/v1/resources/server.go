@@ -4,6 +4,7 @@ package resources
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/goto/entropy/core"
 	"github.com/goto/entropy/core/module"
@@ -24,6 +25,7 @@ type ResourceService interface {
 
 	ApplyAction(ctx context.Context, urn string, action module.ActionRequest, resourceOpts ...core.Options) (*resource.Resource, error)
 	GetLog(ctx context.Context, urn string, filter map[string]string) (<-chan module.LogChunk, error)
+	GetWebUIProxy(ctx context.Context, urn string) (http.Handler, error)
 
 	GetRevisions(ctx context.Context, selector resource.RevisionsSelector) ([]resource.Revision, error)
 }

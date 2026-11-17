@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
+	"net/http/httputil"
 	"strconv"
 	"strings"
 	"sync"
@@ -466,4 +468,31 @@ func (c Client) ProxyService(ctx context.Context, namespace string, scheme strin
 	}
 
 	return json.RawMessage(res), nil
+}
+
+// ProxyServiceHandler returns a reverse proxy to the given service, routed through the
+// kube API server's service proxy. Request paths are appended to the service root.
+func (c Client) ProxyServiceHandler(namespace, scheme, serviceName, servicePort string) (http.Handler, error) {
+	transport, err := rest.TransportFor(&c.restConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	apiPath := fmt.Sprintf("/api/v1/namespaces/%s/services/%s:%s:%s/proxy", namespace, scheme, serviceName, servicePort)
+	target, targetPath, err := rest.DefaultServerURL(c.restConfig.Host, apiPath, schema.GroupVersion{}, rest.IsConfigTransportTLS(c.restConfig))
+	if err != nil {
+		return nil, err
+	}
+
+	return &httputil.ReverseProxy{
+		Transport: transport,
+		Director: func(req *http.Request) {
+			req.URL.Scheme = target.Scheme
+			req.URL.Host = target.Host
+			req.URL.Path = targetPath + req.URL.Path
+			req.URL.RawPath = ""
+			req.Host = target.Host
+			req.Header.Del("Authorization")
+		},
+	}, nil
 }

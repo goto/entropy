@@ -10,6 +10,7 @@ import (
 	"helm.sh/helm/v3/pkg/release"
 	v1 "k8s.io/api/core/v1"
 
+	"github.com/goto/entropy/core/addon"
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/modules/kubernetes"
 	"github.com/goto/entropy/pkg/errors"
@@ -40,6 +41,7 @@ func Module(getResource ResourceGetter) module.Descriptor {
 	return module.Descriptor{
 		Kind:      "firehose",
 		IsRunning: IsRunning,
+		Addons:    []string{addon.TypeLogs},
 		Dependencies: map[string]string{
 			keyKubeDependency: kubernetes.Module.Kind,
 		},

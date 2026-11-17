@@ -357,25 +357,39 @@ func (st *Store) SoftDelete(ctx context.Context, urn string, deletedBy string) e
 		}...,
 	)
 
-	res, err := sq.Update(tableResources).
-		Set("deleted_at", sq.Expr("current_timestamp")).
-		Set("deleted_by", deletedBy).
-		Where(sq.Eq{"urn": urn}).
-		Where(sq.Expr("deleted_at IS NULL")).
-		PlaceholderFormat(sq.Dollar).
-		RunWith(st.db).
-		ExecContext(ctx)
-	if err != nil {
+	softDelete := func(ctx context.Context, tx *sqlx.Tx) error {
+		res, err := sq.Update(tableResources).
+			Set("deleted_at", sq.Expr("current_timestamp")).
+			Set("deleted_by", deletedBy).
+			Where(sq.Eq{"urn": urn}).
+			Where(sq.Expr("deleted_at IS NULL")).
+			PlaceholderFormat(sq.Dollar).
+			RunWith(tx).
+			ExecContext(ctx)
+		if err != nil {
+			return err
+		}
+
+		affected, err := res.RowsAffected()
+		if err != nil {
+			return err
+		} else if affected == 0 {
+			return errors.ErrNotFound.WithMsgf("resource with urn '%s' does not exist", urn)
+		}
+
+		// add-ons follow the resource tombstone; external state is not touched.
+		_, err = sq.Update(tableAddons).
+			Set("deleted_at", sq.Expr("current_timestamp")).
+			Set("deleted_by", deletedBy).
+			Where(sq.Eq{"parent_urn": urn}).
+			Where(sq.Expr("deleted_at IS NULL")).
+			PlaceholderFormat(sq.Dollar).
+			RunWith(tx).
+			ExecContext(ctx)
 		return err
 	}
 
-	affected, err := res.RowsAffected()
-	if err != nil {
-		return err
-	} else if affected == 0 {
-		return errors.ErrNotFound.WithMsgf("resource with urn '%s' does not exist", urn)
-	}
-	return nil
+	return withinTx(ctx, st.db, false, softDelete)
 }
 
 func (st *Store) Delete(ctx context.Context, urn string, hooks ...resource.MutationHook) error {

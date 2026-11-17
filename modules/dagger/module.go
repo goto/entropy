@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/goto/entropy/core/addon"
 	"github.com/goto/entropy/core/module"
 	"github.com/goto/entropy/modules/flink"
 	"github.com/goto/entropy/pkg/errors"
@@ -36,6 +37,7 @@ func Module(getResource ResourceGetter) module.Descriptor {
 	return module.Descriptor{
 		Kind:      "dagger",
 		IsRunning: IsRunning,
+		Addons:    []string{addon.TypeWebUI},
 		Dependencies: map[string]string{
 			keyFlinkDependency: flink.Module.Kind,
 		},
