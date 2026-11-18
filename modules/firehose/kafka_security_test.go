@@ -167,6 +167,50 @@ func TestApplyStreamSecurity_PopulatesBrokersAndConfig(t *testing.T) {
 	assert.True(t, conf.ACL.KafkaTokenEnabled)
 }
 
+// the KEDA TriggerAuthentication comes from the kafka resource's "stream"
+// label, not the project-prefixed resource name; without the label the
+// trigger falls back to the resource name.
+func TestApplyStreamSecurity_KedaTriggerAuthenticationFromStreamLabel(t *testing.T) {
+	const (
+		project      = "al-modp-id-s"
+		resourceName = "al-modp-id-s-al-ms-id-s-central-kf"
+		bareStream   = "al-ms-id-s-central-kf"
+	)
+	outJSON, err := json.Marshal(kafkamod.Output{URL: "broker:9190", Security: oauthbearerProfile()})
+	require.NoError(t, err)
+
+	for name, tc := range map[string]struct {
+		labels   map[string]string
+		wantAuth string
+	}{
+		"stream label":    {labels: map[string]string{kafkaLabelStream: bareStream, "stream_urn": resourceName}, wantAuth: bareStream},
+		"no stream label": {labels: map[string]string{"stream_urn": resourceName}, wantAuth: resourceName},
+	} {
+		t.Run(name, func(t *testing.T) {
+			fd := &firehoseDriver{getResource: func(_ context.Context, urn string) (*resource.Resource, error) {
+				require.Equal(t, resource.GenerateURN(kafkamod.Module.Kind, project, resourceName), urn)
+				return &resource.Resource{Labels: tc.labels, State: resource.State{Output: outJSON}}, nil
+			}}
+			exr := module.ExpandedResource{Resource: resource.Resource{Project: project}}
+			conf := &Config{
+				Team:                      "team-x",
+				StreamName:                resourceName,
+				StreamSecurityEnabled:     true,
+				KedaTriggerAuthentication: "stale-from-previous-plan",
+				EnvVariables:              map[string]string{},
+			}
+
+			require.NoError(t, fd.applyStreamSecurity(context.Background(), exr, conf))
+
+			assert.Equal(t, "broker:9190", conf.EnvVariables[confKeyKafkaBrokers])
+			require.NotNil(t, conf.ACL)
+			name, ok := kedaKafkaScalerAuthentication(*conf)
+			assert.True(t, ok)
+			assert.Equal(t, tc.wantAuth, name)
+		})
+	}
+}
+
 func TestKafkaResourceNameFromStreamURN(t *testing.T) {
 	assert.Equal(t, "dagstream", kafkaResourceNameFromStreamURN("gjk-p-acc", "gjk-p-acc-dagstream"))
 	assert.Equal(t, "dagstream", kafkaResourceNameFromStreamURN("gjk-p-acc", "dagstream"))

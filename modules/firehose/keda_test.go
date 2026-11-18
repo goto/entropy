@@ -18,6 +18,17 @@ func TestKedaKafkaScalerAuthentication(t *testing.T) {
 		assert.Equal(t, "al-gp-id-s-central-kf", name)
 	})
 
+	t.Run("resolved trigger authentication overrides stream name", func(t *testing.T) {
+		name, ok := kedaKafkaScalerAuthentication(Config{
+			StreamSecurityEnabled:     true,
+			StreamName:                "al-modp-id-s-al-ms-id-s-central-kf",
+			KedaTriggerAuthentication: "al-ms-id-s-central-kf",
+			ACL:                       &ACLConfig{SSLConfigCredential: "stream-cert"},
+		})
+		assert.True(t, ok)
+		assert.Equal(t, "al-ms-id-s-central-kf", name)
+	})
+
 	t.Run("ACL without GTF flag", func(t *testing.T) {
 		_, ok := kedaKafkaScalerAuthentication(Config{
 			StreamName: "mainstream",

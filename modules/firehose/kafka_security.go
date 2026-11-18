@@ -404,6 +404,7 @@ func (fd *firehoseDriver) applyStreamSecurity(ctx context.Context, exr module.Ex
 	if streamName != "" {
 		clearManagedSecurityConfigs(conf.EnvVariables)
 		conf.ACL = nil
+		conf.KedaTriggerAuthentication = ""
 
 		var err error
 		sourceSecurity, err = fd.resolveStreamSecurity(ctx, exr, conf, streamName)
@@ -637,11 +638,15 @@ func (fd *firehoseDriver) resolveStreamSecurity(ctx context.Context, exr module.
 	// by URN and read its profile. Left unflagged the stream is plaintext, so
 	// nothing is fetched and the wiping above is all that happens.
 	if conf.StreamSecurityEnabled {
-		out, err := fd.fetchKafkaOutput(ctx, exr.Resource.Project, streamName)
+		out, labels, err := fd.fetchKafkaResource(ctx, exr.Resource.Project, streamName)
 		if err != nil {
 			return nil, err
 		}
 		setKafkaBrokers(conf, out.URL)
+		// the kafka resource name is project-prefixed; its "stream" label holds
+		// the bare stream name odin uses (streamConfig.name) and that the
+		// namespace's KEDA TriggerAuthentication is provisioned under.
+		conf.KedaTriggerAuthentication = strings.TrimSpace(labels[kafkaLabelStream])
 		return out.Security, nil
 	}
 
@@ -651,20 +656,30 @@ func (fd *firehoseDriver) resolveStreamSecurity(ctx context.Context, exr module.
 // fetchKafkaOutput fetches the kafka stream's resource by URN and decodes its
 // Output (url + security profile). streamName is the kafka resource name.
 func (fd *firehoseDriver) fetchKafkaOutput(ctx context.Context, project, streamName string) (kafkamod.Output, error) {
+	out, _, err := fd.fetchKafkaResource(ctx, project, streamName)
+	return out, err
+}
+
+// kafkaLabelStream is the kafka resource label holding the bare stream name.
+const kafkaLabelStream = "stream"
+
+// fetchKafkaResource is fetchKafkaOutput that also returns the kafka
+// resource's labels.
+func (fd *firehoseDriver) fetchKafkaResource(ctx context.Context, project, streamName string) (kafkamod.Output, map[string]string, error) {
 	var out kafkamod.Output
 	if fd.getResource == nil {
-		return out, fmt.Errorf("cannot resolve kafka stream %q: resource getter not configured", streamName)
+		return out, nil, fmt.Errorf("cannot resolve kafka stream %q: resource getter not configured", streamName)
 	}
 
 	urn := resource.GenerateURN(kafkamod.Module.Kind, project, streamName)
 	res, err := fd.getResource(ctx, urn)
 	if err != nil {
-		return out, fmt.Errorf("failed to fetch kafka stream %q (%s): %w", streamName, urn, err)
+		return out, nil, fmt.Errorf("failed to fetch kafka stream %q (%s): %w", streamName, urn, err)
 	}
 	if err := json.Unmarshal(res.State.Output, &out); err != nil {
-		return out, fmt.Errorf("invalid kafka output for stream %q: %w", streamName, err)
+		return out, nil, fmt.Errorf("invalid kafka output for stream %q: %w", streamName, err)
 	}
-	return out, nil
+	return out, res.Labels, nil
 }
 
 func (fd *firehoseDriver) prepareKafkaDLQEnv(exr module.ExpandedResource, conf *Config) error {
