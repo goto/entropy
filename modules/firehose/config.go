@@ -100,6 +100,12 @@ type Config struct {
 	// rebuilt from the stream on every plan.
 	StreamName string `json:"stream_name,omitempty"`
 
+	// KedaTriggerAuthentication is the KEDA TriggerAuthentication the kafka
+	// trigger references for secured streams. applyStreamSecurity sets it from
+	// the kafka resource's "stream" label (the bare stream name, e.g.
+	// "al-ms-id-s-central-kf"); when empty the trigger falls back to StreamName.
+	KedaTriggerAuthentication string `json:"keda_trigger_authentication,omitempty"`
+
 	// StreamSecurityEnabled says the named stream carries a security profile, so
 	// the driver resolves its kafka resource internally (by URN, without a
 	// declared dependency). The caller already knows this — Dex reads the same

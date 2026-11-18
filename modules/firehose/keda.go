@@ -287,10 +287,14 @@ func (keda *Keda) updateTriggersMetadata(cfg Config) error {
 
 // kedaKafkaScalerAuthentication mirrors odin firehose scaler behaviour for ACL
 // streams: tls + authenticationRef on the kafka trigger, named after the
-// source kafka resource (streamConfig.name in odin).
+// source kafka stream (streamConfig.name in odin): the kafka resource's
+// "stream" label when resolved, else the kafka resource name.
 func kedaKafkaScalerAuthentication(cfg Config) (string, bool) {
 	if cfg.ACL == nil || !cfg.StreamSecurityEnabled || cfg.StreamName == "" {
 		return "", false
+	}
+	if cfg.KedaTriggerAuthentication != "" {
+		return cfg.KedaTriggerAuthentication, true
 	}
 	return cfg.StreamName, true
 }
