@@ -1,7 +1,6 @@
 package firehose
 
 import (
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -642,9 +641,9 @@ func firehoseDriverConf() driverConf {
 			PullPolicy: "IfNotPresent",
 			Repository: "busybox",
 		},
-		Labels: LabelsConf{Common: map[string]string{
+		Labels: map[string]string{
 			"team": "{{.team}}",
-		}},
+		},
 		Namespace: map[string]string{
 			"default": "namespace-1",
 		},
@@ -765,60 +764,6 @@ func TestFirehoseDriver_DLQKafkaSecurityChartValues(t *testing.T) {
 	assert.NotContains(t, got.Values, "kafka_security")
 }
 
-func TestLabelsConf_UnmarshalJSON(t *testing.T) {
-	t.Parallel()
-
-	t.Run("flat_labels", func(t *testing.T) {
-		t.Parallel()
-		var got LabelsConf
-		require.NoError(t, json.Unmarshal([]byte(`{"team": "{{ .team }}", "app": "firehose"}`), &got))
-		assert.Equal(t, map[string]string{"team": "{{ .team }}", "app": "firehose"}, got.Common)
-		assert.Empty(t, got.BySink)
-	})
-
-	t.Run("common_and_sink_labels", func(t *testing.T) {
-		t.Parallel()
-		var got LabelsConf
-		require.NoError(t, json.Unmarshal([]byte(`{
-			"team": "{{ .team }}",
-			"MAXCOMPUTE": {"sidecar.istio.io/inject": "false"}
-		}`), &got))
-		assert.Equal(t, map[string]string{"team": "{{ .team }}"}, got.Common)
-		assert.Equal(t, map[string]map[string]string{
-			"MAXCOMPUTE": {"sidecar.istio.io/inject": "false"},
-		}, got.BySink)
-	})
-
-	t.Run("round_trips", func(t *testing.T) {
-		t.Parallel()
-		in := LabelsConf{
-			Common: map[string]string{"team": "de"},
-			BySink: map[string]map[string]string{"MAXCOMPUTE": {"sidecar.istio.io/inject": "false"}},
-		}
-		b, err := json.Marshal(in)
-		require.NoError(t, err)
-
-		var got LabelsConf
-		require.NoError(t, json.Unmarshal(b, &got))
-		assert.Equal(t, in, got)
-	})
-
-	invalid := map[string]string{
-		"number_value":       `{"team": 1}`,
-		"boolean_value":      `{"sidecar.istio.io/inject": false}`,
-		"non_string_in_sink": `{"MAXCOMPUTE": {"sidecar.istio.io/inject": false}}`,
-		"not_an_object":      `["team"]`,
-	}
-	for name, in := range invalid {
-		in := in
-		t.Run("rejects_"+name, func(t *testing.T) {
-			t.Parallel()
-			var got LabelsConf
-			assert.Error(t, json.Unmarshal([]byte(in), &got))
-		})
-	}
-}
-
 func TestFirehoseDriver_SinkLabels(t *testing.T) {
 	t.Parallel()
 
@@ -843,15 +788,13 @@ func TestFirehoseDriver_SinkLabels(t *testing.T) {
 	}
 
 	fd := &firehoseDriver{conf: firehoseDriverConf(), timeNow: func() time.Time { return frozenTime }}
-	fd.conf.Labels = LabelsConf{
-		Common: map[string]string{
-			"team":                    "{{ .team }}",
-			"sidecar.istio.io/inject": "true",
-		},
-		BySink: map[string]map[string]string{
-			"LOG":        {"sidecar.istio.io/inject": "false", "sink": "{{ .name }}-log"},
-			"MAXCOMPUTE": {"maxcompute-only": "true"},
-		},
+	fd.conf.Labels = map[string]string{
+		"team":                    "{{ .team }}",
+		"sidecar.istio.io/inject": "true",
+	}
+	fd.conf.SinkLabels = map[string]map[string]string{
+		"LOG":        {"sidecar.istio.io/inject": "false", "sink": "{{ .name }}-log"},
+		"MAXCOMPUTE": {"maxcompute-only": "true"},
 	}
 
 	conf, err := readConfig(res, res.Spec.Configs, fd.conf)
