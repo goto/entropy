@@ -106,7 +106,9 @@ type (
 
 type driverConf struct {
 	// Labels to be injected to the chart during deployment. Values can be Go templates.
-	Labels map[string]string `json:"labels,omitempty"`
+	// String values apply to every firehose. An object value is keyed by sink-type and
+	// its labels apply only to firehoses of that sink, overriding the common ones.
+	Labels LabelsConf `json:"labels,omitempty"`
 
 	// Telegraf is the telegraf configuration for the deployment.
 	Telegraf *Telegraf `json:"telegraf"`
@@ -156,6 +158,55 @@ type driverConf struct {
 	// KafkaSecurity holds the deployment level settings used when wiring an ACL
 	// (SASL/SSL) source stream.
 	KafkaSecurity KafkaSecurity `json:"kafka_security,omitempty"`
+}
+
+// LabelsConf holds the deployment labels. String values apply to every firehose;
+// an object value is keyed by sink-type and applies only to firehoses of that sink.
+type LabelsConf struct {
+	Common map[string]string
+	BySink map[string]map[string]string
+}
+
+func (l *LabelsConf) UnmarshalJSON(b []byte) error {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return errors.ErrInvalid.WithMsgf("labels must be an object").WithCausef("%s", err.Error())
+	}
+
+	conf := LabelsConf{Common: map[string]string{}, BySink: map[string]map[string]string{}}
+	for key, val := range raw {
+		var label string
+		if err := json.Unmarshal(val, &label); err == nil {
+			conf.Common[key] = label
+			continue
+		}
+
+		var sinkLabels map[string]string
+		if err := json.Unmarshal(val, &sinkLabels); err != nil {
+			return errors.ErrInvalid.
+				WithMsgf("label '%s' must be a string or an object of string labels for a sink-type", key)
+		}
+		conf.BySink[key] = sinkLabels
+	}
+
+	*l = conf
+	return nil
+}
+
+func (l LabelsConf) MarshalJSON() ([]byte, error) {
+	res := map[string]any{}
+	for k, v := range l.Common {
+		res[k] = v
+	}
+	for k, v := range l.BySink {
+		res[k] = v
+	}
+	return json.Marshal(res)
+}
+
+// forSink returns the common labels merged with the labels of the given sink-type.
+func (l LabelsConf) forSink(sinkType string) map[string]string {
+	return modules.CloneAndMergeMaps(l.Common, l.BySink[sinkType])
 }
 
 type FirehoseAutoscaler struct {
@@ -215,7 +266,7 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		labelNamespace: conf.Namespace,
 	}
 
-	deploymentLabels, err := renderTpl(fd.conf.Labels, modules.CloneAndMergeMaps(res.Labels, modules.CloneAndMergeMaps(entropyLabels, otherLabels)))
+	deploymentLabels, err := renderTpl(fd.conf.Labels.forSink(conf.EnvVariables[confSinkType]), modules.CloneAndMergeMaps(res.Labels, modules.CloneAndMergeMaps(entropyLabels, otherLabels)))
 	if err != nil {
 		return nil, err
 	}
