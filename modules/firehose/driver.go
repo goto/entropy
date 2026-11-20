@@ -108,6 +108,10 @@ type driverConf struct {
 	// Labels to be injected to the chart during deployment. Values can be Go templates.
 	Labels map[string]string `json:"labels,omitempty"`
 
+	// SinkLabels are added to Labels for firehoses of the given sink-type, overriding
+	// them on conflicting keys. The key in the map is the sink-type in upper case.
+	SinkLabels map[string]map[string]string `json:"sink_labels,omitempty"`
+
 	// Telegraf is the telegraf configuration for the deployment.
 	Telegraf *Telegraf `json:"telegraf"`
 
@@ -215,7 +219,7 @@ func (fd *firehoseDriver) getHelmRelease(res resource.Resource, conf Config,
 		labelNamespace: conf.Namespace,
 	}
 
-	deploymentLabels, err := renderTpl(fd.conf.Labels, modules.CloneAndMergeMaps(res.Labels, modules.CloneAndMergeMaps(entropyLabels, otherLabels)))
+	deploymentLabels, err := renderTpl(modules.CloneAndMergeMaps(fd.conf.Labels, fd.conf.SinkLabels[conf.EnvVariables[confSinkType]]), modules.CloneAndMergeMaps(res.Labels, modules.CloneAndMergeMaps(entropyLabels, otherLabels)))
 	if err != nil {
 		return nil, err
 	}

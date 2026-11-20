@@ -763,3 +763,54 @@ func TestFirehoseDriver_DLQKafkaSecurityChartValues(t *testing.T) {
 	}, got.Values["dlq_kafka_security"])
 	assert.NotContains(t, got.Values, "kafka_security")
 }
+
+func TestFirehoseDriver_SinkLabels(t *testing.T) {
+	t.Parallel()
+
+	res := resource.Resource{
+		URN:     "orn:entropy:firehose:project-1:resource-1-firehose",
+		Kind:    "firehose",
+		Name:    "resource-1",
+		Project: "project-1",
+		Labels:  map[string]string{"team": "team-1"},
+		Spec: resource.Spec{
+			Configs: []byte(`{
+				"env_variables": {
+					"SINK_TYPE": "LOG",
+					"INPUT_SCHEMA_PROTO_CLASS": "com.foo.Bar",
+					"SOURCE_KAFKA_CONSUMER_GROUP_ID": "foo-bar-baz",
+					"SOURCE_KAFKA_BROKERS": "localhost:9092",
+					"SOURCE_KAFKA_TOPIC": "foo-log"
+				},
+				"replicas": 1
+			}`),
+		},
+	}
+
+	fd := &firehoseDriver{conf: firehoseDriverConf(), timeNow: func() time.Time { return frozenTime }}
+	fd.conf.Labels = map[string]string{
+		"team":                    "{{ .team }}",
+		"sidecar.istio.io/inject": "true",
+	}
+	fd.conf.SinkLabels = map[string]map[string]string{
+		"LOG":        {"sidecar.istio.io/inject": "false", "sink": "{{ .name }}-log"},
+		"MAXCOMPUTE": {"maxcompute-only": "true"},
+	}
+
+	conf, err := readConfig(res, res.Spec.Configs, fd.conf)
+	require.NoError(t, err)
+	conf.ChartValues, err = mergeChartValues(&fd.conf.ChartValues, conf.ChartValues)
+	require.NoError(t, err)
+	conf.Telegraf = fd.conf.Telegraf
+
+	got, err := fd.getHelmRelease(res, *conf, kubernetes.Output{})
+	require.NoError(t, err)
+
+	labels, ok := got.Values[labelsConfKey].(map[string]string)
+	require.True(t, ok)
+	assert.Equal(t, "team-1", labels["team"])
+	assert.Equal(t, "false", labels["sidecar.istio.io/inject"])
+	assert.Equal(t, "resource-1-log", labels["sink"])
+	assert.NotContains(t, labels, "maxcompute-only")
+	assert.Equal(t, orchestratorLabelValue, labels[labelOrchestrator])
+}
